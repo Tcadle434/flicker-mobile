@@ -32,6 +32,32 @@ class AudioBufferManager {
     // Supported audio formats
     private let supportedExtensions = ["wav", "m4a", "mp3", "aac", "caf"]
 
+    private lazy var searchableBundles: [Bundle] = {
+        var bundles: [Bundle] = [Bundle.main]
+
+        // Include the module bundle so local pod resources are discoverable.
+        bundles.append(Bundle(for: SonaAudioModule.self))
+
+        if let bundleURLs = Bundle.main.urls(forResourcesWithExtension: "bundle", subdirectory: nil) {
+            for url in bundleURLs {
+                if let bundle = Bundle(url: url) {
+                    bundles.append(bundle)
+                }
+            }
+        }
+
+        // De-duplicate by path while preserving order.
+        var seen: Set<String> = []
+        return bundles.filter { bundle in
+            let path = bundle.bundlePath
+            if seen.contains(path) {
+                return false
+            }
+            seen.insert(path)
+            return true
+        }
+    }()
+
     // MARK: - Initialization
 
     private init() {
@@ -101,6 +127,15 @@ class AudioBufferManager {
     // MARK: - Private Methods
 
     private func findFileInBundle(filename: String) -> URL? {
+        // Accept direct file paths from JS/native callers.
+        if filename.hasPrefix("file://"), let directURL = URL(string: filename),
+           fileManager.fileExists(atPath: directURL.path) {
+            return directURL
+        }
+        if filename.hasPrefix("/"), fileManager.fileExists(atPath: filename) {
+            return URL(fileURLWithPath: filename)
+        }
+
         // Extract filename and extension
         let components = filename.components(separatedBy: ".")
         let name: String
@@ -116,34 +151,38 @@ class AudioBufferManager {
 
         // If extension is provided, try that first
         if !ext.isEmpty {
-            if let url = Bundle.main.url(forResource: name, withExtension: ext) {
-                return url
+            for bundle in searchableBundles {
+                if let url = bundle.url(forResource: name, withExtension: ext) {
+                    return url
+                }
             }
         }
 
         // Try all supported extensions
         for supportedExt in supportedExtensions {
-            if let url = Bundle.main.url(forResource: name, withExtension: supportedExt) {
-                print("[AudioBufferManager] Found file: \(name).\(supportedExt)")
-                return url
+            for bundle in searchableBundles {
+                if let url = bundle.url(forResource: name, withExtension: supportedExt) {
+                    print("[AudioBufferManager] Found file: \(name).\(supportedExt) in \(bundle.bundleURL.lastPathComponent)")
+                    return url
+                }
             }
         }
 
-        // Try in subdirectories
-        if let resourcePath = Bundle.main.resourcePath {
-            let resourceURL = URL(fileURLWithPath: resourcePath)
+        // Try common subdirectories inside all searchable bundles
+        let subdirectories = ["audio", "sounds", "loops", "assets"]
+        for bundle in searchableBundles {
+            if let resourcePath = bundle.resourcePath {
+                let resourceURL = URL(fileURLWithPath: resourcePath)
 
-            // Common audio subdirectories
-            let subdirectories = ["audio", "sounds", "loops", "assets"]
+                for subdir in subdirectories {
+                    let subdirURL = resourceURL.appendingPathComponent(subdir)
 
-            for subdir in subdirectories {
-                let subdirURL = resourceURL.appendingPathComponent(subdir)
-
-                for supportedExt in supportedExtensions {
-                    let fileURL = subdirURL.appendingPathComponent("\(name).\(supportedExt)")
-                    if fileManager.fileExists(atPath: fileURL.path) {
-                        print("[AudioBufferManager] Found file in \(subdir): \(name).\(supportedExt)")
-                        return fileURL
+                    for supportedExt in supportedExtensions {
+                        let fileURL = subdirURL.appendingPathComponent("\(name).\(supportedExt)")
+                        if fileManager.fileExists(atPath: fileURL.path) {
+                            print("[AudioBufferManager] Found file in \(bundle.bundleURL.lastPathComponent)/\(subdir): \(name).\(supportedExt)")
+                            return fileURL
+                        }
                     }
                 }
             }
@@ -219,23 +258,24 @@ class AudioBufferManager {
     /// - Returns: Array of audio filenames found in the bundle
     func discoverAudioFiles() -> [String] {
         var audioFiles: [String] = []
-
-        guard let resourcePath = Bundle.main.resourcePath else {
-            return audioFiles
-        }
-
-        let resourceURL = URL(fileURLWithPath: resourcePath)
         let subdirectories = ["", "audio", "sounds", "loops", "assets"]
 
-        for subdir in subdirectories {
-            let dirURL = subdir.isEmpty ? resourceURL : resourceURL.appendingPathComponent(subdir)
+        for bundle in searchableBundles {
+            guard let resourcePath = bundle.resourcePath else {
+                continue
+            }
 
-            if let enumerator = fileManager.enumerator(at: dirURL, includingPropertiesForKeys: nil) {
-                for case let fileURL as URL in enumerator {
-                    let ext = fileURL.pathExtension.lowercased()
-                    if supportedExtensions.contains(ext) {
-                        let relativePath = fileURL.lastPathComponent
-                        audioFiles.append(relativePath)
+            let resourceURL = URL(fileURLWithPath: resourcePath)
+            for subdir in subdirectories {
+                let dirURL = subdir.isEmpty ? resourceURL : resourceURL.appendingPathComponent(subdir)
+
+                if let enumerator = fileManager.enumerator(at: dirURL, includingPropertiesForKeys: nil) {
+                    for case let fileURL as URL in enumerator {
+                        let ext = fileURL.pathExtension.lowercased()
+                        if supportedExtensions.contains(ext) {
+                            let relativePath = fileURL.lastPathComponent
+                            audioFiles.append(relativePath)
+                        }
                     }
                 }
             }

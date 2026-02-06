@@ -428,6 +428,7 @@ class SonaAudioEngine {
 
         // Load real audio files
         print("[SonaAudioEngine] Loading real audio files...")
+        var loadedLayerCount = 0
 
         for layerConfig in layerConfigs {
             guard let layerName = layerConfig["layer"] as? String,
@@ -450,6 +451,7 @@ class SonaAudioEngine {
                 // Load buffer into layer
                 layer.loadBuffer(buffer)
                 layer.setVolume(volume)
+                loadedLayerCount += 1
 
                 print("[SonaAudioEngine] ✅ Loaded \(layerName): \(filename) at volume \(volume)")
             } catch {
@@ -458,8 +460,12 @@ class SonaAudioEngine {
             }
         }
 
+        if loadedLayerCount == 0 {
+            throw AudioEngineError.playbackError("No audio layers were loaded for mode '\(mode)'.")
+        }
+
         useMultiLayerMode = true
-        print("[SonaAudioEngine] Mode loaded successfully: \(mode)")
+        print("[SonaAudioEngine] Mode loaded successfully: \(mode) with \(loadedLayerCount) layers")
     }
 
     /// Load a mode with real audio files asynchronously

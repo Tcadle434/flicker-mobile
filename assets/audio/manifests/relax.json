@@ -4,18 +4,18 @@
   "description": "Deep relaxation and calm with soft ambient textures",
   "color": "#60A5FA",
   "loops": {
-    "ambient": ["ambient_loop_01", "ambient_loop_02", "ambient_loop_03"],
-    "nature": ["nature_loop_01", "nature_loop_02", "nature_loop_03"],
-    "melody": ["melody_loop_02"],
-    "rhythm": ["rhythm_loop_01"],
-    "synthesis": ["synthesis_loop_01"]
+    "ambient": ["120_D_GentlyDrone_SG_24.wav"],
+    "nature": ["Soft_Rain_Loop_1.wav"],
+    "melody": ["D_Major_Glass_Loop_2026-02-03T170416.wav"],
+    "rhythm": [],
+    "synthesis": []
   },
   "defaultMix": {
-    "ambient": 0.8,
+    "ambient": 0.75,
     "nature": 0.25,
-    "melody": 0.25,
+    "melody": 0.16,
     "rhythm": 0.0,
-    "synthesis": 0.2
+    "synthesis": 0.0
   },
   "binauralFrequency": {
     "min": 7.5,

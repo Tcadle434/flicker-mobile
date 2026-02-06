@@ -39,11 +39,24 @@ export interface LoopTransitionEvent {
 
 // MARK: - Native Module
 
-const SonaAudio = requireNativeModule('SonaAudio');
+type EventEmitterCompatibleModule = {
+  addListener?: (eventName: string) => void;
+  removeListeners?: (count: number) => void;
+};
+
+const SonaAudio = requireNativeModule('SonaAudio') as EventEmitterCompatibleModule & Record<string, any>;
 
 // MARK: - Event Emitter
 
-const eventEmitter = new NativeEventEmitter(SonaAudio);
+// React Native's NativeEventEmitter expects these methods on the provided module.
+if (typeof SonaAudio.addListener !== 'function') {
+  SonaAudio.addListener = () => {};
+}
+if (typeof SonaAudio.removeListeners !== 'function') {
+  SonaAudio.removeListeners = () => {};
+}
+
+const eventEmitter = new NativeEventEmitter(SonaAudio as any);
 
 // MARK: - Native Audio Engine API
 
