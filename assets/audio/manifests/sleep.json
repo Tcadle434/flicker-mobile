@@ -1,0 +1,35 @@
+{
+  "id": "sleep",
+  "name": "Sleep",
+  "description": "Peaceful sleep soundscape with low energy and gentle textures",
+  "color": "#A78BFA",
+  "loops": {
+    "ambient": ["ambient_loop_01", "ambient_loop_02", "ambient_loop_03"],
+    "nature": ["nature_loop_01", "nature_loop_02", "nature_loop_03"],
+    "melody": ["melody_loop_03"],
+    "rhythm": ["rhythm_loop_01"],
+    "synthesis": ["synthesis_loop_01"]
+  },
+  "defaultMix": {
+    "ambient": 0.7,
+    "nature": 0.3,
+    "melody": 0.15,
+    "rhythm": 0.0,
+    "synthesis": 0.3
+  },
+  "binauralFrequency": {
+    "min": 2,
+    "max": 4
+  },
+  "adaptiveParameters": {
+    "energyRange": {
+      "min": -0.4,
+      "max": 0.2
+    },
+    "densityRange": {
+      "min": 0.1,
+      "max": 0.5
+    },
+    "binauralBase": 3
+  }
+}
