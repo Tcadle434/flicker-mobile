@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -108,6 +108,9 @@ export default function Home() {
 
         {/* Center orb */}
         <View style={styles.orbWrap}>
+          <Animated.Text style={[styles.tapPrompt, uiAnimStyle]}>
+            tap to start your session
+          </Animated.Text>
           <Animated.View style={orbAnimStyle}>
             <ParticleOrb
               mood={currentMood}
@@ -123,6 +126,16 @@ export default function Home() {
           <Text style={[styles.footerText, { color: `${moodTheme.primary}88` }]}>
             Let the noise fade.
           </Text>
+          {/* TODO: remove — 10s test session */}
+          <TouchableOpacity
+            style={styles.testButton}
+            onPress={() => {
+              setDuration(10 / 60);
+              router.push({ pathname: '/reset', params: { duration: String(10 / 60) } });
+            }}
+          >
+            <Text style={styles.testButtonText}>10s test session</Text>
+          </TouchableOpacity>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -160,6 +173,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  tapPrompt: {
+    fontFamily: Platform.OS === 'ios' ? 'Snell Roundhand' : 'cursive',
+    fontSize: theme.typography.fontSize.xl,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginBottom: theme.spacing.md,
+  },
   bottomSection: {
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
@@ -169,5 +188,19 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     marginTop: theme.spacing.md,
     paddingBottom: theme.spacing.sm,
+  },
+  // TODO: remove
+  testButton: {
+    marginTop: theme.spacing.sm,
+    alignSelf: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  testButtonText: {
+    color: theme.colors.textTertiary,
+    fontSize: theme.typography.fontSize.xs,
   },
 });

@@ -68,7 +68,7 @@ export async function recordReset(
 ): Promise<void> {
   const { error } = await supabase.from('resets').insert({
     user_id: userId,
-    duration_minutes: durationMinutes,
+    duration_minutes: Math.max(1, Math.round(durationMinutes)),
     mood_after: moodAfter ?? null,
     completed_at: new Date().toISOString(),
   });

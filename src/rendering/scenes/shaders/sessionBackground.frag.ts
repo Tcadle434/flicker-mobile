@@ -5,6 +5,7 @@ uniform float uTime;
 uniform vec2 uResolution;
 uniform vec3 uColor1;
 uniform vec3 uColor2;
+uniform vec3 uColor3;
 uniform float uPadX;
 uniform float uPadY;
 
@@ -42,28 +43,41 @@ float snoise(vec2 v) {
 
 void main() {
   vec2 uv = gl_FragCoord.xy / uResolution;
-  float t = uTime * 0.1;
+  float t = uTime * 0.15;
 
-  // Multiple octaves of noise for organic swirl
-  float n1 = snoise(uv * 2.0 + t * 0.5);
-  float n2 = snoise(uv * 4.0 - t * 0.3 + 10.0);
+  // Domain warping — feed noise back into noise for organic swirl
+  vec2 warp = vec2(
+    snoise(uv * 2.0 + t),
+    snoise(uv * 2.0 + t + 5.0)
+  ) * 0.4;
+
+  // Multiple octaves with warped coordinates
+  float n1 = snoise((uv + warp) * 3.0 + t * 0.5);
+  float n2 = snoise((uv + warp) * 5.0 - t * 0.3 + 10.0);
   float n3 = snoise(uv * 1.5 + t * 0.2 + vec2(n1, n2) * 0.3);
 
-  float blend = n3 * 0.5 + 0.5;
+  float blend1 = n1 * 0.5 + 0.5;
+  float blend2 = n3 * 0.5 + 0.5;
 
   // Pad influence on color warmth
   float padWarmth = uPadX * 0.15;
   vec3 c1 = uColor1 + vec3(padWarmth * 0.3, -padWarmth * 0.1, -padWarmth * 0.2);
   vec3 c2 = uColor2 + vec3(-padWarmth * 0.1, padWarmth * 0.1, padWarmth * 0.3);
 
-  vec3 color = mix(c1, c2, blend);
+  // 3-way color mix for richer gradients
+  vec3 color = mix(c1, c2, blend1);
+  color = mix(color, uColor3, blend2 * 0.5);
 
-  // Breathing brightness
-  float breath = sin(uTime * 0.8) * 0.08 + 0.92;
+  // Subtle color shift over time — warm tint oscillation
+  float shift = sin(uTime * 0.1) * 0.06;
+  color += vec3(shift, -shift * 0.5, -shift * 0.3);
+
+  // Breathing brightness — oscillates 0.91–1.03 for subtle glow
+  float breath = sin(uTime * 0.5) * 0.06 + 0.97;
   color *= breath;
 
-  // Vignette
-  float vignette = 1.0 - length(uv - 0.5) * 0.8;
+  // Reduced vignette — subtle edge darkening without crushing color
+  float vignette = 1.0 - length(uv - 0.5) * 0.4;
   color *= vignette;
 
   gl_FragColor = vec4(color, 1.0);

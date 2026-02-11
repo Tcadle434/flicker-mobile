@@ -79,9 +79,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   mode: 'focus',
   playbackState: 'idle',
   layers: {
-    ambient: { id: 'ambient', volume: 0.7, muted: false, currentLoopId: null },
-    nature: { id: 'nature', volume: 0.5, muted: false, currentLoopId: null },
-    melody: { id: 'melody', volume: 0.2, muted: false, currentLoopId: null },
+    ambient: { id: 'ambient', volume: 0.4, muted: false, currentLoopId: null },
+    nature: { id: 'nature', volume: 0.35, muted: false, currentLoopId: null },
+    melody: { id: 'melody', volume: 0.25, muted: false, currentLoopId: null },
     rhythm: { id: 'rhythm', volume: 0.0, muted: true, currentLoopId: null },
     synthesis: { id: 'synthesis', volume: 0.3, muted: false, currentLoopId: null },
   },

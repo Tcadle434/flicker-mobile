@@ -10,11 +10,10 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { SessionVisual } from '../../src/components/visuals/SessionVisual';
-import { SoundPad } from '../../src/components/ui/SoundPad';
+import { SessionMixer } from '../../src/components/ui/SessionMixer';
 import { theme } from '../../src/constants/theme';
 import { useMoodStore } from '../../src/stores/moodStore';
 import { useSessionStore } from '../../src/stores/sessionStore';
-import { useSoundPadStore } from '../../src/stores/soundPadStore';
 import { usePlayerStore } from '../../src/stores/playerStore';
 import { SessionFlowController } from '../../src/controllers/SessionFlowController';
 
@@ -30,11 +29,7 @@ export default function ResetSession() {
   const { setMode } = usePlayerStore();
   const currentMood = useMoodStore((s) => s.currentMood);
   const phase = useSessionStore((s) => s.phase);
-  const padVisible = useSoundPadStore((s) => s.visible);
-  const padX = useSoundPadStore((s) => s.x);
-  const padY = useSoundPadStore((s) => s.y);
-  const togglePad = useSoundPadStore((s) => s.toggle);
-  const resetPad = useSoundPadStore((s) => s.reset);
+  const [mixerVisible, setMixerVisible] = useState(false);
 
   const controllerRef = useRef<SessionFlowController | null>(null);
   const [stillRemaining, setStillRemaining] = useState(0);
@@ -47,7 +42,7 @@ export default function ResetSession() {
 
   // Phase-driven animations
   const fadeTextOpacity = useSharedValue(1);
-  const timerOpacity = useSharedValue(0);
+  const controlsOpacity = useSharedValue(0);
   const returnTextOpacity = useSharedValue(0);
   const visualOpacity = useSharedValue(0);
 
@@ -75,7 +70,6 @@ export default function ResetSession() {
     return () => {
       clearInterval(displayInterval);
       controller.dispose();
-      resetPad();
     };
   }, [durationMinutes]);
 
@@ -85,12 +79,16 @@ export default function ResetSession() {
       case 'fade':
         visualOpacity.value = withTiming(1, { duration: 3000, easing: Easing.inOut(Easing.ease) });
         fadeTextOpacity.value = withTiming(0, { duration: 8000 });
+        // Show controls 5s into fade phase
+        setTimeout(() => {
+          controlsOpacity.value = withTiming(0.5, { duration: 2000 });
+        }, 5000);
         break;
       case 'still':
-        timerOpacity.value = withTiming(0.4, { duration: 1000 });
+        controlsOpacity.value = withTiming(0.5, { duration: 1000 });
         break;
       case 'return':
-        timerOpacity.value = withTiming(0, { duration: 1000 });
+        controlsOpacity.value = withTiming(0, { duration: 1000 });
         returnTextOpacity.value = withTiming(1, { duration: 3000 });
         break;
       case 'complete':
@@ -103,8 +101,8 @@ export default function ResetSession() {
     opacity: fadeTextOpacity.value,
   }));
 
-  const timerStyle = useAnimatedStyle(() => ({
-    opacity: timerOpacity.value,
+  const controlsStyle = useAnimatedStyle(() => ({
+    opacity: controlsOpacity.value,
   }));
 
   const returnTextStyle = useAnimatedStyle(() => ({
@@ -123,32 +121,35 @@ export default function ResetSession() {
 
         {/* Session visual background */}
         <Animated.View style={[StyleSheet.absoluteFill, visualStyle]}>
-          <SessionVisual mood={currentMood} padX={padX} padY={padY} />
+          <SessionVisual mood={currentMood} padX={0} padY={0} />
         </Animated.View>
 
         <SafeAreaView style={styles.safeArea}>
+          {/* Top row: timer + mixer button (visible during fade & still) */}
+          {(phase === 'fade' || phase === 'still') && (
+            <Animated.View style={[styles.topRow, controlsStyle]}>
+              <Text style={styles.timer}>
+                {formatTime(stillRemaining)}
+              </Text>
+              <TouchableOpacity
+                style={styles.mixerButton}
+                onPress={() => setMixerVisible(true)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.eqBars}>
+                  <View style={[styles.eqBar, styles.eqBarShort]} />
+                  <View style={[styles.eqBar, styles.eqBarTall]} />
+                  <View style={[styles.eqBar, styles.eqBarMedium]} />
+                </View>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+
           {/* Fade phase text */}
           {phase === 'fade' && (
             <Animated.View style={[styles.centerText, fadeTextStyle]}>
               <Text style={styles.phaseText}>Entering your mental reset...</Text>
             </Animated.View>
-          )}
-
-          {/* Still phase UI */}
-          {phase === 'still' && (
-            <View style={styles.topRow}>
-              <Animated.Text style={[styles.timer, timerStyle]}>
-                {formatTime(stillRemaining)}
-              </Animated.Text>
-              <TouchableOpacity
-                style={styles.padIcon}
-                onPress={togglePad}
-              >
-                <View style={styles.padIconOrb}>
-                  <View style={styles.padIconCore} />
-                </View>
-              </TouchableOpacity>
-            </View>
           )}
 
           {/* Return phase text */}
@@ -159,8 +160,10 @@ export default function ResetSession() {
           )}
         </SafeAreaView>
 
-        {/* Sound pad overlay */}
-        {padVisible && phase === 'still' && <SoundPad />}
+        {/* Mixer overlay */}
+        {mixerVisible && phase === 'still' && (
+          <SessionMixer onClose={() => setMixerVisible(false)} />
+        )}
       </View>
     </>
   );
@@ -186,33 +189,35 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.md,
     letterSpacing: 2,
   },
-  padIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  mixerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
-  padIconOrb: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(160, 210, 255, 0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#ffffff',
-    shadowOpacity: 0.7,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 0 },
+  eqBars: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 3,
+    height: 16,
   },
-  padIconCore: {
-    width: 8,
+  eqBar: {
+    width: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  },
+  eqBarShort: {
     height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  eqBarTall: {
+    height: 16,
+  },
+  eqBarMedium: {
+    height: 12,
   },
   centerText: {
     flex: 1,

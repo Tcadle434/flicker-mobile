@@ -2,9 +2,17 @@ import * as THREE from 'three';
 import { sessionBackgroundFragShader } from './shaders/sessionBackground.frag';
 import { sessionParticleVertShader } from './shaders/sessionParticle.vert';
 import { sessionParticleFragShader } from './shaders/sessionParticle.frag';
-import { moodThemes, MoodState } from '../../constants/moodThemes';
+import type { MoodState } from '../../constants/moodThemes';
 
 const PARTICLE_COUNT = 6000;
+
+// Universal reset palette — calming deep indigo / teal / warm lavender
+const RESET_COLORS = {
+  orbColor: '#6366F1',   // indigo
+  primary: '#5EEAD4',    // teal
+  accent: '#A78BFA',     // lavender
+  particle: '#7DD3FC',   // soft sky blue
+};
 
 export class SessionScene {
   private scene: THREE.Scene;
@@ -28,14 +36,14 @@ export class SessionScene {
     height: number,
   ) {
     this.currentMood = mood;
-    const theme = moodThemes[mood];
 
-    // Background fullscreen quad
+    // Background fullscreen quad — universal calming colors
     this.bgScene = new THREE.Scene();
     this.bgCamera = new THREE.OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0, 1);
 
-    const color1 = new THREE.Color(theme.orbColor).multiplyScalar(0.15);
-    const color2 = new THREE.Color(theme.primary).multiplyScalar(0.1);
+    const color1 = new THREE.Color(RESET_COLORS.orbColor).multiplyScalar(0.6);
+    const color2 = new THREE.Color(RESET_COLORS.primary).multiplyScalar(0.45);
+    const color3 = new THREE.Color(RESET_COLORS.accent).multiplyScalar(0.5);
 
     this.bgMaterial = new THREE.ShaderMaterial({
       uniforms: {
@@ -43,6 +51,7 @@ export class SessionScene {
         uResolution: { value: new THREE.Vector2(width, height) },
         uColor1: { value: color1 },
         uColor2: { value: color2 },
+        uColor3: { value: color3 },
         uPadX: { value: 0 },
         uPadY: { value: 0 },
       },
@@ -81,7 +90,7 @@ export class SessionScene {
 
     this.particleMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        uColor: { value: new THREE.Color(theme.primary) },
+        uColor: { value: new THREE.Color(RESET_COLORS.particle) },
         uTime: { value: 0 },
         uPadY: { value: 0 },
       },
@@ -96,14 +105,9 @@ export class SessionScene {
     this.scene.add(this.particles);
   }
 
-  setMood(mood: MoodState): void {
-    this.currentMood = mood;
-    const theme = moodThemes[mood];
-    const color1 = new THREE.Color(theme.orbColor).multiplyScalar(0.15);
-    const color2 = new THREE.Color(theme.primary).multiplyScalar(0.1);
-    this.bgMaterial.uniforms.uColor1.value = color1;
-    this.bgMaterial.uniforms.uColor2.value = color2;
-    this.particleMaterial.uniforms.uColor.value = new THREE.Color(theme.primary);
+  /** No-op — session uses universal reset colors regardless of mood */
+  setMood(_mood: MoodState): void {
+    // Intentionally empty: reset session is mood-independent
   }
 
   setPadPosition(x: number, y: number): void {

@@ -10,9 +10,9 @@ interface SonaFaceProps {
 }
 
 const MOOD_IMAGES: Record<SonaMood, ReturnType<typeof require>> = {
-  calm: require('../../../assets/sona_calm.png'),
-  neutral: require('../../../assets/sona_neutral.png'),
-  anxious: require('../../../assets/sona_overwhelmed.png'),
+  calm: require('../../../assets/sona_calm_transparent.png'),
+  neutral: require('../../../assets/sona_neutral_transparent.png'),
+  anxious: require('../../../assets/sona_overwhelmed_transparent.png'),
 };
 
 export function SonaFace({ size, mood, style }: SonaFaceProps) {

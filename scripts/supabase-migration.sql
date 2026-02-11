@@ -35,7 +35,7 @@ CREATE TABLE public.resets (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   completed_at TIMESTAMPTZ DEFAULT now() NOT NULL,
-  duration_minutes SMALLINT NOT NULL CHECK (duration_minutes IN (3, 5, 15)),
+  duration_minutes SMALLINT NOT NULL CHECK (duration_minutes > 0),
   mood_after TEXT CHECK (mood_after IS NULL OR mood_after IN ('calmer', 'same', 'worse')),
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );

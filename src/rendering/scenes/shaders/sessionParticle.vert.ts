@@ -12,10 +12,10 @@ varying float vAlpha;
 void main() {
   vec3 pos = position;
 
-  // Gentle drift
-  pos.x += sin(uTime * 0.3 + pos.y * 2.0) * 0.05;
-  pos.y += cos(uTime * 0.2 + pos.x * 2.0) * 0.03;
-  pos.z += sin(uTime * 0.25 + pos.z * 1.5) * 0.04;
+  // Visible drift
+  pos.x += sin(uTime * 0.3 + pos.y * 2.0) * 0.15;
+  pos.y += cos(uTime * 0.2 + pos.x * 2.0) * 0.10;
+  pos.z += sin(uTime * 0.25 + pos.z * 1.5) * 0.08;
 
   vAlpha = aAlpha;
 

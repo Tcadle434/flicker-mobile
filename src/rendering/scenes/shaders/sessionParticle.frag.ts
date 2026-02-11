@@ -13,10 +13,13 @@ void main() {
 
   float alpha = smoothstep(0.5, 0.1, d) * vAlpha;
 
-  // Breathing pulse
-  float breath = sin(uTime * 0.7) * 0.1 + 0.9;
-  vec3 color = uColor * breath;
+  // Breathing pulse — boosted range
+  float breath = sin(uTime * 0.7) * 0.15 + 0.95;
 
-  gl_FragColor = vec4(color, alpha * 0.5);
+  // Slight warm/cool color variation across particles for shimmer
+  float tint = gl_PointCoord.x - 0.5;
+  vec3 color = uColor * breath + vec3(tint * 0.08, -tint * 0.04, tint * 0.06);
+
+  gl_FragColor = vec4(color, alpha);
 }
 `;
