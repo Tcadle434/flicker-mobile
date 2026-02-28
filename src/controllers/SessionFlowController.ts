@@ -124,7 +124,7 @@ export class SessionFlowController {
 
   private complete(): void {
     if (this.disposed) return;
-    useSessionStore.getState().endSession();
+    useSessionStore.getState().completeSession();
     this.dispose();
   }
 

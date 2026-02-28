@@ -1,201 +1,207 @@
 /**
- * Paywall Service
+ * Paywall Service — Superwall
  *
- * Handles feature gating and paywall display logic
+ * Flicker uses a hard paywall with 7-day free trial.
+ * Superwall handles paywall presentation, purchase flows, and entitlement checks.
+ * Development default: entitled = true (override via __DEV__ flag).
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { config } from '../../constants/config';
-import type { SoundscapeMode } from '../../types';
 
 const STORAGE_KEYS = {
-  SESSION_COUNT: '@sona:session_count',
-  PLAY_COUNT: '@sona:play_count',
-  PAYWALL_SHOWN_COUNT: '@sona:paywall_shown_count',
-  LAST_PAYWALL_SHOWN: '@sona:last_paywall_shown',
+  ONBOARDING_COMPLETED: '@flicker:onboarding_completed',
+  TRIAL_START: '@flicker:trial_start',
 };
 
-export class PaywallService {
+export interface EntitlementState {
+  isEntitled: boolean;
+  isTrialActive: boolean;
+  trialDaysRemaining: number;
+}
+
+type SuperwallStatus = { status?: string };
+type SuperwallModule = {
+  configure: (input: { apiKey: string }) => Promise<void>;
+  shared: {
+    getSubscriptionStatus: () => Promise<SuperwallStatus>;
+    register: (input: { placement: string }) => Promise<void>;
+  };
+};
+
+let cachedSuperwall: SuperwallModule | null | undefined;
+let superwallUnavailableWarned = false;
+
+function getSuperwallModule(): SuperwallModule | null {
+  if (cachedSuperwall !== undefined) return cachedSuperwall;
+
+  try {
+    // Lazy require so missing native linkage doesn't crash the whole app at import time.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
+    const imported = require('@superwall/react-native-superwall');
+    cachedSuperwall = (imported?.default ?? imported) as SuperwallModule;
+    return cachedSuperwall;
+  } catch (error) {
+    cachedSuperwall = null;
+    if (!superwallUnavailableWarned) {
+      superwallUnavailableWarned = true;
+      console.warn('[PaywallService] Superwall native module unavailable; using dev fallback');
+    }
+    return null;
+  }
+}
+
+class PaywallService {
+  private initialized = false;
+
   /**
-   * Check if a mode is available for free users
+   * Initialize Superwall SDK. Must be called once at app boot.
    */
-  isModeAvailableForFree(mode: SoundscapeMode): boolean {
-    return config.subscription.freeModesAvailable.includes(mode as any);
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      const apiKey = config.subscription.superwallApiKey;
+      if (!apiKey) {
+        console.warn('[PaywallService] No Superwall API key configured — running in dev mode');
+        return;
+      }
+
+      const superwall = getSuperwallModule();
+      if (!superwall) return;
+
+      await superwall.configure({ apiKey });
+      this.initialized = true;
+    } catch (error) {
+      console.error('[PaywallService] Superwall init error:', error);
+    }
   }
 
   /**
-   * Check if feature is accessible (for free or premium users)
+   * Check entitlement state.
+   * Queries Superwall subscription status.
+   * In development (no API key): always entitled.
    */
-  async canAccessFeature(
-    feature: 'mode' | 'full_mixer' | 'unlimited_session',
-    isPremium: boolean,
-    mode?: SoundscapeMode
-  ): Promise<boolean> {
-    if (isPremium) {
-      return true;
-    }
-
-    switch (feature) {
-      case 'mode':
-        if (!mode) return false;
-        return this.isModeAvailableForFree(mode);
-
-      case 'full_mixer':
-        // Free users only get 3 layers (Ambient, Nature, Synthesis)
-        return false;
-
-      case 'unlimited_session':
-        // Free users have 10-minute session limit
-        return false;
-
-      default:
-        return false;
-    }
-  }
-
-  /**
-   * Check if session duration exceeds free tier limit
-   */
-  isSessionDurationLimitExceeded(durationMs: number, isPremium: boolean): boolean {
-    if (isPremium) {
-      return false;
-    }
-
-    return durationMs >= config.subscription.freeModeLimit;
-  }
-
-  /**
-   * Check if paywall should be shown
-   */
-  async shouldShowPaywall(isPremium: boolean): Promise<boolean> {
-    if (isPremium) {
-      return false;
+  async getEntitlementState(): Promise<EntitlementState> {
+    if (!this.initialized) {
+      // Dev mode fallback — always entitled
+      return { isEntitled: true, isTrialActive: false, trialDaysRemaining: 0 };
     }
 
     try {
-      const sessionCount = await this.getSessionCount();
-      const playCount = await this.getPlayCount();
-      const lastShown = await this.getLastPaywallShown();
+      const superwall = getSuperwallModule();
+      if (!superwall) {
+        return { isEntitled: true, isTrialActive: false, trialDaysRemaining: 0 };
+      }
 
-      // Don't show paywall too frequently (at least 24 hours apart)
-      if (lastShown) {
-        const hoursSinceLastShown = (Date.now() - lastShown) / (1000 * 60 * 60);
-        if (hoursSinceLastShown < 24) {
-          return false;
+      const status = await superwall.shared.getSubscriptionStatus();
+      const isActive = status?.status === 'ACTIVE';
+
+      // Calculate trial state from local storage
+      const trialStart = await AsyncStorage.getItem(STORAGE_KEYS.TRIAL_START);
+      let isTrialActive = false;
+      let trialDaysRemaining = 0;
+
+      if (trialStart) {
+        const startMs = parseInt(trialStart, 10);
+        const elapsed = Date.now() - startMs;
+        const elapsedDays = elapsed / (1000 * 60 * 60 * 24);
+        const trialDays = config.subscription.trialDays;
+
+        if (elapsedDays < trialDays) {
+          isTrialActive = true;
+          trialDaysRemaining = Math.ceil(trialDays - elapsedDays);
         }
       }
 
-      // Show after X sessions or Y plays
-      return (
-        sessionCount >= config.subscription.showPaywallAfterSessions ||
-        playCount >= config.subscription.showPaywallAfterPlays
-      );
+      return {
+        isEntitled: isActive || isTrialActive,
+        isTrialActive,
+        trialDaysRemaining,
+      };
     } catch (error) {
-      console.error('Error checking paywall status:', error);
+      console.error('[PaywallService] getEntitlementState error:', error);
+      // Fail open in case of error to avoid locking users out
+      return { isEntitled: true, isTrialActive: false, trialDaysRemaining: 0 };
+    }
+  }
+
+  /**
+   * Present the Superwall paywall for a given placement.
+   * Superwall handles all UI, purchase, and restore logic.
+   */
+  async presentPaywall(placement: string = 'default'): Promise<'purchased' | 'restored' | 'dismissed'> {
+    if (!this.initialized) {
+      console.warn('[PaywallService] Superwall not initialized — skipping paywall');
+      return 'dismissed';
+    }
+
+    try {
+      const superwall = getSuperwallModule();
+      if (!superwall) return 'dismissed';
+
+      await superwall.shared.register({ placement });
+
+      // Superwall register resolves when paywall is dismissed
+      // Check subscription status after to determine outcome
+      const status = await superwall.shared.getSubscriptionStatus();
+      if (status?.status === 'ACTIVE') {
+        return 'purchased';
+      }
+      return 'dismissed';
+    } catch (error) {
+      console.error('[PaywallService] presentPaywall error:', error);
+      return 'dismissed';
+    }
+  }
+
+  /**
+   * Restore purchases.
+   * Superwall handles restore via its paywall UI when not using a custom PurchaseController.
+   * This method checks the current subscription status to determine if active.
+   */
+  async restorePurchases(): Promise<boolean> {
+    if (!this.initialized) {
+      console.warn('[PaywallService] Superwall not initialized — cannot restore');
+      return false;
+    }
+
+    try {
+      const superwall = getSuperwallModule();
+      if (!superwall) return false;
+      const status = await superwall.shared.getSubscriptionStatus();
+      return status?.status === 'ACTIVE';
+    } catch (error) {
+      console.error('[PaywallService] restorePurchases error:', error);
       return false;
     }
   }
 
   /**
-   * Mark paywall as shown
+   * Start the free trial. Records trial start timestamp.
    */
-  async markPaywallShown(): Promise<void> {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.LAST_PAYWALL_SHOWN, Date.now().toString());
-
-      const count = await this.getPaywallShownCount();
-      await AsyncStorage.setItem(STORAGE_KEYS.PAYWALL_SHOWN_COUNT, (count + 1).toString());
-    } catch (error) {
-      console.error('Error marking paywall shown:', error);
+  async startTrial(): Promise<void> {
+    const existing = await AsyncStorage.getItem(STORAGE_KEYS.TRIAL_START);
+    if (!existing) {
+      await AsyncStorage.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
     }
   }
 
   /**
-   * Increment session count
+   * Mark onboarding as completed.
    */
-  async incrementSessionCount(): Promise<void> {
-    try {
-      const count = await this.getSessionCount();
-      await AsyncStorage.setItem(STORAGE_KEYS.SESSION_COUNT, (count + 1).toString());
-    } catch (error) {
-      console.error('Error incrementing session count:', error);
-    }
+  async markOnboardingCompleted(): Promise<void> {
+    await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETED, 'true');
+    // Start trial when onboarding completes
+    await this.startTrial();
   }
 
   /**
-   * Increment play count
+   * Check if onboarding has been completed.
    */
-  async incrementPlayCount(): Promise<void> {
-    try {
-      const count = await this.getPlayCount();
-      await AsyncStorage.setItem(STORAGE_KEYS.PLAY_COUNT, (count + 1).toString());
-    } catch (error) {
-      console.error('Error incrementing play count:', error);
-    }
-  }
-
-  /**
-   * Get session count
-   */
-  private async getSessionCount(): Promise<number> {
-    try {
-      const value = await AsyncStorage.getItem(STORAGE_KEYS.SESSION_COUNT);
-      return value ? parseInt(value, 10) : 0;
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  /**
-   * Get play count
-   */
-  private async getPlayCount(): Promise<number> {
-    try {
-      const value = await AsyncStorage.getItem(STORAGE_KEYS.PLAY_COUNT);
-      return value ? parseInt(value, 10) : 0;
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  /**
-   * Get paywall shown count
-   */
-  private async getPaywallShownCount(): Promise<number> {
-    try {
-      const value = await AsyncStorage.getItem(STORAGE_KEYS.PAYWALL_SHOWN_COUNT);
-      return value ? parseInt(value, 10) : 0;
-    } catch (error) {
-      return 0;
-    }
-  }
-
-  /**
-   * Get last time paywall was shown
-   */
-  private async getLastPaywallShown(): Promise<number | null> {
-    try {
-      const value = await AsyncStorage.getItem(STORAGE_KEYS.LAST_PAYWALL_SHOWN);
-      return value ? parseInt(value, 10) : null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  /**
-   * Reset paywall tracking (for testing)
-   */
-  async resetPaywallTracking(): Promise<void> {
-    try {
-      await AsyncStorage.multiRemove([
-        STORAGE_KEYS.SESSION_COUNT,
-        STORAGE_KEYS.PLAY_COUNT,
-        STORAGE_KEYS.PAYWALL_SHOWN_COUNT,
-        STORAGE_KEYS.LAST_PAYWALL_SHOWN,
-      ]);
-    } catch (error) {
-      console.error('Error resetting paywall tracking:', error);
-    }
+  async isOnboardingCompleted(): Promise<boolean> {
+    const value = await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED);
+    return value === 'true';
   }
 }
 

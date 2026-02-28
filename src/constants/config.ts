@@ -4,9 +4,9 @@
 
 export const config = {
   app: {
-    name: 'Sona',
+    name: 'Flicker',
     version: '1.0.0',
-    bundleId: 'com.sona.app',
+    bundleId: 'com.thomascadle.flicker',
   },
 
   // Audio engine configuration
@@ -34,13 +34,49 @@ export const config = {
     batteryLowThreshold: 0.2, // 20%
   },
 
-  // Subscription configuration
+  // Session modes
+  modes: {
+    available: ['reset', 'focus', 'move'] as const,
+    durations: {
+      reset: [0.17, 3, 5, 10, 15, 20, 30] as const, // TODO: remove 0.17 (10s test timer)
+      focus: [15, 25, 30, 45, 60, 90, 120] as const,
+      move: [15, 30, 45, 60, 90] as const,
+    },
+  },
+
+  // Reward economy
+  rewards: {
+    ratesPerMinute: {
+      reset: 3,
+      focus: 2,
+      move: 1,
+    },
+    streakBonusPerDay: 0.1,    // +10% per consecutive day
+    streakBonusCap: 7,          // caps at 7 days = +70%
+    balanceBonusMultiplier: 1.5, // all 3 modes in one day
+  },
+
+  // Subscription (hard paywall via Superwall)
   subscription: {
-    freeModeLimit: 600000, // 10 minutes in ms
-    freeModesAvailable: ['focus'],
-    premiumModes: ['relax', 'sleep', 'energize'],
-    showPaywallAfterSessions: 5,
-    showPaywallAfterPlays: 10,
+    trialDays: 7,
+    superwallApiKey: process.env.EXPO_PUBLIC_SUPERWALL_API_KEY || '',
+    products: {
+      weekly: 'flicker_weekly_499',
+      annual: 'flicker_annual_3999',
+      lifetime: 'flicker_lifetime_7999',
+    },
+  },
+
+  // Spotify Connect
+  spotify: {
+    clientId: process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID || '',
+    redirectUrl: process.env.EXPO_PUBLIC_SPOTIFY_REDIRECT_URL || 'flicker://spotify-callback',
+    scopes: [
+      'user-read-playback-state',
+      'user-modify-playback-state',
+      'user-read-currently-playing',
+      'streaming',
+    ],
   },
 
   // API endpoints (will be set via environment variables)

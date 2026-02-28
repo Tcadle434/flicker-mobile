@@ -1,5 +1,5 @@
 /**
- * Common TypeScript types for Sona
+ * Common TypeScript types for Flicker
  */
 
 // ============================================================================
@@ -145,13 +145,13 @@ export interface CardProps {
 
 export type { MoodState } from '../constants/moodThemes';
 
-export type SessionPhase = 'idle' | 'fade' | 'still' | 'return' | 'complete';
+export type SessionPhase = 'idle' | 'fade' | 'still' | 'return' | 'active' | 'complete';
 
 export interface WeeklyStreak {
   weeklyMarks: boolean[]; // 7 bools, index 0 = Monday
   overallStreak: number;
-  totalResets: number;
-  lastResetAt: number | null;
+  totalSessions: number;
+  lastSessionAt: number | null;
 }
 
 // ============================================================================
@@ -177,13 +177,19 @@ export interface AudioVisualizerData {
 // Onboarding & Settings Types
 // ============================================================================
 
+export interface OnboardingPreferences {
+  goals: string[];        // from screen 3
+  screenTime: string;     // from screen 4
+  distraction: string;    // from screen 5
+}
+
 export interface OnboardingState {
   completed: boolean;
   currentStep: number;
+  preferences: OnboardingPreferences;
   permissionsGranted: {
     notifications: boolean;
-    location: boolean;
-    health: boolean;
+    screenTime: boolean;
   };
 }
 

@@ -1,206 +1,251 @@
-import { useEffect, useCallback, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable, Dimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  runOnJS,
-} from 'react-native-reanimated';
-import { theme } from '../../src/constants/theme';
-import { ParticleOrb } from '../../src/components/visuals/ParticleOrb';
-import { AtmosphericBackground } from '../../src/components/visuals/AtmosphericBackground';
-import { StreakDisplay } from '../../src/components/ui/StreakDisplay';
-import { DurationSelector, Duration } from '../../src/components/ui/DurationSelector';
-import { useMoodTheme } from '../../src/hooks/useMoodTheme';
-import { useMoodStore } from '../../src/stores/moodStore';
-import { useStreakStore } from '../../src/stores/streakStore';
-import { usePlayerStore } from '../../src/stores/playerStore';
-import { useSessionStore } from '../../src/stores/sessionStore';
-import { MoodState } from '../../src/constants/moodThemes';
+import Animated, { FadeIn, useSharedValue, withTiming, runOnJS, Easing } from 'react-native-reanimated';
+import OverworldScene, { AmbientEffect, getTentScreenRect } from '../../src/components/world/OverworldScene';
+import { HudOverlay, SessionPanel } from '../../src/components/hud';
+import { forestMap } from '../../src/services/world/tiledMapLoader';
 
-const moodAvatars: Record<MoodState, ReturnType<typeof require>> = {
-  calm: require('../../assets/sona_calm_transparent.png'),
-  neutral: require('../../assets/sona_neutral_transparent.png'),
-  overwhelmed: require('../../assets/sona_overwhelmed_transparent.png'),
-};
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
-export default function Home() {
+const EFFECT_OPTIONS: { label: string; value: AmbientEffect }[] = [
+  { label: 'Off', value: 'none' },
+  { label: 'Rain', value: 'rain' },
+  { label: 'Fireflies', value: 'fireflies' },
+  { label: 'Wind', value: 'wind' },
+  { label: 'Snow', value: 'snow' },
+];
+
+export default function HomeScreen() {
   const router = useRouter();
-  const moodTheme = useMoodTheme();
-  const currentMood = useMoodStore((s) => s.currentMood);
-  const refreshMood = useMoodStore((s) => s.refreshMood);
-  const fetchStreak = useStreakStore((s) => s.fetchStreak);
-  const { initialize } = usePlayerStore();
-  const setDuration = useSessionStore((s) => s.setDuration);
+  const [ready, setReady] = useState(false);
+  const [ambientEffect, setAmbientEffect] = useState<AmbientEffect>('rain');
+  const [sessionPanelVisible, setSessionPanelVisible] = useState(false);
+  const [isZooming, setIsZooming] = useState(false);
+  const handleReady = useCallback(() => setReady(true), []);
 
-  const [duration, setLocalDuration] = useState<Duration>(3);
-  const [isEntering, setIsEntering] = useState(false);
+  // Zoom shared values
+  const zoomScale = useSharedValue(1);
+  const zoomTranslateX = useSharedValue(0);
+  const zoomTranslateY = useSharedValue(0);
 
-  const { width, height } = Dimensions.get('window');
-  const orbSize = Math.min(width, height) * 0.58;
-
-  // Reanimated values for orb entry transition
-  const orbScale = useSharedValue(1);
-  const uiOpacity = useSharedValue(1);
-
-  useEffect(() => {
-    initialize().catch(() => undefined);
-    refreshMood();
-    fetchStreak();
+  // Compute tent screen rect for tap target
+  const { scale, offsetY } = useMemo(() => {
+    const { width: mapW, height: mapH, tileWidth } = forestMap;
+    const s = SCREEN_W / (mapW * tileWidth);
+    const oY = (SCREEN_H - mapH * tileWidth * s) / 2;
+    return { scale: s, offsetY: oY };
   }, []);
 
-  const handleDurationChange = useCallback((d: Duration) => {
-    setLocalDuration(d);
-    setDuration(d);
-  }, [setDuration]);
+  const tentRect = useMemo(
+    () => getTentScreenRect(scale, offsetY, forestMap.tileWidth),
+    [scale, offsetY],
+  );
 
-  const navigateToSession = useCallback(() => {
-    router.push({
-      pathname: '/reset',
-      params: { duration: String(duration) },
+  // Zoom animation → navigate to tent
+  const zoomToTent = useCallback(
+    (decorate: boolean) => {
+      if (isZooming) return;
+      setIsZooming(true);
+
+      // Target: zoom 3x into tent door center (bottom center of tent sprite)
+      const targetScale = 3;
+      const tentCenterX = tentRect.x + tentRect.width / 2;
+      const tentBottomY = tentRect.y + tentRect.height * 0.8;
+
+      // Translate so that tentCenter ends up at screen center after scaling
+      const tx = SCREEN_W / 2 - tentCenterX * targetScale;
+      const ty = SCREEN_H / 2 - tentBottomY * targetScale;
+
+      const timing = { duration: 350, easing: Easing.inOut(Easing.cubic) };
+
+      const navigateToTent = () => {
+        router.push(decorate ? '/(main)/tent?decorate=1' : '/(main)/tent');
+        // Reset zoom after navigation (next frame)
+        setTimeout(() => {
+          zoomScale.value = 1;
+          zoomTranslateX.value = 0;
+          zoomTranslateY.value = 0;
+          setIsZooming(false);
+        }, 100);
+      };
+
+      zoomScale.value = withTiming(targetScale, timing);
+      zoomTranslateX.value = withTiming(tx, timing);
+      zoomTranslateY.value = withTiming(ty, timing, () => {
+        runOnJS(navigateToTent)();
+      });
+    },
+    [isZooming, tentRect, router, zoomScale, zoomTranslateX, zoomTranslateY],
+  );
+
+  const handleTentTap = useCallback(() => zoomToTent(false), [zoomToTent]);
+  const handleDecorate = useCallback(() => zoomToTent(true), [zoomToTent]);
+  const handleOpenShop = useCallback(() => {
+    if (isZooming) return;
+    setIsZooming(true);
+
+    const targetScale = 3;
+    const tentCenterX = tentRect.x + tentRect.width / 2;
+    const tentBottomY = tentRect.y + tentRect.height * 0.8;
+    const tx = SCREEN_W / 2 - tentCenterX * targetScale;
+    const ty = SCREEN_H / 2 - tentBottomY * targetScale;
+    const timing = { duration: 350, easing: Easing.inOut(Easing.cubic) };
+
+    const navigateToTent = () => {
+      router.push('/(main)/tent?shop=1');
+      setTimeout(() => {
+        zoomScale.value = 1;
+        zoomTranslateX.value = 0;
+        zoomTranslateY.value = 0;
+        setIsZooming(false);
+      }, 100);
+    };
+
+    zoomScale.value = withTiming(targetScale, timing);
+    zoomTranslateX.value = withTiming(tx, timing);
+    zoomTranslateY.value = withTiming(ty, timing, () => {
+      runOnJS(navigateToTent)();
     });
-    // Reset animation values after navigation
-    setTimeout(() => {
-      orbScale.value = 1;
-      uiOpacity.value = 1;
-      setIsEntering(false);
-    }, 600);
-  }, [router, duration, orbScale, uiOpacity]);
-
-  const startReset = useCallback(() => {
-    if (isEntering) return;
-    setIsEntering(true);
-
-    // Orb scale up + UI fade out transition
-    orbScale.value = withTiming(3, { duration: 600 });
-    uiOpacity.value = withTiming(0, { duration: 400 }, () => {
-      runOnJS(navigateToSession)();
-    });
-  }, [isEntering, orbScale, uiOpacity, navigateToSession]);
-
-  const orbAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: orbScale.value }],
-  }));
-
-  const uiAnimStyle = useAnimatedStyle(() => ({
-    opacity: uiOpacity.value,
-  }));
+  }, [isZooming, tentRect, router, zoomScale, zoomTranslateX, zoomTranslateY]);
 
   return (
-    <View style={styles.root}>
-      <AtmosphericBackground mood={currentMood} />
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="light" />
-        {/* Top bar */}
-        <Animated.View style={[styles.topBar, uiAnimStyle]}>
-          <StreakDisplay />
-          <TouchableOpacity
-            style={styles.profileButton}
-            onPress={() => router.push('/(main)/profile')}
-            activeOpacity={0.7}
-          >
-            <Image source={moodAvatars[currentMood]} style={styles.profileAvatar} resizeMode="contain" />
-          </TouchableOpacity>
-        </Animated.View>
+    <View style={styles.container}>
+      <StatusBar hidden />
 
-        {/* Center orb */}
-        <View style={styles.orbWrap}>
-          <Animated.Text style={[styles.tapPrompt, uiAnimStyle]}>
-            tap to start your session
-          </Animated.Text>
-          <Animated.View style={orbAnimStyle}>
-            <ParticleOrb
-              mood={currentMood}
-              size={orbSize}
-              onTap={startReset}
-            />
-          </Animated.View>
+      {/* Scene renders underneath — hidden via opacity until all images loaded */}
+      <View style={ready ? styles.sceneVisible : styles.sceneHidden}>
+        <OverworldScene
+          onReady={handleReady}
+          ambientEffect={ambientEffect}
+          zoomScale={zoomScale}
+          zoomTranslateX={zoomTranslateX}
+          zoomTranslateY={zoomTranslateY}
+        />
+      </View>
+
+      {/* Loading overlay — removed once scene is ready */}
+      {!ready && (
+        <View style={styles.loading}>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
+      )}
 
-        {/* Bottom section */}
-        <Animated.View style={[styles.bottomSection, uiAnimStyle]}>
-          <DurationSelector value={duration} onChange={handleDurationChange} />
-          <Text style={[styles.footerText, { color: `${moodTheme.primary}88` }]}>
-            Let the noise fade.
-          </Text>
-          {/* TODO: remove — 10s test session */}
-          <TouchableOpacity
-            style={styles.testButton}
-            onPress={() => {
-              setDuration(10 / 60);
-              router.push({ pathname: '/reset', params: { duration: String(10 / 60) } });
-            }}
-          >
-            <Text style={styles.testButtonText}>10s test session</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </SafeAreaView>
+      {/* Fade-in overlay that reveals the scene */}
+      {ready && (
+        <Animated.View
+          entering={FadeIn.duration(400)}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      )}
+
+      {/* Tent tap target — invisible pressable over tent sprite */}
+      {ready && !isZooming && (
+        <Pressable
+          onPress={handleTentTap}
+          style={[
+            styles.tentTap,
+            {
+              left: tentRect.x,
+              top: tentRect.y,
+              width: tentRect.width,
+              height: tentRect.height,
+            },
+          ]}
+        />
+      )}
+
+      {/* Effect switcher pills — hidden for now, always rain */}
+      {/* {ready && (
+        <View style={styles.switcherRow}>
+          {EFFECT_OPTIONS.map((opt) => {
+            const active = ambientEffect === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[styles.pill, active && styles.pillActive]}
+                onPress={() => setAmbientEffect(opt.value)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.pillText, active && styles.pillTextActive]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )} */}
+
+      {/* HUD overlay + Session panel */}
+      {ready && !isZooming && (
+        <HudOverlay
+          onStartSession={() => setSessionPanelVisible(true)}
+          onDecorate={handleDecorate}
+          onEnterTent={handleTentTap}
+          onOpenShop={handleOpenShop}
+        />
+      )}
+      {ready && (
+        <SessionPanel
+          visible={sessionPanelVisible}
+          onClose={() => setSessionPanelVisible(false)}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: '#0A0A0B',
   },
-  topBar: {
+  sceneVisible: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  sceneHidden: {
+    ...StyleSheet.absoluteFillObject,
+    opacity: 0,
+  },
+  loading: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0A0A0B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 14,
+    fontWeight: '300',
+    letterSpacing: 1,
+  },
+  tentTap: {
+    position: 'absolute',
+  },
+  switcherRow: {
+    position: 'absolute',
+    top: 56,
+    right: 16,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
+    gap: 6,
   },
-  profileButton: {
-    width: 64,
-    height: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
+  pill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
-  profileAvatar: {
-    width: 64,
-    height: 64,
+  pillActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
   },
-  orbWrap: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  pillText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 11,
+    fontWeight: '500',
   },
-  tapPrompt: {
-    fontFamily: Platform.OS === 'ios' ? 'Snell Roundhand' : 'cursive',
-    fontSize: theme.typography.fontSize.xl,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: theme.spacing.md,
-  },
-  bottomSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
-  },
-  footerText: {
-    textAlign: 'center',
-    fontSize: theme.typography.fontSize.sm,
-    marginTop: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
-  },
-  // TODO: remove
-  testButton: {
-    marginTop: theme.spacing.sm,
-    alignSelf: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-  },
-  testButtonText: {
-    color: theme.colors.textTertiary,
-    fontSize: theme.typography.fontSize.xs,
+  pillTextActive: {
+    color: '#0A0A0B',
   },
 });

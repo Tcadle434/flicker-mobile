@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "Sona",
-    "slug": "sona-app",
+    "name": "Flicker",
+    "slug": "flicker-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "scheme": "sona",
+    "scheme": "flicker",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,16 +15,20 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sona.app",
+      "deploymentTarget": "16.0",
+      "appleTeamId": "4DDM7M9LF2",
+      "bundleIdentifier": "com.thomascadle.flicker",
       "infoPlist": {
         "UIBackgroundModes": ["audio"],
-        "NSHealthShareUsageDescription": "Sona uses your heart rate to adapt ambient music for better focus and relaxation.",
-        "NSLocationWhenInUseUsageDescription": "Sona uses your location to adapt music based on local weather conditions.",
-        "NSUserNotificationsUsageDescription": "Get notified about your daily ambient music sessions."
+        "NSHealthShareUsageDescription": "Flicker uses your heart rate to adapt ambient music for better focus and relaxation.",
+        "NSLocationWhenInUseUsageDescription": "Flicker uses your location to adapt music based on local weather conditions.",
+        "NSUserNotificationsUsageDescription": "Get notified about your daily ambient music sessions.",
+        "NSFamilyControlsUsageDescription": "Flicker blocks distracting apps during sessions to help you stay focused.",
+        "LSApplicationQueriesSchemes": ["spotify"]
       }
     },
     "android": {
-      "package": "com.sona.app",
+      "package": "com.thomascadle.flicker",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0A0B"
@@ -36,7 +40,8 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "./modules/flicker-app-blocking/build/index"
     ]
   }
 }

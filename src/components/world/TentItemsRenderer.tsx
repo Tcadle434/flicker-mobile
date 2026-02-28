@@ -1,0 +1,92 @@
+/**
+ * Tent Items Renderer
+ *
+ * Renders all placed items in the current room.
+ * Items sorted by tileY for correct depth ordering.
+ * Uses Skia Image with RN asset sources loaded via useImage.
+ */
+
+import React, { useMemo } from 'react';
+import { Image, FilterMode, MipmapMode } from '@shopify/react-native-skia';
+import type { SkImage } from '@shopify/react-native-skia';
+import { useImage } from '@shopify/react-native-skia';
+import { useTentStore } from '../../stores/tentStore';
+import { useDecorateStore } from '../../stores/decorateStore';
+import { getCatalogItem, getItemSprite, getItemDimensions } from '../../services/tent/tentCatalog';
+import type { TentPlacement } from '../../types/tent';
+
+interface Props {
+  scale: number;
+  offsetY: number;
+}
+
+/**
+ * Individual placed item component.
+ * Each item loads its own Skia image from the RN asset source.
+ */
+function PlacedItem({
+  placement,
+  scale,
+  offsetY,
+}: {
+  placement: TentPlacement;
+  scale: number;
+  offsetY: number;
+}) {
+  const item = getCatalogItem(placement.itemId);
+  const sprite = getItemSprite(placement.itemId, placement.direction);
+
+  // Resolve the RN asset to a Skia image
+  const skiaImage = useImage(sprite as any);
+
+  const dims = getItemDimensions(placement.itemId, placement.direction);
+
+  if (!item || !skiaImage || !dims) return null;
+
+  const x = placement.x * scale;
+  const y = offsetY + placement.y * scale;
+  const w = dims.w * scale;
+  const h = dims.h * scale;
+
+  return (
+    <Image
+      image={skiaImage}
+      x={x}
+      y={y}
+      width={w}
+      height={h}
+      fit="fill"
+      sampling={{ filter: FilterMode.Nearest, mipmap: MipmapMode.None }}
+    />
+  );
+}
+
+export default function TentItemsRenderer({ scale, offsetY }: Props) {
+  const placements = useTentStore((s) => s.placements);
+  const currentRoomId = useTentStore((s) => s.currentRoomId);
+  const ghostPlacementId = useDecorateStore((s) => s.ghostPlacementId);
+
+  // Filter to current room, exclude item being moved.
+  // Sort: surface layer first (floor/rug/wall before tabletop), then by y for depth.
+  // This guarantees tabletop items always render on top of the furniture they sit on.
+  const sortedPlacements = useMemo(() => {
+    return placements
+      .filter((p) => p.roomId === currentRoomId && p.id !== ghostPlacementId)
+      .sort((a, b) => {
+        const aItem = getCatalogItem(a.itemId);
+        const bItem = getCatalogItem(b.itemId);
+        const aLayer = aItem?.surface === 'tabletop' ? 1 : 0;
+        const bLayer = bItem?.surface === 'tabletop' ? 1 : 0;
+        if (aLayer !== bLayer) return aLayer - bLayer;
+        return a.y - b.y;
+      });
+  }, [placements, currentRoomId, ghostPlacementId]);
+
+  return (
+    <>
+      {sortedPlacements.map((p) => (
+        <PlacedItem key={p.id} placement={p} scale={scale} offsetY={offsetY} />
+      ))}
+    </>
+  );
+}

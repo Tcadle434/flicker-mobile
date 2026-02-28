@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { AppState } from 'react-native';
 import { getLastResetAt } from '../services/storage/resetStorage';
 import type { MoodState } from '../constants/moodThemes';
+import { scheduleMoodNudge, cancelMoodNudge } from '../services/notifications/notificationService';
 
 interface MoodStore {
   currentMood: MoodState;
@@ -56,6 +57,26 @@ export const useMoodStore = create<MoodStore>((set, get) => {
       const lastResetAt = await getLastResetAt();
       const currentMood = computeMoodFromTimestamp(lastResetAt);
       set({ lastResetAt, currentMood });
+
+      // Schedule or cancel mood nudge notifications
+      if (lastResetAt) {
+        const hoursSince = (Date.now() - lastResetAt) / 3_600_000;
+        if (currentMood === 'calm') {
+          // Approaching neutral at 12 hours
+          const hoursUntilShift = 12 - hoursSince;
+          if (hoursUntilShift > 0) {
+            scheduleMoodNudge(hoursUntilShift, 'neutral');
+          }
+        } else if (currentMood === 'neutral') {
+          // Approaching overwhelmed at 24 hours
+          const hoursUntilShift = 24 - hoursSince;
+          if (hoursUntilShift > 0) {
+            scheduleMoodNudge(hoursUntilShift, 'overwhelmed');
+          }
+        } else {
+          cancelMoodNudge();
+        }
+      }
     },
   };
 });

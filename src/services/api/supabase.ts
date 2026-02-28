@@ -35,6 +35,9 @@ export interface Database {
           created_at: string;
           is_premium: boolean;
           subscription_status: string;
+          light_balance: number;
+          lifetime_earned: number;
+          onboarding_completed: boolean;
         };
         Insert: {
           id: string;
@@ -42,6 +45,9 @@ export interface Database {
           created_at?: string;
           is_premium?: boolean;
           subscription_status?: string;
+          light_balance?: number;
+          lifetime_earned?: number;
+          onboarding_completed?: boolean;
         };
         Update: {
           id?: string;
@@ -49,6 +55,9 @@ export interface Database {
           created_at?: string;
           is_premium?: boolean;
           subscription_status?: string;
+          light_balance?: number;
+          lifetime_earned?: number;
+          onboarding_completed?: boolean;
         };
       };
       sessions: {
@@ -75,32 +84,6 @@ export interface Database {
           duration?: number;
           created_at?: string;
           adaptive_inputs_used?: string[];
-        };
-      };
-      resets: {
-        Row: {
-          id: string;
-          user_id: string;
-          completed_at: string;
-          duration_minutes: number;
-          mood_after: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          completed_at?: string;
-          duration_minutes: number;
-          mood_after?: string | null;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          completed_at?: string;
-          duration_minutes?: number;
-          mood_after?: string | null;
-          created_at?: string;
         };
       };
       user_preferences: {
@@ -130,6 +113,145 @@ export interface Database {
           adaptive_intensity?: number;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      session_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          mode: string;
+          target_seconds: number;
+          elapsed_seconds: number;
+          status: string;
+          light_earned: number;
+          activity_tag: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          user_id: string;
+          mode: string;
+          target_seconds: number;
+          elapsed_seconds: number;
+          status: string;
+          light_earned?: number;
+          activity_tag?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          mode?: string;
+          target_seconds?: number;
+          elapsed_seconds?: number;
+          status?: string;
+          light_earned?: number;
+          activity_tag?: string | null;
+          created_at?: string;
+        };
+      };
+      currency_transactions: {
+        Row: {
+          id: string;
+          user_id: string;
+          session_id: string | null;
+          amount: number;
+          type: string;
+          source: string;
+          created_at: string;
+        };
+        Insert: {
+          id: string;
+          user_id: string;
+          session_id?: string | null;
+          amount: number;
+          type: string;
+          source: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          session_id?: string | null;
+          amount?: number;
+          type?: string;
+          source?: string;
+          created_at?: string;
+        };
+      };
+      sanctuary_unlocks: {
+        Row: {
+          user_id: string;
+          zone_id: string;
+          unlocked_at: string;
+        };
+        Insert: {
+          user_id: string;
+          zone_id: string;
+          unlocked_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          zone_id?: string;
+          unlocked_at?: string;
+        };
+      };
+      sanctuary_placements: {
+        Row: {
+          id: string;
+          user_id: string;
+          zone_id: string;
+          anchor_id: string;
+          item_id: string;
+          placed_at: string;
+        };
+        Insert: {
+          id: string;
+          user_id: string;
+          zone_id: string;
+          anchor_id: string;
+          item_id: string;
+          placed_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          zone_id?: string;
+          anchor_id?: string;
+          item_id?: string;
+          placed_at?: string;
+        };
+      };
+      tent_placements: {
+        Row: {
+          id: string;
+          user_id: string;
+          item_id: string;
+          room_id: string;
+          tile_x: number;
+          tile_y: number;
+          direction: string;
+          placed_at: string;
+        };
+        Insert: {
+          id: string;
+          user_id: string;
+          item_id: string;
+          room_id?: string;
+          tile_x: number;
+          tile_y: number;
+          direction?: string;
+          placed_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          item_id?: string;
+          room_id?: string;
+          tile_x?: number;
+          tile_y?: number;
+          direction?: string;
+          placed_at?: string;
         };
       };
     };

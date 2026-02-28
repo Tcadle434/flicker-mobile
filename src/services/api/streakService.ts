@@ -4,31 +4,33 @@ import type { WeeklyStreak } from '../../types';
 
 /**
  * Fetch streak data for a user.
+ * All completed sessions (reset, focus, move) count toward the streak.
  * Weekly marks use device timezone to determine Monday start.
  * Streak walks dates backwards from today.
  */
 export async function fetchStreakData(userId: string): Promise<WeeklyStreak> {
   const { data, error } = await supabase
-    .from('resets')
-    .select('completed_at')
+    .from('session_logs')
+    .select('created_at')
     .eq('user_id', userId)
-    .order('completed_at', { ascending: false })
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false })
     .limit(200);
 
   if (error) {
-    logger.error('Failed to fetch resets', error);
+    logger.error('Failed to fetch session logs for streak', error);
     throw error;
   }
 
   const rows = data ?? [];
-  const totalResets = rows.length;
-  const lastResetAt = rows.length > 0 ? new Date(rows[0].completed_at).getTime() : null;
+  const totalSessions = rows.length;
+  const lastSessionAt = rows.length > 0 ? new Date(rows[0].created_at).getTime() : null;
 
-  // Build a set of date strings (YYYY-MM-DD in local timezone) that have resets
-  const resetDates = new Set<string>();
+  // Build a set of date strings (YYYY-MM-DD in local timezone) that have sessions
+  const sessionDates = new Set<string>();
   for (const row of rows) {
-    const d = new Date(row.completed_at);
-    resetDates.add(formatLocalDate(d));
+    const d = new Date(row.created_at);
+    sessionDates.add(formatLocalDate(d));
   }
 
   // Weekly marks: Monday = index 0, Sunday = index 6
@@ -43,40 +45,19 @@ export async function fetchStreakData(userId: string): Promise<WeeklyStreak> {
   for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    weeklyMarks.push(resetDates.has(formatLocalDate(d)));
+    weeklyMarks.push(sessionDates.has(formatLocalDate(d)));
   }
 
   // Consecutive-day streak walking backwards from today
   let overallStreak = 0;
   const cursor = new Date(today);
   cursor.setHours(0, 0, 0, 0);
-  while (resetDates.has(formatLocalDate(cursor))) {
+  while (sessionDates.has(formatLocalDate(cursor))) {
     overallStreak++;
     cursor.setDate(cursor.getDate() - 1);
   }
 
-  return { weeklyMarks, overallStreak, totalResets, lastResetAt };
-}
-
-/**
- * Record a completed reset session.
- */
-export async function recordReset(
-  userId: string,
-  durationMinutes: number,
-  moodAfter?: string,
-): Promise<void> {
-  const { error } = await supabase.from('resets').insert({
-    user_id: userId,
-    duration_minutes: Math.max(1, Math.round(durationMinutes)),
-    mood_after: moodAfter ?? null,
-    completed_at: new Date().toISOString(),
-  });
-
-  if (error) {
-    logger.error('Failed to record reset', error);
-    throw error;
-  }
+  return { weeklyMarks, overallStreak, totalSessions, lastSessionAt };
 }
 
 function formatLocalDate(d: Date): string {

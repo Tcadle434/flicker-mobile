@@ -1,5 +1,5 @@
 /**
- * Sona Design System
+ * Flicker Design System
  *
  * Glassmorphic dark theme with teal accent
  * Inspired by modern audio production interfaces

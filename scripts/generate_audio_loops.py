@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate synthetic but musically coherent audio loops for Sona.
+"""Generate synthetic but musically coherent audio loops for Flicker.
 
 These are placeholders intended to be replaced by licensed real-world assets.
 They are designed to be seamless (loop boundaries align) and match the native
@@ -17,7 +17,7 @@ DURATION_SECONDS = 20.0
 NUM_SAMPLES = int(SAMPLE_RATE * DURATION_SECONDS)
 TWO_PI = 2.0 * math.pi
 
-OUTPUT_DIR = os.path.join("ios", "Sona", "audio")
+OUTPUT_DIR = os.path.join("ios", "Flicker", "audio")
 
 
 def clamp(value: float) -> float:

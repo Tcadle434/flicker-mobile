@@ -1,0 +1,83 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "": {
+            "scaleInDock": 2.1729
+        },
+        "#forest": {
+            "scaleInEditor": 1
+        },
+        "flicker-forest-tilemap.json": {
+            "scale": 0.5226,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 727.1335629544586,
+                "y": 1082.0895522388062
+            }
+        },
+        "flicker-forest-tilemap.json#flicker-forest": {
+            "scaleInDock": 1
+        },
+        "flicker-forest-tilemap.json#forest": {
+            "scaleInDock": 0.2694
+        },
+        "flicker-forest-tilemap.tmj#flicker-forest": {
+            "scaleInEditor": 1
+        },
+        "tent-interior-main-tilemap.json": {
+            "scale": 2.2511,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 123.050952867487,
+                "y": 40.20256763360132
+            }
+        },
+        "tent-interior-main-tilemap.json#interiors": {
+            "scaleInDock": 4.6924
+        },
+        "tent-interior-main-tilemap.json#raven-cozy-home": {
+            "scaleInDock": 1.1088
+        },
+        "tent-interior-main-tilemap.json#room-builder": {
+            "scaleInDock": 1.5115
+        },
+        "tent-internal-main-tilemap.json": {
+            "scale": 2.5459,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 42.0283593228328,
+                "y": 56.757924506068576
+            }
+        },
+        "tent-internal-main-tilemap.json#interiors": {
+            "scaleInDock": 1.7284
+        },
+        "tent-internal-main-tilemap.json#room-builder": {
+            "scaleInDock": 1.3861
+        }
+    },
+    "last.imagePath": "/Users/thomascadle/flicker-mobile/assets/tiled",
+    "map.height": 14,
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 12,
+    "openFiles": [
+    ],
+    "project": "untitled.tiled-project",
+    "recentFiles": [
+        "tent-internal-main-tilemap.json",
+        "tent-interior-main-tilemap.json"
+    ],
+    "tileset.embedInMap": true,
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}
