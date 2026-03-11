@@ -198,6 +198,16 @@ class FlickerAudioEngine {
             throw AudioEngineError.engineNotInitialized
         }
 
+        // Re-activate the audio session in case another audio system
+        // (e.g. expo-audio background music) deactivated it.
+        try AudioSessionManager.shared.configure()
+
+        // Restart the engine if it was stopped by a session deactivation
+        if let engine = engine, !engine.isRunning {
+            print("[FlickerAudioEngine] Engine was stopped — restarting")
+            try engine.start()
+        }
+
         if useMultiLayerMode {
             // Phase 2: Play all layers in sync
             print("[FlickerAudioEngine] Playing all layers")

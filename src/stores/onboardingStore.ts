@@ -1,20 +1,16 @@
 /**
  * Onboarding Store
  *
- * Manages the 10-screen onboarding flow:
- * step progression, personalization preferences, and permissions.
- *
- * Completion flag is synced to Supabase users.onboarding_completed
- * so it survives app reinstalls.
+ * Manages the 26-screen onboarding flow.
+ * Supabase is the single source of truth for completion.
+ * Step progression + preferences are in-memory only (reset on app restart).
  */
 
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/api/supabase';
 import type { OnboardingState, OnboardingPreferences } from '../types';
 
-const STORAGE_KEY = '@flicker:onboarding';
-const TOTAL_STEPS = 10;
+const TOTAL_STEPS = 29;
 
 interface OnboardingStore extends OnboardingState {
   totalSteps: number;
@@ -24,7 +20,8 @@ interface OnboardingStore extends OnboardingState {
   previousStep: () => void;
   goToStep: (step: number) => void;
   setGoals: (goals: string[]) => void;
-  setScreenTime: (value: string) => void;
+  setScreenTime: (value: string, hours: number) => void;
+  setBirthDate: (value: string) => void;
   setDistraction: (value: string) => void;
   setPermission: (key: keyof OnboardingState['permissionsGranted'], granted: boolean) => void;
   completeOnboarding: () => Promise<void>;
@@ -34,7 +31,9 @@ interface OnboardingStore extends OnboardingState {
 const INITIAL_PREFERENCES: OnboardingPreferences = {
   goals: [],
   screenTime: '',
+  screenTimeHours: 0,
   distraction: '',
+  birthDate: '',
 };
 
 export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
@@ -45,29 +44,10 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   permissionsGranted: {
     notifications: false,
     screenTime: false,
+    tracking: false,
   },
 
   initialize: async () => {
-    // 1. Load local state (preferences, step, etc.)
-    try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const data = JSON.parse(raw);
-        set({
-          completed: data.completed ?? false,
-          currentStep: data.currentStep ?? 0,
-          preferences: data.preferences ?? { ...INITIAL_PREFERENCES },
-          permissionsGranted: data.permissionsGranted ?? {
-            notifications: false,
-            screenTime: false,
-          },
-        });
-      }
-    } catch {
-      // ignore corrupt data
-    }
-
-    // 2. Check Supabase for onboarding_completed flag (survives reinstalls)
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -78,20 +58,9 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
         .eq('id', user.id)
         .single();
 
-      if (data?.onboarding_completed && !get().completed) {
-        // DB says completed but local doesn't — trust the DB
-        set({ completed: true });
-        // Persist locally so we don't need to check again
-        const state = get();
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({
-          completed: true,
-          currentStep: state.currentStep,
-          preferences: state.preferences,
-          permissionsGranted: state.permissionsGranted,
-        })).catch(() => undefined);
-      }
+      set({ completed: !!data?.onboarding_completed });
     } catch {
-      // offline — fall back to local state
+      // offline — default to false
     }
   },
 
@@ -119,8 +88,12 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     set((s) => ({ preferences: { ...s.preferences, goals } }));
   },
 
-  setScreenTime: (value) => {
-    set((s) => ({ preferences: { ...s.preferences, screenTime: value } }));
+  setScreenTime: (value, hours) => {
+    set((s) => ({ preferences: { ...s.preferences, screenTime: value, screenTimeHours: hours } }));
+  },
+
+  setBirthDate: (value) => {
+    set((s) => ({ preferences: { ...s.preferences, birthDate: value } }));
   },
 
   setDistraction: (value) => {
@@ -134,23 +107,8 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   },
 
   completeOnboarding: async () => {
-    const state = get();
-    const newState = {
-      completed: true,
-      currentStep: state.currentStep,
-      preferences: state.preferences,
-      permissionsGranted: state.permissionsGranted,
-    };
     set({ completed: true });
 
-    // Persist locally
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    } catch {
-      // silent
-    }
-
-    // Persist to Supabase (survives reinstalls)
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -169,10 +127,17 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
       completed: false,
       currentStep: 0,
       preferences: { ...INITIAL_PREFERENCES },
-      permissionsGranted: { notifications: false, screenTime: false },
+      permissionsGranted: { notifications: false, screenTime: false, tracking: false },
     });
+
     try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('users')
+          .update({ onboarding_completed: false })
+          .eq('id', user.id);
+      }
     } catch {
       // silent
     }

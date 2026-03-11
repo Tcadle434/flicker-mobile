@@ -4,15 +4,12 @@
  * Flicker uses a hard paywall with 7-day free trial.
  * Superwall handles paywall presentation, purchase flows, and entitlement checks.
  * Development default: entitled = true (override via __DEV__ flag).
+ *
+ * Trial start timestamp stored in Supabase users.trial_started_at.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../api/supabase';
 import { config } from '../../constants/config';
-
-const STORAGE_KEYS = {
-  ONBOARDING_COMPLETED: '@flicker:onboarding_completed',
-  TRIAL_START: '@flicker:trial_start',
-};
 
 export interface EntitlementState {
   isEntitled: boolean;
@@ -97,20 +94,28 @@ class PaywallService {
       const status = await superwall.shared.getSubscriptionStatus();
       const isActive = status?.status === 'ACTIVE';
 
-      // Calculate trial state from local storage
-      const trialStart = await AsyncStorage.getItem(STORAGE_KEYS.TRIAL_START);
+      // Calculate trial state from Supabase
       let isTrialActive = false;
       let trialDaysRemaining = 0;
 
-      if (trialStart) {
-        const startMs = parseInt(trialStart, 10);
-        const elapsed = Date.now() - startMs;
-        const elapsedDays = elapsed / (1000 * 60 * 60 * 24);
-        const trialDays = config.subscription.trialDays;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('users')
+          .select('trial_started_at')
+          .eq('id', user.id)
+          .single();
 
-        if (elapsedDays < trialDays) {
-          isTrialActive = true;
-          trialDaysRemaining = Math.ceil(trialDays - elapsedDays);
+        if (data?.trial_started_at) {
+          const startMs = new Date(data.trial_started_at).getTime();
+          const elapsed = Date.now() - startMs;
+          const elapsedDays = elapsed / (1000 * 60 * 60 * 24);
+          const trialDays = config.subscription.trialDays;
+
+          if (elapsedDays < trialDays) {
+            isTrialActive = true;
+            trialDaysRemaining = Math.ceil(trialDays - elapsedDays);
+          }
         }
       }
 
@@ -157,8 +162,6 @@ class PaywallService {
 
   /**
    * Restore purchases.
-   * Superwall handles restore via its paywall UI when not using a custom PurchaseController.
-   * This method checks the current subscription status to determine if active.
    */
   async restorePurchases(): Promise<boolean> {
     if (!this.initialized) {
@@ -178,30 +181,29 @@ class PaywallService {
   }
 
   /**
-   * Start the free trial. Records trial start timestamp.
+   * Start the free trial. Records trial start timestamp in Supabase.
    */
   async startTrial(): Promise<void> {
-    const existing = await AsyncStorage.getItem(STORAGE_KEYS.TRIAL_START);
-    if (!existing) {
-      await AsyncStorage.setItem(STORAGE_KEYS.TRIAL_START, String(Date.now()));
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from('users')
+        .select('trial_started_at')
+        .eq('id', user.id)
+        .single();
+
+      // Only set if not already started
+      if (!data?.trial_started_at) {
+        await supabase
+          .from('users')
+          .update({ trial_started_at: new Date().toISOString() })
+          .eq('id', user.id);
+      }
+    } catch (error) {
+      console.error('[PaywallService] startTrial error:', error);
     }
-  }
-
-  /**
-   * Mark onboarding as completed.
-   */
-  async markOnboardingCompleted(): Promise<void> {
-    await AsyncStorage.setItem(STORAGE_KEYS.ONBOARDING_COMPLETED, 'true');
-    // Start trial when onboarding completes
-    await this.startTrial();
-  }
-
-  /**
-   * Check if onboarding has been completed.
-   */
-  async isOnboardingCompleted(): Promise<boolean> {
-    const value = await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED);
-    return value === 'true';
   }
 }
 
