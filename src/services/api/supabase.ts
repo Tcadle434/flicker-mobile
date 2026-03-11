@@ -38,6 +38,7 @@ export interface Database {
           light_balance: number;
           lifetime_earned: number;
           onboarding_completed: boolean;
+          trial_started_at: string | null;
         };
         Insert: {
           id: string;
@@ -48,6 +49,7 @@ export interface Database {
           light_balance?: number;
           lifetime_earned?: number;
           onboarding_completed?: boolean;
+          trial_started_at?: string | null;
         };
         Update: {
           id?: string;
@@ -58,6 +60,7 @@ export interface Database {
           light_balance?: number;
           lifetime_earned?: number;
           onboarding_completed?: boolean;
+          trial_started_at?: string | null;
         };
       };
       sessions: {

@@ -178,9 +178,11 @@ export interface AudioVisualizerData {
 // ============================================================================
 
 export interface OnboardingPreferences {
-  goals: string[];        // from screen 3
-  screenTime: string;     // from screen 4
-  distraction: string;    // from screen 5
+  goals: string[];
+  screenTime: string;        // "under-2h" | "2-4h" | "4-6h" | "6-8h" | "8h+"
+  screenTimeHours: number;   // numeric value for calculations
+  distraction: string;
+  birthDate: string;         // ISO date string or empty
 }
 
 export interface OnboardingState {
@@ -190,6 +192,7 @@ export interface OnboardingState {
   permissionsGranted: {
     notifications: boolean;
     screenTime: boolean;
+    tracking: boolean;
   };
 }
 

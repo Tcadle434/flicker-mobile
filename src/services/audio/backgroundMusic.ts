@@ -30,7 +30,9 @@ export async function startBackgroundMusic(muted: boolean): Promise<void> {
 
 export function pauseBackgroundMusic(): void {
   try {
-    player?.pause();
+    // Silence via volume instead of player.pause() to avoid expo-audio
+    // deactivating the shared AVAudioSession (which kills the native engine).
+    if (player) player.volume = 0;
   } catch (e) {
     console.warn('[backgroundMusic] Failed to pause', e);
   }
@@ -38,7 +40,7 @@ export function pauseBackgroundMusic(): void {
 
 export function resumeBackgroundMusic(): void {
   try {
-    player?.play();
+    if (player) player.volume = VOLUME;
   } catch (e) {
     console.warn('[backgroundMusic] Failed to resume', e);
   }

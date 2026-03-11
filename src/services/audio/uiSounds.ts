@@ -13,6 +13,7 @@ import { useAudioSettingsStore } from '../../stores/audioSettingsStore';
 const SOUNDS = {
   buttonPress: require('../../../assets/audio/ui_sounds/button_press.mp3'),
   shopOpen: require('../../../assets/audio/ui_sounds/shop_open.mp3'),
+  dialogueContinue: require('../../../assets/audio/ui_sounds/dialogue_continue_press.mp3'),
 } as const;
 
 type SoundName = keyof typeof SOUNDS;

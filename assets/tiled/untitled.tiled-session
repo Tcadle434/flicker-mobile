@@ -8,17 +8,17 @@
     ],
     "fileStates": {
         "": {
-            "scaleInDock": 2.1729
+            "scaleInDock": 0.2139
         },
         "#forest": {
             "scaleInEditor": 1
         },
         "flicker-forest-tilemap.json": {
-            "scale": 0.5226,
+            "scale": 1.0029,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 727.1335629544586,
-                "y": 1082.0895522388062
+                "x": 410.3101007079471,
+                "y": 415.2956426363546
             }
         },
         "flicker-forest-tilemap.json#flicker-forest": {
@@ -47,6 +47,29 @@
         "tent-interior-main-tilemap.json#room-builder": {
             "scaleInDock": 1.5115
         },
+        "tent-interior-phase-1-tilemap.json": {
+            "scale": 2.1901,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 90.17853066070042,
+                "y": 114.83493904387926
+            }
+        },
+        "tent-interior-phase-1-tilemap.json#fantasy-interior-sprites": {
+            "scaleInDock": 1
+        },
+        "tent-interior-phase-1-tilemap.json#fantasy-interior-tiles-roof": {
+            "scaleInDock": 2.0798
+        },
+        "tent-interior-phase-1-tilemap.json#fantasy_interior_tiles": {
+            "scaleInDock": 1.8751
+        },
+        "tent-interior-phase-1-tilemap.json#interiors": {
+            "scaleInDock": 1.7887
+        },
+        "tent-interior-phase-1-tilemap.json#room-builder": {
+            "scaleInDock": 1.7034
+        },
         "tent-internal-main-tilemap.json": {
             "scale": 2.5459,
             "selectedLayer": 0,
@@ -60,18 +83,30 @@
         },
         "tent-internal-main-tilemap.json#room-builder": {
             "scaleInDock": 1.3861
+        },
+        "zen-garden-tilemap.json": {
+            "scale": 0.4382,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 437.01506161570063,
+                "y": 594.4774075764491
+            }
+        },
+        "zen-garden-tilemap.json#zen-garden": {
+            "scaleInDock": 0.2139
         }
     },
-    "last.imagePath": "/Users/thomascadle/flicker-mobile/assets/tiled",
-    "map.height": 14,
+    "last.imagePath": "/Users/thomascadle/Downloads",
+    "map.height": 86,
     "map.lastUsedFormat": "json",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
-    "map.width": 12,
+    "map.width": 48,
     "openFiles": [
     ],
     "project": "untitled.tiled-project",
     "recentFiles": [
+        "flicker-forest-tilemap.json",
         "tent-internal-main-tilemap.json",
         "tent-interior-main-tilemap.json"
     ],
