@@ -14,7 +14,7 @@ import { useMoodStore } from '../../src/stores/moodStore';
 import { useSessionStore } from '../../src/stores/sessionStore';
 import { usePlayerStore } from '../../src/stores/playerStore';
 import { SessionFlowController } from '../../src/controllers/SessionFlowController';
-import ResetSessionVisual from '../../src/components/visuals/ResetSessionVisual';
+import ZenGardenScene from '../../src/components/world/ZenGardenScene';
 import SessionMixer from '../../src/components/hud/SessionMixer';
 
 function formatTime(totalSeconds: number) {
@@ -50,7 +50,10 @@ export default function ResetSession() {
   const visualOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Setup audio mode and start session
+    // Setup audio mode, load soundscape, then start session
+    const controller = new SessionFlowController(durationMinutes);
+    controllerRef.current = controller;
+
     (async () => {
       try {
         setSessionMode('reset');
@@ -58,11 +61,8 @@ export default function ResetSession() {
       } catch {
         // ignore, session still renders
       }
+      controller.start();
     })();
-
-    const controller = new SessionFlowController(durationMinutes);
-    controllerRef.current = controller;
-    controller.start();
 
     // Update still timer display
     const displayInterval = setInterval(() => {
@@ -141,7 +141,7 @@ export default function ResetSession() {
 
         {/* Session visual background — Flicker meditate animation */}
         <Animated.View style={[StyleSheet.absoluteFill, visualStyle]}>
-          <ResetSessionVisual />
+          <ZenGardenScene onReady={() => {}} />
         </Animated.View>
 
         <SafeAreaView style={styles.safeArea}>
