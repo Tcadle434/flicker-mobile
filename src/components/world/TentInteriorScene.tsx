@@ -14,6 +14,15 @@ import TentItemsRenderer from './TentItemsRenderer';
 import GhostItemRenderer from './GhostItemRenderer';
 import PlacementGridOverlay from './PlacementGridOverlay';
 import { tentMap } from '../../services/world/tentMapLoader';
+import { useTentStore } from '../../stores/tentStore';
+import { useDecorateStore } from '../../stores/decorateStore';
+import { resolveRoomStyleSelection, getSurfaceSheet } from '../../services/tent/tentSurfaceCatalog';
+import {
+  getTentSurfaceLayer,
+  TENT_SURFACE_TILE_COLUMNS,
+  TENT_SURFACE_TILE_COUNTS,
+  TENT_SURFACE_TILE_SIZE,
+} from '../../services/world/tentSurfaceTemplate';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -22,12 +31,37 @@ interface Props {
 }
 
 export default function TentInteriorScene({ onReady }: Props) {
+  const currentRoomId = useTentStore((s) => s.currentRoomId);
+  const roomStyleSelections = useTentStore((s) => s.roomStyleSelections);
+  const previewRoomId = useDecorateStore((s) => s.previewRoomId);
+  const previewFloorStyleId = useDecorateStore((s) => s.previewFloorStyleId);
+  const previewWallStyleId = useDecorateStore((s) => s.previewWallStyleId);
+
   // Load all 5 tilesets
   const interiors = useImage(require('../../../assets/tiled/Interiors_16x16.png'));
   const roomBuilder = useImage(require('../../../assets/tiled/Room_Builder_16x16.png'));
   const interiorTiles = useImage(require('../../../assets/tiled/interior_tiles.png'));
   const interiorTilesRoof = useImage(require('../../../assets/tiled/interior_tiles_and_roof.png'));
   const interiorSprites = useImage(require('../../../assets/tiled/interior_sprites.png'));
+
+  const resolvedRoomStyleSelection = useMemo(() => resolveRoomStyleSelection(
+    currentRoomId,
+    roomStyleSelections,
+    {
+      roomId: previewRoomId,
+      floorStyleId: previewFloorStyleId,
+      wallStyleId: previewWallStyleId,
+    },
+  ), [
+    currentRoomId,
+    roomStyleSelections,
+    previewRoomId,
+    previewFloorStyleId,
+    previewWallStyleId,
+  ]);
+
+  const floorSheet = useImage(getSurfaceSheet(resolvedRoomStyleSelection.floorStyleId) as any);
+  const wallSheet = useImage(getSurfaceSheet(resolvedRoomStyleSelection.wallStyleId) as any);
 
   const { width: mapW, height: mapH, tileWidth, tilesets, layers } = tentMap;
 
@@ -42,7 +76,7 @@ export default function TentInteriorScene({ onReady }: Props) {
   // Map tileset images to their metadata
   const tilesetImages = [interiors, roomBuilder, interiorTiles, interiorTilesRoof, interiorSprites];
 
-  const allLoaded = tilesetImages.every((img) => !!img);
+  const allLoaded = tilesetImages.every((img) => !!img) && !!floorSheet && !!wallSheet;
   const firedRef = useRef(false);
 
   useEffect(() => {
@@ -53,6 +87,9 @@ export default function TentInteriorScene({ onReady }: Props) {
   }, [allLoaded, onReady]);
 
   if (!allLoaded) return null;
+
+  const floorLayerData = getTentSurfaceLayer('floor');
+  const wallLayerData = getTentSurfaceLayer('wall');
 
   // Render each layer across all tilesets
   const renderLayer = (layerData: number[]) => {
@@ -79,15 +116,38 @@ export default function TentInteriorScene({ onReady }: Props) {
     });
   };
 
+  const renderSurfaceLayer = (kind: 'floor' | 'wall') => {
+    const surfaceSheet = kind === 'floor' ? floorSheet : wallSheet;
+    if (!surfaceSheet) return null;
+
+    return (
+      <TilemapRenderer
+        key={`surface-${kind}`}
+        tileset={surfaceSheet}
+        tilesetColumns={TENT_SURFACE_TILE_COLUMNS[kind]}
+        tileWidth={TENT_SURFACE_TILE_SIZE}
+        tileHeight={TENT_SURFACE_TILE_SIZE}
+        mapWidth={mapW}
+        mapHeight={mapH}
+        data={kind === 'floor' ? floorLayerData : wallLayerData}
+        scale={scale}
+        offsetY={offsetY}
+        screenHeight={SCREEN_H}
+        firstGid={1}
+        tileCount={TENT_SURFACE_TILE_COUNTS[kind]}
+      />
+    );
+  };
+
   return (
     <Canvas style={styles.canvas}>
       <Fill color="#0A0A0B" />
 
       {/* Floor layer */}
-      {renderLayer(layers.floor)}
+      {renderSurfaceLayer('floor')}
 
       {/* Walls layer */}
-      {renderLayer(layers.walls)}
+      {renderSurfaceLayer('wall')}
 
       {/* Placed items (sorted by tileY for depth) */}
       <TentItemsRenderer scale={scale} offsetY={offsetY} />

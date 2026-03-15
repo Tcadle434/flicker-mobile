@@ -33,7 +33,7 @@ export default function useFlickerWander(
   const facing = useSharedValue<Direction>('south');
 
   const currentTile = useRef({ x: startTileX, y: startTileY });
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scheduleNext = useCallback(() => {
     // Idle for 1–3 seconds before next move

@@ -30,6 +30,22 @@ export const ONBOARDING_ASSETS = {
   sessionScreenshot: require('../../../assets/session_screenshot.png'),
   flickerOverwhelmedBase: require('../../../assets/flicker_overwhelmed_base_transparent.png'),
   flickerCalmBase: require('../../../assets/flicker_calm_base_transparent.png'),
+
+  // Flicker calm meditate spritesheet (8x8 grid)
+  flickerCalmMeditate: require('../../../assets/sprites/flicker_calm_meditate.png'),
+
+  // Sanctuary decorations for demo
+  pottedPlant: require('../../../assets/sprites/interior-decorations/potted_plant_01.png'),
+  floorLamp: require('../../../assets/sprites/interior-decorations/floor_lamp_01.png'),
+  bookshelf: require('../../../assets/sprites/interior-decorations/bookshelf_01.png'),
+
+  // Tilesets for demo scenes (referenced by Skia useImage, but warm via RN Image cache)
+  zenGardenTileset: require('../../../assets/tiled/zen-garden-tileset.png'),
+  interiorsTs: require('../../../assets/tiled/Interiors_16x16.png'),
+  roomBuilderTs: require('../../../assets/tiled/Room_Builder_16x16.png'),
+  interiorTilesTs: require('../../../assets/tiled/interior_tiles.png'),
+  interiorTilesRoofTs: require('../../../assets/tiled/interior_tiles_and_roof.png'),
+  interiorSpritesTs: require('../../../assets/tiled/interior_sprites.png'),
 } as const;
 
 export const ONBOARDING_WARMUP_ASSETS = [
@@ -38,7 +54,33 @@ export const ONBOARDING_WARMUP_ASSETS = [
   ONBOARDING_ASSETS.bodyStressDiagram,
   ONBOARDING_ASSETS.phoneNotificationDiagram,
   ONBOARDING_ASSETS.alertVsRecovery,
+  ONBOARDING_ASSETS.flickerCalmMeditate,
+  ONBOARDING_ASSETS.pottedPlant,
 ] as const;
+
+/** Heavy assets for the cinematic demo — warm around step 5-6 */
+export const DEMO_HEAVY_ASSETS = [
+  ONBOARDING_ASSETS.zenGardenTileset,
+  ONBOARDING_ASSETS.flickerCalmMeditate,
+  ONBOARDING_ASSETS.interiorsTs,
+  ONBOARDING_ASSETS.roomBuilderTs,
+  ONBOARDING_ASSETS.interiorTilesTs,
+  ONBOARDING_ASSETS.interiorTilesRoofTs,
+  ONBOARDING_ASSETS.interiorSpritesTs,
+  ONBOARDING_ASSETS.pottedPlant,
+  ONBOARDING_ASSETS.floorLamp,
+  ONBOARDING_ASSETS.bookshelf,
+] as const;
+
+let demoWarmupPromise: Promise<unknown> | null = null;
+
+export function warmDemoAssets() {
+  if (!demoWarmupPromise) {
+    const { Asset } = require('expo-asset');
+    demoWarmupPromise = Asset.loadAsync([...DEMO_HEAVY_ASSETS]);
+  }
+  return demoWarmupPromise;
+}
 
 // Flicker calm idle spritesheet metadata
 export const FLICKER_IDLE_META = {
@@ -62,6 +104,16 @@ export const FLICKER_OVERWHELMED_META = {
 
 // Flicker calm focus spritesheet metadata (4096x2344, 8x8 grid)
 export const FLICKER_FOCUS_META = {
+  columns: 8,
+  rows: 8,
+  frameWidth: 512,
+  frameHeight: 293,
+  frameCount: 61,
+  fps: 12,
+} as const;
+
+// Flicker calm meditate spritesheet metadata (4096x2344, 8x8 grid)
+export const FLICKER_MEDITATE_META = {
   columns: 8,
   rows: 8,
   frameWidth: 512,

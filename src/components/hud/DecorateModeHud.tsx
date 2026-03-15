@@ -20,9 +20,15 @@ interface Props {
   onDone: () => void;
   onOpenShop: () => void;
   onExitPreview?: () => void;
+  surfacePreviewActive?: boolean;
 }
 
-export default function DecorateModeHud({ onDone, onOpenShop, onExitPreview }: Props) {
+export default function DecorateModeHud({
+  onDone,
+  onOpenShop,
+  onExitPreview,
+  surfacePreviewActive = false,
+}: Props) {
   const insets = useSafeAreaInsets();
   const ghostItemId = useDecorateStore((s) => s.ghostItemId);
   const ghostPlacementId = useDecorateStore((s) => s.ghostPlacementId);
@@ -37,6 +43,7 @@ export default function DecorateModeHud({ onDone, onOpenShop, onExitPreview }: P
   const canRotate = item?.rotatable ?? false;
   const hasGhost = !!ghostItemId;
   const isMoving = !!ghostPlacementId;
+  const showSurfacePreviewBack = surfacePreviewActive && !hasGhost;
 
   return (
     <Animated.View
@@ -148,6 +155,21 @@ export default function DecorateModeHud({ onDone, onOpenShop, onExitPreview }: P
           )}
         </Animated.View>
       )}
+
+      {showSurfacePreviewBack && (
+        <Animated.View
+          style={[styles.surfacePreviewControls, { bottom: insets.bottom + 16 }]}
+          entering={FadeIn.duration(200)}
+        >
+          <TouchableOpacity
+            onPress={onExitPreview}
+            activeOpacity={0.7}
+            style={styles.backBtn}
+          >
+            <Text style={styles.backText}>Back</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </Animated.View>
   );
 }
@@ -185,6 +207,12 @@ const styles = StyleSheet.create({
     right: 16,
     flexDirection: 'row',
     gap: 10,
+    alignItems: 'center',
+  },
+  surfacePreviewControls: {
+    position: 'absolute',
+    right: 16,
+    flexDirection: 'row',
     alignItems: 'center',
   },
   controlBtn: {

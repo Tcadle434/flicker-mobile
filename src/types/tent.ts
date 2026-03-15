@@ -5,6 +5,8 @@
 // Rotation uses directional names matching sprite file suffixes
 export type Direction = 'down' | 'up' | 'left' | 'right';
 
+export type TentSurfaceType = 'floor' | 'wall';
+
 // Where an item can be placed
 // 'tabletop' items stack on top of floor items that have provideSurface=true
 export type PlacementSurface = 'floor' | 'wall' | 'rug' | 'tabletop';
@@ -21,6 +23,29 @@ export interface CatalogItem {
   rotatable: boolean;                   // has directional sprites
   tier: number;                         // min room tier required (1 = base tent)
   provideSurface?: boolean;             // allows tabletop items to be stacked on this item
+}
+
+export interface TentSurfaceStyle {
+  id: string;
+  name: string;
+  surfaceType: TentSurfaceType;
+  price: number;
+  tier: number;
+  sheetAssetKey: string;
+  previewAssetKey?: string;
+  defaultOwned?: boolean;
+}
+
+export interface TentRoomStyleSelection {
+  roomId: string;
+  floorStyleId: string;
+  wallStyleId: string;
+}
+
+export interface TentSurfacePreviewState {
+  roomId: string | null;
+  floorStyleId: string | null;
+  wallStyleId: string | null;
 }
 
 export interface TentPlacement {

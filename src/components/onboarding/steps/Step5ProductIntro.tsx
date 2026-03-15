@@ -26,9 +26,9 @@ interface Props {
 }
 
 const FEATURES = [
-	{ icon: "🧘", label: "Daily mental resets" },
-	{ icon: "🎯", label: "Deep focus sessions" },
-	{ icon: "🔕", label: "Reduced screen time" },
+	{ icon: "🌿", label: "Daily resets for calm" },
+	{ icon: "🛡️", label: "Protected sessions for focus" },
+	{ icon: "🤫", label: "Less noise, more intention" },
 ];
 
 export default function Step5ProductIntro({ onNext }: Props) {
@@ -41,8 +41,8 @@ export default function Step5ProductIntro({ onNext }: Props) {
 	return (
 		<OnboardingContentLayout
 			title="Introducing Flicker."
-			subtitle="Your wellness and focus companion that offers:"
-			ctaLabel="Start my reset"
+			subtitle="Protected time for your mind."
+			ctaLabel="Learn more"
 			ctaDelay={1800}
 			onNext={onNext}
 		>
@@ -61,7 +61,10 @@ export default function Step5ProductIntro({ onNext }: Props) {
 			</View>
 
 			{/* Flicker sitting animation */}
-			<Animated.View entering={FadeInDown.delay(1200).duration(600)} style={styles.characterSection}>
+			<Animated.View
+				entering={FadeInDown.delay(1200).duration(600)}
+				style={styles.characterSection}
+			>
 				{sittingSheet && (
 					<Canvas style={styles.canvas} pointerEvents="none">
 						<AnimatedSprite
@@ -81,11 +84,8 @@ export default function Step5ProductIntro({ onNext }: Props) {
 				)}
 			</Animated.View>
 
-			<Animated.Text
-				entering={FadeInDown.delay(1500).duration(600)}
-				style={styles.footer}
-			>
-				No deleting apps. Just better control.
+			<Animated.Text entering={FadeInDown.delay(1500).duration(600)} style={styles.footer}>
+				Small protected moments can change the shape of a day.
 			</Animated.Text>
 		</OnboardingContentLayout>
 	);
@@ -126,6 +126,6 @@ const styles = StyleSheet.create({
 		color: "#1A1A1A",
 		fontSize: 17,
 		fontWeight: "600",
-		textAlign: "center",
+		textAlign: "left",
 	},
 });

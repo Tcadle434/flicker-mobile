@@ -9,9 +9,9 @@ export default function Step0Welcome({ onNext }: Props) {
 	return (
 		<DialogueScreen
 			messages={[
-				"Hey there! Welcome in and congratulations on taking an important step for your mental health.",
-				"My name is Flicker. I'm your new wellness and productivity companion. Great to meet you!",
-				"Before we get started, let's chat through an unfortunate truth regarding today's digital world 😔",
+				"Hey there! Welcome in and congratulations on taking an important step for your mind.",
+				"My name is Flicker. I’ll help you make a little more space for calm and focus each day. Great to meet you!",
+				"Before we begin, I want you to know something. If you've felt overwhelmed lately, you’re not alone 😔",
 			]}
 			onAdvance={onNext}
 		/>

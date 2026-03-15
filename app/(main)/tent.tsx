@@ -14,13 +14,21 @@ import TentTouchLayer from '../../src/components/world/TentTouchLayer';
 import TentViewHud from '../../src/components/hud/TentViewHud';
 import DecorateModeHud from '../../src/components/hud/DecorateModeHud';
 import ItemTray from '../../src/components/hud/ItemTray';
+import TentRoomEditPanel from '../../src/components/hud/TentRoomEditPanel';
 import TentShopPopup from '../../src/components/hud/TentShopPopup';
 import ItemConfirmPopup from '../../src/components/hud/ItemConfirmPopup';
+import TentSurfacePickerPopup from '../../src/components/hud/TentSurfacePickerPopup';
+import { TentSurfaceConfirmPopup } from '../../src/components/hud';
 import { useDecorateStore } from '../../src/stores/decorateStore';
 import { useTentStore } from '../../src/stores/tentStore';
 import { getCatalogItem } from '../../src/services/tent/tentCatalog';
 import { tentMap } from '../../src/services/world/tentMapLoader';
-import type { CatalogItem } from '../../src/types/tent';
+import type { CatalogItem, TentSurfaceStyle, TentSurfaceType } from '../../src/types/tent';
+
+interface SurfaceSelectionState {
+  style: TentSurfaceStyle;
+  surfaceType: TentSurfaceType;
+}
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -31,6 +39,9 @@ export default function TentScreen() {
   const [shopVisible, setShopVisible] = useState(false);
   const [confirmItem, setConfirmItem] = useState<CatalogItem | null>(null);
   const [previewingItemId, setPreviewingItemId] = useState<string | null>(null);
+  const [activeSurfacePicker, setActiveSurfacePicker] = useState<TentSurfaceType | null>(null);
+  const [surfaceConfirmSelection, setSurfaceConfirmSelection] = useState<SurfaceSelectionState | null>(null);
+  const [previewingSurfaceSelection, setPreviewingSurfaceSelection] = useState<SurfaceSelectionState | null>(null);
 
   const isDecorating = useDecorateStore((s) => s.isDecorating);
   const subMode = useDecorateStore((s) => s.subMode);
@@ -39,7 +50,15 @@ export default function TentScreen() {
   const startPlacing = useDecorateStore((s) => s.startPlacing);
   const startPreview = useDecorateStore((s) => s.startPreview);
   const cancelPlacement = useDecorateStore((s) => s.cancelPlacement);
+  const clearSurfacePreview = useDecorateStore((s) => s.clearSurfacePreview);
+  const previewSurfaceStyle = useDecorateStore((s) => s.previewSurfaceStyle);
+  const switchToEditMode = useDecorateStore((s) => s.switchToEditMode);
   const purchaseItem = useTentStore((s) => s.purchaseItem);
+  const purchaseSurfaceStyle = useTentStore((s) => s.purchaseSurfaceStyle);
+  const equipSurfaceStyle = useTentStore((s) => s.equipSurfaceStyle);
+  const isSurfaceStyleOwned = useTentStore((s) => s.isSurfaceStyleOwned);
+  const getRoomStyleSelection = useTentStore((s) => s.getRoomStyleSelection);
+  const currentRoomId = useTentStore((s) => s.currentRoomId);
 
   // Compute scale/offset to pass to touch layer
   const { scale, offsetY } = useMemo(() => {
@@ -79,8 +98,12 @@ export default function TentScreen() {
   }, [enterDecorate]);
 
   const handleDoneDecorating = useCallback(() => {
+    setActiveSurfacePicker(null);
+    setSurfaceConfirmSelection(null);
+    setPreviewingSurfaceSelection(null);
+    clearSurfacePreview();
     exitDecorate();
-  }, [exitDecorate]);
+  }, [clearSurfacePreview, exitDecorate]);
 
   const handleOpenShop = useCallback(() => {
     setShopVisible(true);
@@ -112,6 +135,14 @@ export default function TentScreen() {
   }, []);
 
   const handleExitPreview = useCallback(() => {
+    if (previewingSurfaceSelection) {
+      clearSurfacePreview(previewingSurfaceSelection.surfaceType);
+      exitDecorate();
+      setSurfaceConfirmSelection(previewingSurfaceSelection);
+      setPreviewingSurfaceSelection(null);
+      return;
+    }
+
     cancelPlacement();
     exitDecorate();
     const itemId = previewingItemId;
@@ -120,7 +151,80 @@ export default function TentScreen() {
       const item = getCatalogItem(itemId);
       if (item) setConfirmItem(item);
     }
-  }, [cancelPlacement, exitDecorate, previewingItemId]);
+  }, [
+    cancelPlacement,
+    clearSurfacePreview,
+    exitDecorate,
+    previewingItemId,
+    previewingSurfaceSelection,
+  ]);
+
+  const handleOpenSurfacePicker = useCallback((surfaceType: TentSurfaceType) => {
+    setSurfaceConfirmSelection(null);
+    setActiveSurfacePicker(surfaceType);
+  }, []);
+
+  const handleCloseSurfacePicker = useCallback(() => {
+    setActiveSurfacePicker(null);
+  }, []);
+
+  const handleSelectSurfaceStyle = useCallback((style: TentSurfaceStyle, surfaceType: TentSurfaceType) => {
+    setActiveSurfacePicker(null);
+    setSurfaceConfirmSelection({ style, surfaceType });
+  }, []);
+
+  const handleCancelSurfaceConfirm = useCallback(() => {
+    const surfaceType = surfaceConfirmSelection?.surfaceType ?? previewingSurfaceSelection?.surfaceType ?? null;
+    setSurfaceConfirmSelection(null);
+    if (surfaceType) {
+      setActiveSurfacePicker(surfaceType);
+    }
+  }, [previewingSurfaceSelection, surfaceConfirmSelection]);
+
+  const handlePreviewSurface = useCallback((style: TentSurfaceStyle, surfaceType: TentSurfaceType) => {
+    const selection = { style, surfaceType };
+    setSurfaceConfirmSelection(null);
+    setActiveSurfacePicker(null);
+    setPreviewingSurfaceSelection(selection);
+    enterDecorate();
+    switchToEditMode();
+    previewSurfaceStyle(currentRoomId, surfaceType, style.id);
+  }, [currentRoomId, enterDecorate, previewSurfaceStyle, switchToEditMode]);
+
+  const handlePurchaseOrEquipSurface = useCallback(async (style: TentSurfaceStyle, surfaceType: TentSurfaceType) => {
+    const owned = isSurfaceStyleOwned(style.id);
+    if (!owned) {
+      const purchased = await purchaseSurfaceStyle(style.id, style.price);
+      if (!purchased) return;
+    }
+
+    equipSurfaceStyle(currentRoomId, surfaceType, style.id);
+    clearSurfacePreview(surfaceType);
+    setPreviewingSurfaceSelection(null);
+    setSurfaceConfirmSelection(null);
+    enterDecorate();
+    switchToEditMode();
+  }, [
+    clearSurfacePreview,
+    currentRoomId,
+    enterDecorate,
+    equipSurfaceStyle,
+    isSurfaceStyleOwned,
+    purchaseSurfaceStyle,
+    switchToEditMode,
+  ]);
+
+  const surfaceConfirmOwned = surfaceConfirmSelection
+    ? isSurfaceStyleOwned(surfaceConfirmSelection.style.id)
+    : false;
+  const currentRoomStyleSelection = getRoomStyleSelection(currentRoomId);
+  const surfaceConfirmEquipped = surfaceConfirmSelection
+    ? (
+      surfaceConfirmSelection.surfaceType === 'floor'
+        ? currentRoomStyleSelection.floorStyleId === surfaceConfirmSelection.style.id
+        : currentRoomStyleSelection.wallStyleId === surfaceConfirmSelection.style.id
+    )
+    : false;
 
   return (
     <View style={styles.container}>
@@ -134,8 +238,20 @@ export default function TentScreen() {
 
           {isDecorating ? (
             <>
-              <DecorateModeHud onDone={handleDoneDecorating} onOpenShop={handleOpenShop} onExitPreview={handleExitPreview} />
-              <ItemTray onOpenShop={handleOpenShop} />
+              <DecorateModeHud
+                onDone={handleDoneDecorating}
+                onOpenShop={handleOpenShop}
+                onExitPreview={handleExitPreview}
+                surfacePreviewActive={!!previewingSurfaceSelection}
+              />
+              {!previewingSurfaceSelection && subMode === 'place' ? (
+                <ItemTray onOpenShop={handleOpenShop} />
+              ) : !previewingSurfaceSelection ? (
+                <TentRoomEditPanel
+                  onOpenFloor={() => handleOpenSurfacePicker('floor')}
+                  onOpenWallpaper={() => handleOpenSurfacePicker('wall')}
+                />
+              ) : null}
             </>
           ) : (
             <TentViewHud onBack={handleBack} onDecorate={handleDecorate} onOpenShop={handleOpenShop} />
@@ -144,6 +260,23 @@ export default function TentScreen() {
       )}
       <TentShopPopup visible={shopVisible} onClose={() => setShopVisible(false)} onSelectItem={handleSelectShopItem} />
       <ItemConfirmPopup item={confirmItem} onPurchase={handlePurchase} onPreview={handlePreview} onCancel={handleCancelConfirm} />
+      {activeSurfacePicker && (
+        <TentSurfacePickerPopup
+          visible
+          surfaceType={activeSurfacePicker}
+          onClose={handleCloseSurfacePicker}
+          onSelectStyle={handleSelectSurfaceStyle}
+        />
+      )}
+      <TentSurfaceConfirmPopup
+        styleItem={surfaceConfirmSelection?.style ?? null}
+        surfaceType={surfaceConfirmSelection?.surfaceType ?? null}
+        isOwned={surfaceConfirmOwned}
+        isEquipped={surfaceConfirmEquipped}
+        onPurchaseOrEquip={handlePurchaseOrEquipSurface}
+        onPreview={handlePreviewSurface}
+        onCancel={handleCancelSurfaceConfirm}
+      />
     </View>
   );
 }

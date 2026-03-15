@@ -9,7 +9,20 @@
 import { create } from 'zustand';
 import { supabase } from '../services/api/supabase';
 import { useCurrencyStore } from './currencyStore';
-import type { TentPlacement, Direction } from '../types/tent';
+import {
+  createDefaultRoomStyleSelection,
+  getDefaultOwnedSurfaceStyleIds,
+  getDefaultSurfaceStyleId,
+  getSurfaceStyle,
+  isSurfaceStyleDefaultOwned,
+  normalizeSurfaceStyleId,
+} from '../services/tent/tentSurfaceCatalog';
+import type {
+  TentPlacement,
+  Direction,
+  TentRoomStyleSelection,
+  TentSurfaceType,
+} from '../types/tent';
 
 // ── Helpers ────────────────────────────────────────────────────────
 
@@ -32,7 +45,7 @@ const RETRY_DELAY = 1500;
 /** Run a Supabase write with retries. Logs on final failure. */
 async function persistWithRetry(
   label: string,
-  fn: () => Promise<{ error: any }>,
+  fn: () => PromiseLike<{ error: any }>,
 ): Promise<boolean> {
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -56,22 +69,60 @@ interface TentState {
   currentRoomId: string;
   placements: TentPlacement[];
   ownedItemIds: string[];
+  ownedSurfaceStyleIds: string[];
+  roomStyleSelections: Record<string, TentRoomStyleSelection>;
   isHydrated: boolean;
 
   hydrate: () => Promise<void>;
   purchaseItem: (itemId: string, price: number) => Promise<boolean>;
+  purchaseSurfaceStyle: (styleId: string, price: number) => Promise<boolean>;
   placeItem: (itemId: string, roomId: string, x: number, y: number, direction: Direction) => void;
   moveItem: (placementId: string, x: number, y: number, direction: Direction) => void;
   removeItem: (placementId: string) => void;
+  equipSurfaceStyle: (roomId: string, surfaceType: TentSurfaceType, styleId: string) => void;
   setCurrentRoom: (roomId: string) => void;
   /** Number of unplaced copies of an item the user owns */
   getAvailableCount: (itemId: string) => number;
+  isSurfaceStyleOwned: (styleId: string) => boolean;
+  getRoomStyleSelection: (roomId: string) => TentRoomStyleSelection;
+}
+
+function mergeOwnedSurfaceStyleIds(styleIds: string[]): string[] {
+  return [...new Set([...getDefaultOwnedSurfaceStyleIds(), ...styleIds])];
+}
+
+function buildRoomStyleSelections(
+  rows?: Array<{ room_id: string; floor_style_id: string | null; wall_style_id: string | null }>,
+): Record<string, TentRoomStyleSelection> {
+  const selections: Record<string, TentRoomStyleSelection> = {
+    main: createDefaultRoomStyleSelection('main'),
+  };
+
+  for (const row of rows ?? []) {
+    selections[row.room_id] = {
+      roomId: row.room_id,
+      floorStyleId: normalizeSurfaceStyleId(
+        row.floor_style_id ?? getDefaultSurfaceStyleId('floor'),
+        'floor',
+      ),
+      wallStyleId: normalizeSurfaceStyleId(
+        row.wall_style_id ?? getDefaultSurfaceStyleId('wall'),
+        'wall',
+      ),
+    };
+  }
+
+  return selections;
 }
 
 export const useTentStore = create<TentState>((set, get) => ({
   currentRoomId: 'main',
   placements: [],
   ownedItemIds: [],
+  ownedSurfaceStyleIds: getDefaultOwnedSurfaceStyleIds(),
+  roomStyleSelections: {
+    main: createDefaultRoomStyleSelection('main'),
+  },
   isHydrated: false,
 
   hydrate: async () => {
@@ -79,7 +130,13 @@ export const useTentStore = create<TentState>((set, get) => ({
 
     const userId = await getUserId();
     if (!userId) {
-      set({ isHydrated: true });
+      set({
+        isHydrated: true,
+        ownedSurfaceStyleIds: getDefaultOwnedSurfaceStyleIds(),
+        roomStyleSelections: {
+          main: createDefaultRoomStyleSelection('main'),
+        },
+      });
       return;
     }
 
@@ -121,6 +178,38 @@ export const useTentStore = create<TentState>((set, get) => ({
       // offline — empty owned items
     }
 
+    // Fetch owned floor / wallpaper styles
+    try {
+      const { data: ownedSurfaceStyles } = await supabase
+        .from('tent_owned_surface_styles')
+        .select('style_id')
+        .eq('user_id', userId);
+
+      if (ownedSurfaceStyles) {
+        set({
+          ownedSurfaceStyleIds: mergeOwnedSurfaceStyleIds(
+            ownedSurfaceStyles.map((row) => normalizeSurfaceStyleId(row.style_id)),
+          ),
+        });
+      }
+    } catch {
+      // offline — defaults only
+    }
+
+    // Fetch equipped styles per room
+    try {
+      const { data: roomStyles } = await supabase
+        .from('tent_room_styles')
+        .select('room_id, floor_style_id, wall_style_id')
+        .eq('user_id', userId);
+
+      if (roomStyles) {
+        set({ roomStyleSelections: buildRoomStyleSelections(roomStyles) });
+      }
+    } catch {
+      // offline — defaults only
+    }
+
     set({ isHydrated: true });
   },
 
@@ -139,6 +228,33 @@ export const useTentStore = create<TentState>((set, get) => ({
           id: ownedId,
           user_id: userId,
           item_id: itemId,
+        }),
+      );
+    });
+
+    return true;
+  },
+
+  purchaseSurfaceStyle: async (styleId, price) => {
+    const style = getSurfaceStyle(styleId);
+    if (!style) return false;
+
+    if (get().isSurfaceStyleOwned(styleId)) return true;
+
+    const spent = await useCurrencyStore.getState().spend(price, styleId, 'tent_surface_purchase');
+    if (!spent) return false;
+
+    set((s) => ({
+      ownedSurfaceStyleIds: mergeOwnedSurfaceStyleIds([...s.ownedSurfaceStyleIds, styleId]),
+    }));
+
+    getUserId().then((userId) => {
+      if (!userId) return;
+      persistWithRetry('purchaseSurfaceStyle', () =>
+        supabase.from('tent_owned_surface_styles').insert({
+          user_id: userId,
+          style_id: styleId,
+          surface_type: style.surfaceType,
         }),
       );
     });
@@ -215,6 +331,39 @@ export const useTentStore = create<TentState>((set, get) => ({
     });
   },
 
+  equipSurfaceStyle: (roomId, surfaceType, styleId) => {
+    const style = getSurfaceStyle(styleId);
+    if (!style || style.surfaceType !== surfaceType) return;
+    if (!get().isSurfaceStyleOwned(styleId)) return;
+
+    const current = get().getRoomStyleSelection(roomId);
+    const nextSelection: TentRoomStyleSelection = {
+      ...current,
+      [surfaceType === 'floor' ? 'floorStyleId' : 'wallStyleId']: styleId,
+    };
+
+    set((s) => ({
+      roomStyleSelections: {
+        ...s.roomStyleSelections,
+        [roomId]: nextSelection,
+      },
+    }));
+
+    getUserId().then((userId) => {
+      if (!userId) return;
+      persistWithRetry('equipSurfaceStyle', () =>
+        supabase.from('tent_room_styles').upsert({
+          user_id: userId,
+          room_id: roomId,
+          floor_style_id: nextSelection.floorStyleId,
+          wall_style_id: nextSelection.wallStyleId,
+        }, {
+          onConflict: 'user_id,room_id',
+        }),
+      );
+    });
+  },
+
   setCurrentRoom: (roomId) => set({ currentRoomId: roomId }),
 
   getAvailableCount: (itemId) => {
@@ -222,5 +371,20 @@ export const useTentStore = create<TentState>((set, get) => ({
     const owned = ownedItemIds.filter((id) => id === itemId).length;
     const placed = placements.filter((p) => p.itemId === itemId).length;
     return Math.max(0, owned - placed);
+  },
+
+  isSurfaceStyleOwned: (styleId) => {
+    const normalized = normalizeSurfaceStyleId(styleId);
+    if (isSurfaceStyleDefaultOwned(normalized)) return true;
+    return get().ownedSurfaceStyleIds.includes(normalized);
+  },
+
+  getRoomStyleSelection: (roomId) => {
+    const selection = get().roomStyleSelections[roomId] ?? createDefaultRoomStyleSelection(roomId);
+    return {
+      roomId,
+      floorStyleId: normalizeSurfaceStyleId(selection.floorStyleId, 'floor'),
+      wallStyleId: normalizeSurfaceStyleId(selection.wallStyleId, 'wall'),
+    };
   },
 }));
