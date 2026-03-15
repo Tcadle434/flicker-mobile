@@ -14,7 +14,6 @@ const GOALS = [
 	"Improve focus",
 	"Use my phone less",
 	"Sleep better",
-	"Build a meditation habit",
 	"Increase productivity",
 ];
 

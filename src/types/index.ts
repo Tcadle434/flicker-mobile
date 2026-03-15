@@ -182,6 +182,7 @@ export interface OnboardingPreferences {
   screenTime: string;        // "under-2h" | "2-4h" | "4-6h" | "6-8h" | "8h+"
   screenTimeHours: number;   // numeric value for calculations
   distraction: string;
+  noisiest: string;          // when mind feels noisiest
   birthDate: string;         // ISO date string or empty
 }
 

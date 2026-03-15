@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import { supabase } from '../services/api/supabase';
 import type { OnboardingState, OnboardingPreferences } from '../types';
 
-const TOTAL_STEPS = 29;
+const TOTAL_STEPS = 32;
 
 interface OnboardingStore extends OnboardingState {
   totalSteps: number;
@@ -22,6 +22,7 @@ interface OnboardingStore extends OnboardingState {
   setGoals: (goals: string[]) => void;
   setScreenTime: (value: string, hours: number) => void;
   setBirthDate: (value: string) => void;
+  setNoisiest: (value: string) => void;
   setDistraction: (value: string) => void;
   setPermission: (key: keyof OnboardingState['permissionsGranted'], granted: boolean) => void;
   completeOnboarding: () => Promise<void>;
@@ -33,6 +34,7 @@ const INITIAL_PREFERENCES: OnboardingPreferences = {
   screenTime: '',
   screenTimeHours: 0,
   distraction: '',
+  noisiest: '',
   birthDate: '',
 };
 
@@ -94,6 +96,10 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
 
   setBirthDate: (value) => {
     set((s) => ({ preferences: { ...s.preferences, birthDate: value } }));
+  },
+
+  setNoisiest: (value) => {
+    set((s) => ({ preferences: { ...s.preferences, noisiest: value } }));
   },
 
   setDistraction: (value) => {

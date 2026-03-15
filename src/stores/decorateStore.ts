@@ -10,7 +10,7 @@
  */
 
 import { create } from 'zustand';
-import type { Direction } from '../types/tent';
+import type { Direction, TentSurfaceType } from '../types/tent';
 import { validatePlacement } from '../services/tent/placementValidator';
 import { getCatalogMap, getCatalogItem, getItemDirections } from '../services/tent/tentCatalog';
 import { useTentStore } from './tentStore';
@@ -28,6 +28,9 @@ interface DecorateState {
   ghostDirection: Direction;
   ghostValid: boolean;
   isPreview: boolean; // true = ghost is preview-only, not confirmable
+  previewRoomId: string | null;
+  previewFloorStyleId: string | null;
+  previewWallStyleId: string | null;
 
   // Actions
   enterDecorate: () => void;
@@ -45,6 +48,8 @@ interface DecorateState {
   cancelPlacement: () => void;
   /** Remove the currently-held ghost item from the room (returns to inventory) */
   removeGhostItem: () => void;
+  previewSurfaceStyle: (roomId: string, surfaceType: TentSurfaceType, styleId: string) => void;
+  clearSurfacePreview: (surfaceType?: TentSurfaceType) => void;
 }
 
 const DEFAULT_DIRECTION_ORDER: Direction[] = ['down', 'right', 'up', 'left'];
@@ -89,12 +94,20 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
   ghostDirection: 'down',
   ghostValid: false,
   isPreview: false,
+  previewRoomId: null,
+  previewFloorStyleId: null,
+  previewWallStyleId: null,
 
   enterDecorate: () => set({
     isDecorating: true,
-    subMode: 'edit',
+    subMode: 'place',
     ghostItemId: null,
     ghostPlacementId: null,
+    ghostValid: false,
+    isPreview: false,
+    previewRoomId: null,
+    previewFloorStyleId: null,
+    previewWallStyleId: null,
   }),
 
   exitDecorate: () => set({
@@ -104,6 +117,9 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
     ghostPlacementId: null,
     ghostValid: false,
     isPreview: false,
+    previewRoomId: null,
+    previewFloorStyleId: null,
+    previewWallStyleId: null,
   }),
 
   switchToPlaceMode: () => set({
@@ -112,6 +128,9 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
     ghostPlacementId: null,
     ghostValid: false,
     isPreview: false,
+    previewRoomId: null,
+    previewFloorStyleId: null,
+    previewWallStyleId: null,
   }),
 
   switchToEditMode: () => set({
@@ -120,6 +139,9 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
     ghostPlacementId: null,
     ghostValid: false,
     isPreview: false,
+    previewRoomId: null,
+    previewFloorStyleId: null,
+    previewWallStyleId: null,
   }),
 
   startPlacing: (itemId) => {
@@ -261,4 +283,37 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
       ghostValid: false,
     });
   },
+
+  previewSurfaceStyle: (roomId, surfaceType, styleId) => set((state) => {
+    const sameRoomPreview = state.previewRoomId === roomId;
+    return {
+      previewRoomId: roomId,
+      previewFloorStyleId: surfaceType === 'floor'
+        ? styleId
+        : (sameRoomPreview ? state.previewFloorStyleId : null),
+      previewWallStyleId: surfaceType === 'wall'
+        ? styleId
+        : (sameRoomPreview ? state.previewWallStyleId : null),
+    };
+  }),
+
+  clearSurfacePreview: (surfaceType) => set((state) => {
+    if (!surfaceType) {
+      return {
+        previewRoomId: null,
+        previewFloorStyleId: null,
+        previewWallStyleId: null,
+      };
+    }
+
+    const nextFloorStyleId = surfaceType === 'floor' ? null : state.previewFloorStyleId;
+    const nextWallStyleId = surfaceType === 'wall' ? null : state.previewWallStyleId;
+    const hasAnyPreview = !!nextFloorStyleId || !!nextWallStyleId;
+
+    return {
+      previewRoomId: hasAnyPreview ? state.previewRoomId : null,
+      previewFloorStyleId: nextFloorStyleId,
+      previewWallStyleId: nextWallStyleId,
+    };
+  }),
 }));

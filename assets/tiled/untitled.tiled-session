@@ -14,11 +14,11 @@
             "scaleInEditor": 1
         },
         "flicker-forest-tilemap.json": {
-            "scale": 1.0029,
+            "scale": 0.4619,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 410.3101007079471,
-                "y": 415.2956426363546
+                "x": 388.61225373457455,
+                "y": 687.3782203940248
             }
         },
         "flicker-forest-tilemap.json#flicker-forest": {

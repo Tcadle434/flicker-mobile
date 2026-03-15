@@ -19,6 +19,7 @@ interface Props {
 
 export default function TentTouchLayer({ scale, offsetY }: Props) {
   const isDecorating = useDecorateStore((s) => s.isDecorating);
+  const subMode = useDecorateStore((s) => s.subMode);
   const ghostItemId = useDecorateStore((s) => s.ghostItemId);
   const updateGhostPosition = useDecorateStore((s) => s.updateGhostPosition);
   const startMoving = useDecorateStore((s) => s.startMoving);
@@ -67,7 +68,7 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
         const ghostY = useDecorateStore.getState().ghostY;
         dragOffsetRef.current = { dx: px - ghostX, dy: py - ghostY };
         updateGhostPosition(px - dragOffsetRef.current.dx, py - dragOffsetRef.current.dy);
-      } else {
+      } else if (subMode === 'edit') {
         // Tap on a placed item to pick it up
         const placement = findPlacementAt(px, py);
         if (placement) {
@@ -76,7 +77,7 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
         }
       }
     },
-    [isDecorating, ghostItemId, toPixel, updateGhostPosition, findPlacementAt, startMoving],
+    [isDecorating, subMode, ghostItemId, toPixel, updateGhostPosition, findPlacementAt, startMoving],
   );
 
   const handleTouchMove = useCallback(
@@ -96,8 +97,14 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
   return (
     <View
       style={styles.layer}
-      onStartShouldSetResponder={() => true}
-      onMoveShouldSetResponder={() => true}
+      onStartShouldSetResponder={() => {
+        const state = useDecorateStore.getState();
+        return state.isDecorating && (state.subMode === 'edit' || !!state.ghostItemId);
+      }}
+      onMoveShouldSetResponder={() => {
+        const state = useDecorateStore.getState();
+        return state.isDecorating && !!state.ghostItemId;
+      }}
       onResponderGrant={handleTouchStart}
       onResponderMove={handleTouchMove}
     />

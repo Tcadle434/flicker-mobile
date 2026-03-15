@@ -257,6 +257,49 @@ export interface Database {
           placed_at?: string;
         };
       };
+      tent_owned_surface_styles: {
+        Row: {
+          user_id: string;
+          style_id: string;
+          surface_type: string;
+          purchased_at: string;
+        };
+        Insert: {
+          user_id: string;
+          style_id: string;
+          surface_type: string;
+          purchased_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          style_id?: string;
+          surface_type?: string;
+          purchased_at?: string;
+        };
+      };
+      tent_room_styles: {
+        Row: {
+          user_id: string;
+          room_id: string;
+          floor_style_id: string | null;
+          wall_style_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          room_id: string;
+          floor_style_id?: string | null;
+          wall_style_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          room_id?: string;
+          floor_style_id?: string | null;
+          wall_style_id?: string | null;
+          updated_at?: string;
+        };
+      };
     };
   };
 }

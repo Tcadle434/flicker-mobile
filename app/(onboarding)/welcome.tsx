@@ -31,6 +31,9 @@ import {
 	Step6Personalization,
 	Step4FlickerReacts,
 	Step5ScreenTimeQuestion,
+	StepNoisiest,
+	StepTransitionToDemo,
+	StepCinematicDemo,
 	StepBirthDate,
 	StepCalculating,
 	StepLifetimeCost,
@@ -51,7 +54,7 @@ import {
 	Step19FlickerExcited,
 	Step20Paywall,
 } from "../../src/components/onboarding/steps";
-import { ONBOARDING_WARMUP_ASSETS } from "../../src/components/onboarding/onboardingAssets";
+import { ONBOARDING_WARMUP_ASSETS, warmDemoAssets } from "../../src/components/onboarding/onboardingAssets";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const SWIPE_THRESHOLD = SCREEN_W * 0.25;
@@ -66,8 +69,11 @@ const STEPS: React.ComponentType<{ onNext: () => void }>[] = [
 	Step3AlwaysOn, //  4 - Content (Notifications hijack)
 	Step5ProductIntro, //  5 - Content (Flicker helps)
 	Step5bFlickerTransition, //  7 - Dialogue (transition)
-	Step6Personalization, //  8 - Content (Goals multi-select)
-	Step5ScreenTimeQuestion, //  8 - Content (interactive)
+	Step6Personalization, //  7 - Content (Goals multi-select)
+	StepNoisiest, //  8 - Content (noisiest time)
+	StepTransitionToDemo, //  9 - Content (transition to demo)
+	StepCinematicDemo, // 10 - Cinematic auto-playing product demo
+	Step5ScreenTimeQuestion, // 11 - Content (interactive)
 	StepBirthDate, //  9 - Content (birth date picker)
 	StepCalculating, // 10 - Flicker focus + progress bar, auto-advances
 	StepLifetimeCost, // 11 - Big reveal: X.X years on screen
@@ -120,6 +126,13 @@ export default function OnboardingWelcome() {
 	useEffect(() => {
 		void warmOnboardingAssets();
 	}, []);
+
+	// Warm heavy demo assets once user reaches step 5-6
+	useEffect(() => {
+		if (currentStep >= 5) {
+			void warmDemoAssets();
+		}
+	}, [currentStep >= 5]);
 
 	const clearTransition = useCallback(() => {
 		isTransitioning.current = false;

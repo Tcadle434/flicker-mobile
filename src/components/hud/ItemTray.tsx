@@ -22,7 +22,7 @@ import { useTentStore } from '../../stores/tentStore';
 import { useDecorateStore } from '../../stores/decorateStore';
 import { getCatalogItem, getItemThumbnail, getItemDimensions } from '../../services/tent/tentCatalog';
 import PixelPanel from './PixelPanel';
-import { HUD_ASSETS } from './hudAssets';
+import TentDecorateModeToggle from './TentDecorateModeToggle';
 import type { ItemCategory } from '../../types/tent';
 
 const THUMB_MAX = 48;
@@ -46,6 +46,7 @@ const CATEGORY_TABS: { key: 'all' | ItemCategory; label: string }[] = [
 ];
 
 const { width: SCREEN_W } = Dimensions.get('window');
+const PANEL_HEIGHT = 196;
 
 interface Props {
   onOpenShop: () => void;
@@ -85,17 +86,15 @@ export default function ItemTray({ onOpenShop }: Props) {
       style={[styles.wrapper, { paddingBottom: insets.bottom + 8 }]}
       entering={SlideInDown.duration(300)}
     >
-      <PixelPanel variant={1} style={{ width: panelWidth }}>
+      <PixelPanel variant={1} style={{ width: panelWidth, height: PANEL_HEIGHT }}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerText}>Your Items</Text>
-          <TouchableOpacity onPress={switchToEditMode} activeOpacity={0.7} style={styles.editBtn}>
-            <Image
-              source={HUD_ASSETS.edit}
-              style={styles.editIcon}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
+          <Text style={styles.headerText}>Owned Items</Text>
+          <TentDecorateModeToggle
+            activeMode="place"
+            onSelectItems={() => undefined}
+            onSelectRoom={switchToEditMode}
+          />
         </View>
 
         {/* Category tabs */}
@@ -210,13 +209,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
-  },
-  editBtn: {
-    padding: 6,
-  },
-  editIcon: {
-    width: 24,
-    height: 24,
   },
   emptyState: {
     alignItems: 'center',
