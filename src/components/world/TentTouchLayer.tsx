@@ -2,7 +2,7 @@
  * Tent Touch Layer
  *
  * Touch overlay for the tent interior.
- * - Tap to pick up items in edit mode
+ * - Tap to pick up placed items while decorating
  * - Drag to move ghost item freely at pixel level
  */
 
@@ -19,12 +19,15 @@ interface Props {
 
 export default function TentTouchLayer({ scale, offsetY }: Props) {
   const isDecorating = useDecorateStore((s) => s.isDecorating);
-  const subMode = useDecorateStore((s) => s.subMode);
   const ghostItemId = useDecorateStore((s) => s.ghostItemId);
+  const previewRoomId = useDecorateStore((s) => s.previewRoomId);
+  const previewFloorStyleId = useDecorateStore((s) => s.previewFloorStyleId);
+  const previewWallStyleId = useDecorateStore((s) => s.previewWallStyleId);
   const updateGhostPosition = useDecorateStore((s) => s.updateGhostPosition);
   const startMoving = useDecorateStore((s) => s.startMoving);
   const placements = useTentStore((s) => s.placements);
   const currentRoomId = useTentStore((s) => s.currentRoomId);
+  const surfacePreviewActive = !!previewRoomId && (!!previewFloorStyleId || !!previewWallStyleId);
 
   // Drag offset: difference between touch point and ghost origin
   const dragOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
@@ -68,7 +71,7 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
         const ghostY = useDecorateStore.getState().ghostY;
         dragOffsetRef.current = { dx: px - ghostX, dy: py - ghostY };
         updateGhostPosition(px - dragOffsetRef.current.dx, py - dragOffsetRef.current.dy);
-      } else if (subMode === 'edit') {
+      } else if (!surfacePreviewActive) {
         // Tap on a placed item to pick it up
         const placement = findPlacementAt(px, py);
         if (placement) {
@@ -77,7 +80,7 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
         }
       }
     },
-    [isDecorating, subMode, ghostItemId, toPixel, updateGhostPosition, findPlacementAt, startMoving],
+    [isDecorating, ghostItemId, surfacePreviewActive, toPixel, updateGhostPosition, findPlacementAt, startMoving],
   );
 
   const handleTouchMove = useCallback(
@@ -97,9 +100,17 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
   return (
     <View
       style={styles.layer}
-      onStartShouldSetResponder={() => {
+      onStartShouldSetResponder={(e) => {
         const state = useDecorateStore.getState();
-        return state.isDecorating && (state.subMode === 'edit' || !!state.ghostItemId);
+        if (!state.isDecorating) return false;
+        if (state.ghostItemId) return true;
+
+        const previewActive = !!state.previewRoomId
+          && (!!state.previewFloorStyleId || !!state.previewWallStyleId);
+        if (previewActive) return false;
+
+        const { px, py } = toPixel(e.nativeEvent.locationX, e.nativeEvent.locationY);
+        return !!findPlacementAt(px, py);
       }}
       onMoveShouldSetResponder={() => {
         const state = useDecorateStore.getState();

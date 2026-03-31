@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ImageBackground,
   Image,
   StyleSheet,
   Modal,
@@ -12,7 +11,6 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import PixelPanel from './PixelPanel';
-import { HUD_ASSETS } from './hudAssets';
 import { useTentStore } from '../../stores/tentStore';
 import {
   getAllSurfaceStyles,
@@ -56,19 +54,15 @@ function SurfaceCard({
       activeOpacity={0.7}
       style={[styles.card, isEquipped && styles.cardSelected]}
     >
-      <ImageBackground
-        source={HUD_ASSETS.itemShopBg}
-        style={styles.previewWrap}
-        resizeMode="stretch"
-      >
+      <PixelPanel scale={1} style={styles.previewWrap}>
         {preview && (
           <Image
             source={preview}
-            style={previewSize}
+            style={[previewSize, { alignSelf: 'center' }]}
             resizeMode="stretch"
           />
         )}
-      </ImageBackground>
+      </PixelPanel>
 
       <Text style={styles.cardTitle} numberOfLines={2}>{style.name}</Text>
 
@@ -120,7 +114,7 @@ export default function TentSurfacePickerPopup({
             </Text>
           </View>
 
-          <PixelPanel variant={1} style={styles.panel}>
+          <PixelPanel style={styles.panel} inset={8}>
             <Text style={styles.helperText}>Tap a style to open purchase, preview, or cancel.</Text>
 
             <ScrollView

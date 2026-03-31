@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image } from 'react-native';
 import Animated, { SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PixelPanel from './PixelPanel';
@@ -8,10 +8,19 @@ import { useDecorateStore } from '../../stores/decorateStore';
 import { useTentStore } from '../../stores/tentStore';
 import {
   createDefaultRoomStyleSelection,
+  getSurfacePreview,
   getSurfaceStyle,
 } from '../../services/tent/tentSurfaceCatalog';
+import type { TentSurfaceType } from '../../types/tent';
 
 const { width: SCREEN_W } = Dimensions.get('window');
+const PANEL_HEIGHT = 196;
+
+function getPreviewSize(surfaceType: TentSurfaceType): { width: number; height: number } {
+  return surfaceType === 'floor'
+    ? { width: 110, height: 68 }
+    : { width: 24, height: 68 };
+}
 
 interface Props {
   onOpenFloor: () => void;
@@ -26,15 +35,19 @@ export default function TentRoomEditPanel({ onOpenFloor, onOpenWallpaper }: Prop
 
   const roomStyleSelection = roomStyleSelections[currentRoomId]
     ?? createDefaultRoomStyleSelection(currentRoomId);
-  const floorStyleName = getSurfaceStyle(roomStyleSelection.floorStyleId)?.name ?? 'Default';
-  const wallStyleName = getSurfaceStyle(roomStyleSelection.wallStyleId)?.name ?? 'Default';
+  const floorStyle = getSurfaceStyle(roomStyleSelection.floorStyleId);
+  const wallStyle = getSurfaceStyle(roomStyleSelection.wallStyleId);
+  const floorPreview = floorStyle ? getSurfacePreview(floorStyle.id) : null;
+  const wallPreview = wallStyle ? getSurfacePreview(wallStyle.id) : null;
+  const floorStyleName = floorStyle?.name ?? 'Default';
+  const wallStyleName = wallStyle?.name ?? 'Default';
 
   return (
     <Animated.View
       style={[styles.wrapper, { paddingBottom: insets.bottom + 8 }]}
       entering={SlideInDown.duration(300)}
     >
-      <PixelPanel variant={2} style={styles.panel}>
+      <PixelPanel scale={1} style={styles.panel} inset={8}>
         <View style={styles.header}>
           <Text style={styles.headerText}>Room Finish</Text>
           <TentDecorateModeToggle
@@ -46,13 +59,46 @@ export default function TentRoomEditPanel({ onOpenFloor, onOpenWallpaper }: Prop
 
         <View style={styles.actionsRow}>
           <TouchableOpacity onPress={onOpenFloor} activeOpacity={0.7} style={styles.actionCard}>
-            <Text style={styles.actionLabel}>Floor</Text>
-            <Text style={styles.actionValue} numberOfLines={1}>{floorStyleName}</Text>
+            <PixelPanel scale={1} style={styles.previewFrame} inset={6}>
+              <View style={styles.previewContent}>
+                {floorPreview ? (
+                  <Image
+                    source={floorPreview}
+                    style={[styles.previewImage, getPreviewSize('floor')]}
+                    resizeMode="stretch"
+                  />
+                ) : null}
+              </View>
+            </PixelPanel>
+
+            <View style={styles.cardText}>
+              <Text style={styles.actionLabel}>Floor</Text>
+              <Text style={styles.actionValue} numberOfLines={2}>{floorStyleName}</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={onOpenWallpaper} activeOpacity={0.7} style={styles.actionCard}>
-            <Text style={styles.actionLabel}>Wallpaper</Text>
-            <Text style={styles.actionValue} numberOfLines={1}>{wallStyleName}</Text>
+            <PixelPanel scale={1} style={styles.previewFrame} inset={6}>
+              <View style={styles.previewContent}>
+                {wallPreview ? (
+                  <View style={styles.wallPreviewRow}>
+                    {[0, 1, 2].map((index) => (
+                      <Image
+                        key={index}
+                        source={wallPreview}
+                        style={[styles.previewImage, getPreviewSize('wall')]}
+                        resizeMode="stretch"
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            </PixelPanel>
+
+            <View style={styles.cardText}>
+              <Text style={styles.actionLabel}>Wallpaper</Text>
+              <Text style={styles.actionValue} numberOfLines={2}>{wallStyleName}</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </PixelPanel>
@@ -69,7 +115,7 @@ const styles = StyleSheet.create({
   },
   panel: {
     width: SCREEN_W - 24,
-    height: 116,
+    height: PANEL_HEIGHT,
   },
   header: {
     flexDirection: 'row',
@@ -86,14 +132,16 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     gap: 10,
+    flex: 1,
   },
   actionCard: {
     flex: 1,
     backgroundColor: 'rgba(59, 42, 26, 0.08)',
     borderRadius: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 10,
-    gap: 4,
+    gap: 10,
+    alignItems: 'center',
   },
   actionLabel: {
     color: '#8B7A6A',
@@ -106,5 +154,30 @@ const styles = StyleSheet.create({
     color: '#3B2A1A',
     fontSize: 13,
     fontWeight: '700',
+    textAlign: 'center',
+  },
+  previewFrame: {
+    width: '100%',
+    height: 78,
+  },
+  previewContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wallPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  previewImage: {
+    alignSelf: 'center',
+  },
+  cardText: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
   },
 });

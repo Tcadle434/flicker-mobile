@@ -10,7 +10,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ImageBackground,
   Image,
   StyleSheet,
   Modal,
@@ -19,7 +18,6 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useCurrencyStore } from '../../stores/currencyStore';
 import { getItemThumbnail, getItemDimensions } from '../../services/tent/tentCatalog';
 import PixelPanel from './PixelPanel';
-import { HUD_ASSETS } from './hudAssets';
 import type { CatalogItem } from '../../types/tent';
 
 const THUMB_SIZE = 64;
@@ -58,22 +56,18 @@ export default function ItemConfirmPopup({ item, onPurchase, onPreview, onCancel
         />
 
         <Animated.View style={styles.center} entering={FadeInDown.duration(300)}>
-          <PixelPanel variant={1} style={styles.panel}>
+          <PixelPanel style={styles.panel} inset={8}>
             <View style={styles.content}>
               {/* Thumbnail */}
-              <ImageBackground
-                source={HUD_ASSETS.itemShopBg}
-                style={styles.thumbWrap}
-                resizeMode="stretch"
-              >
+              <PixelPanel scale={1} style={styles.thumbWrap}>
                 {thumbnail && (
                   <Image
                     source={thumbnail}
-                    style={{ width: thumbSize.width, height: thumbSize.height }}
+                    style={{ width: thumbSize.width, height: thumbSize.height, alignSelf: 'center' }}
                     resizeMode="contain"
                   />
                 )}
-              </ImageBackground>
+              </PixelPanel>
 
               {/* Name */}
               <Text style={styles.itemName}>{item.name}</Text>

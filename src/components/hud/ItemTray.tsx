@@ -86,7 +86,7 @@ export default function ItemTray({ onOpenShop }: Props) {
       style={[styles.wrapper, { paddingBottom: insets.bottom + 8 }]}
       entering={SlideInDown.duration(300)}
     >
-      <PixelPanel variant={1} style={{ width: panelWidth, height: PANEL_HEIGHT }}>
+      <PixelPanel style={{ width: panelWidth, height: PANEL_HEIGHT }} inset={8}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerText}>Owned Items</Text>
@@ -100,6 +100,7 @@ export default function ItemTray({ onOpenShop }: Props) {
         {/* Category tabs */}
         <ScrollView
           horizontal
+          style={styles.categoryScroller}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoryRow}
         >
@@ -234,13 +235,21 @@ const styles = StyleSheet.create({
   },
   categoryRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
-    marginBottom: 8,
     paddingHorizontal: 2,
+    paddingVertical: 1,
+  },
+  categoryScroller: {
+    flexGrow: 0,
+    marginBottom: 8,
+    maxHeight: 30,
   },
   categoryTab: {
+    minHeight: 22,
+    justifyContent: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 2,
     borderRadius: 6,
     backgroundColor: 'rgba(59, 42, 26, 0.08)',
   },
@@ -251,6 +260,7 @@ const styles = StyleSheet.create({
     color: '#8B7A6A',
     fontSize: 10,
     fontWeight: '600',
+    lineHeight: 12,
   },
   categoryTabTextActive: {
     color: '#3B2A1A',

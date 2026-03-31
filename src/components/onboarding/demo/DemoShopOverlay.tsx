@@ -7,13 +7,12 @@
  */
 
 import React from 'react';
-import { View, Text, Image, ImageBackground, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, Image, StyleSheet, Dimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   SharedValue,
 } from 'react-native-reanimated';
 import PixelPanel from '../../hud/PixelPanel';
-import { HUD_ASSETS } from '../../hud/hudAssets';
 import { ONBOARDING_ASSETS } from '../onboardingAssets';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -51,7 +50,7 @@ export default function DemoShopOverlay({ shopOpacity, shopTranslateY }: Props) 
         </View>
 
         {/* Panel */}
-        <PixelPanel variant={1} style={{ width: PANEL_W, height: PANEL_H }}>
+        <PixelPanel style={{ width: PANEL_W, height: PANEL_H }} inset={8}>
           {/* Category pill */}
           <View style={styles.categoryWrap}>
             <View style={styles.categoryPill}>
@@ -64,17 +63,13 @@ export default function DemoShopOverlay({ shopOpacity, shopTranslateY }: Props) 
           <View style={styles.grid}>
             {DEMO_ITEMS.map((item) => (
               <View key={item.name} style={styles.shopItem}>
-                <ImageBackground
-                  source={HUD_ASSETS.itemShopBg}
-                  style={styles.itemImageWrap}
-                  resizeMode="stretch"
-                >
+                <PixelPanel scale={1} style={styles.itemImageWrap}>
                   <Image
                     source={item.source}
                     style={styles.itemThumb}
                     resizeMode="contain"
                   />
-                </ImageBackground>
+                </PixelPanel>
                 <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
                 <View style={styles.buyBtn}>
                   <Text style={styles.buyText}>{item.price}</Text>
@@ -163,6 +158,7 @@ const styles = StyleSheet.create({
   itemThumb: {
     width: 40,
     height: 40,
+    alignSelf: 'center',
   },
   itemName: {
     color: '#3B2A1A',

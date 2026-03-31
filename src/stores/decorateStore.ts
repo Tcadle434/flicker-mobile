@@ -5,8 +5,8 @@
  * No persistence — resets when the user leaves decorate mode.
  *
  * Two sub-modes:
- * - 'place': Select owned items from tray, place on grid
- * - 'edit': Tap existing placed items to pick up and move
+ * - 'place': Show owned items tray
+ * - 'edit': Show room finish panel
  */
 
 import { create } from 'zustand';
@@ -200,13 +200,13 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
     );
 
     set({
-      subMode: 'edit',
       ghostItemId: placement.itemId,
       ghostPlacementId: placementId,
       ghostX: placement.x,
       ghostY: placement.y,
       ghostDirection: placement.direction,
       ghostValid: valid,
+      isPreview: false,
     });
   },
 
