@@ -98,7 +98,7 @@ export default function StartSessionButton({ onPress, style }: Props) {
 				/>
 			</View>
 			<Animated.View style={[styles.labelOverlay, labelStyle]}>
-				<Text style={styles.label}>Strt</Text>
+				<Text style={styles.label}>Start</Text>
 			</Animated.View>
 		</TouchableOpacity>
 	);
