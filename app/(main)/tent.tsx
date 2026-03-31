@@ -45,6 +45,7 @@ export default function TentScreen() {
 
   const isDecorating = useDecorateStore((s) => s.isDecorating);
   const subMode = useDecorateStore((s) => s.subMode);
+  const ghostItemId = useDecorateStore((s) => s.ghostItemId);
   const enterDecorate = useDecorateStore((s) => s.enterDecorate);
   const exitDecorate = useDecorateStore((s) => s.exitDecorate);
   const startPlacing = useDecorateStore((s) => s.startPlacing);
@@ -225,6 +226,7 @@ export default function TentScreen() {
         : currentRoomStyleSelection.wallStyleId === surfaceConfirmSelection.style.id
     )
     : false;
+  const hasGhost = !!ghostItemId;
 
   return (
     <View style={styles.container}>
@@ -244,9 +246,9 @@ export default function TentScreen() {
                 onExitPreview={handleExitPreview}
                 surfacePreviewActive={!!previewingSurfaceSelection}
               />
-              {!previewingSurfaceSelection && subMode === 'place' ? (
+              {!previewingSurfaceSelection && !hasGhost && subMode === 'place' ? (
                 <ItemTray onOpenShop={handleOpenShop} />
-              ) : !previewingSurfaceSelection ? (
+              ) : !previewingSurfaceSelection && !hasGhost ? (
                 <TentRoomEditPanel
                   onOpenFloor={() => handleOpenSurfacePicker('floor')}
                   onOpenWallpaper={() => handleOpenSurfacePicker('wall')}

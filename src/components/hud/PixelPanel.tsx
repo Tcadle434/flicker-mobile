@@ -1,65 +1,183 @@
 /**
- * Pixel Panel
+ * Pixel Panel — manual 9-slice renderer
  *
- * Reusable pixel-art framed panel for popups, trays, and UI containers.
- * Uses ImageBackground to stretch the pixel art frame behind content.
+ * Uses the shared 48x48 source image as a 3x3 grid of 16x16 tiles.
+ * Corners keep a fixed size, edges stretch along one axis, and the center
+ * stretches to fill the remaining area.
  */
 
-import React, { useState } from 'react';
-import { ImageBackground, View, StyleSheet, type ViewStyle, type LayoutChangeEvent } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  type LayoutChangeEvent,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import {
+  Canvas,
+  FilterMode,
+  MipmapMode,
+  Picture,
+  Skia,
+  useImage,
+} from '@shopify/react-native-skia';
 import { HUD_ASSETS } from './hudAssets';
 
-type PanelVariant = 1 | 2;
-
-// Content insets as fraction of panel size — matches inner canvas of each art asset
-// Variant 1 (component-background.png): canvas is ~25% in from sides, ~20% from top/bottom
-const INSET_FRACTIONS: Record<PanelVariant, { top: number; bottom: number; left: number; right: number }> = {
-  1: { top: 0.20, bottom: 0.20, left: 0.25, right: 0.25 },
-  2: { top: 0.10, bottom: 0.10, left: 0.10, right: 0.10 },
-};
+const TILE_SIZE = 16;
 
 interface Props {
-  variant?: PanelVariant;
-  children: React.ReactNode;
-  style?: ViewStyle;
+  children?: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  scale?: number;
+  inset?: number;
+  source?: number;
 }
 
-export default function PixelPanel({ variant = 1, children, style }: Props) {
-  const bgSource = variant === 2 ? HUD_ASSETS.componentBg2 : HUD_ASSETS.componentBg;
-  const f = INSET_FRACTIONS[variant];
-  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+export default function PixelPanel({
+  children,
+  style,
+  scale = 1,
+  inset = 4,
+  source = HUD_ASSETS.panelSlice,
+}: Props) {
+  const image = useImage(source);
+  const flattenedStyle = StyleSheet.flatten(style) ?? {};
+  const [layoutSize, setLayoutSize] = useState(() => ({
+    width: typeof flattenedStyle.width === 'number' ? flattenedStyle.width : 0,
+    height: typeof flattenedStyle.height === 'number' ? flattenedStyle.height : 0,
+  }));
 
-  const handleLayout = (e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout;
-    setSize({ w: width, h: height });
+  const width = Math.round(
+    typeof flattenedStyle.width === 'number' ? flattenedStyle.width : layoutSize.width,
+  );
+  const height = Math.round(
+    typeof flattenedStyle.height === 'number' ? flattenedStyle.height : layoutSize.height,
+  );
+
+  const cornerSize = Math.max(1, Math.round(TILE_SIZE * scale));
+  const contentInset = Math.max(0, Math.round(inset * scale));
+
+  const picture = useMemo(() => {
+    if (!image || width <= 0 || height <= 0) {
+      return null;
+    }
+
+    const leftWidth = Math.min(cornerSize, Math.floor(width / 2));
+    const rightWidth = Math.min(cornerSize, width - leftWidth);
+    const topHeight = Math.min(cornerSize, Math.floor(height / 2));
+    const bottomHeight = Math.min(cornerSize, height - topHeight);
+    const centerWidth = Math.max(0, width - leftWidth - rightWidth);
+    const centerHeight = Math.max(0, height - topHeight - bottomHeight);
+
+    const recorder = Skia.PictureRecorder();
+    const canvas = recorder.beginRecording(Skia.XYWHRect(0, 0, width, height));
+    const paint = Skia.Paint();
+
+    const drawSlice = (
+      srcX: number,
+      srcY: number,
+      srcWidth: number,
+      srcHeight: number,
+      dstX: number,
+      dstY: number,
+      dstWidth: number,
+      dstHeight: number,
+    ) => {
+      if (dstWidth <= 0 || dstHeight <= 0) {
+        return;
+      }
+
+      canvas.drawImageRectOptions(
+        image,
+        Skia.XYWHRect(srcX, srcY, srcWidth, srcHeight),
+        Skia.XYWHRect(dstX, dstY, dstWidth, dstHeight),
+        FilterMode.Nearest,
+        MipmapMode.None,
+        paint,
+      );
+    };
+
+    drawSlice(0, 0, TILE_SIZE, TILE_SIZE, 0, 0, leftWidth, topHeight);
+    drawSlice(TILE_SIZE, 0, TILE_SIZE, TILE_SIZE, leftWidth, 0, centerWidth, topHeight);
+    drawSlice(TILE_SIZE * 2, 0, TILE_SIZE, TILE_SIZE, width - rightWidth, 0, rightWidth, topHeight);
+
+    drawSlice(0, TILE_SIZE, TILE_SIZE, TILE_SIZE, 0, topHeight, leftWidth, centerHeight);
+    drawSlice(TILE_SIZE, TILE_SIZE, TILE_SIZE, TILE_SIZE, leftWidth, topHeight, centerWidth, centerHeight);
+    drawSlice(
+      TILE_SIZE * 2,
+      TILE_SIZE,
+      TILE_SIZE,
+      TILE_SIZE,
+      width - rightWidth,
+      topHeight,
+      rightWidth,
+      centerHeight,
+    );
+
+    drawSlice(0, TILE_SIZE * 2, TILE_SIZE, TILE_SIZE, 0, height - bottomHeight, leftWidth, bottomHeight);
+    drawSlice(
+      TILE_SIZE,
+      TILE_SIZE * 2,
+      TILE_SIZE,
+      TILE_SIZE,
+      leftWidth,
+      height - bottomHeight,
+      centerWidth,
+      bottomHeight,
+    );
+    drawSlice(
+      TILE_SIZE * 2,
+      TILE_SIZE * 2,
+      TILE_SIZE,
+      TILE_SIZE,
+      width - rightWidth,
+      height - bottomHeight,
+      rightWidth,
+      bottomHeight,
+    );
+
+    return recorder.finishRecordingAsPicture();
+  }, [cornerSize, height, image, width]);
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const nextWidth = Math.round(event.nativeEvent.layout.width);
+    const nextHeight = Math.round(event.nativeEvent.layout.height);
+
+    if (nextWidth !== layoutSize.width || nextHeight !== layoutSize.height) {
+      setLayoutSize({ width: nextWidth, height: nextHeight });
+    }
   };
 
   return (
-    <ImageBackground
-      source={bgSource}
-      style={[styles.container, style]}
-      resizeMode="stretch"
-      onLayout={handleLayout}
-    >
-      {size && (
-        <View
-          style={{
-            position: 'absolute',
-            top: size.h * f.top,
-            bottom: size.h * f.bottom,
-            left: size.w * f.left,
-            right: size.w * f.right,
-          }}
-        >
-          {children}
-        </View>
+    <View onLayout={handleLayout} style={[styles.root, style]}>
+      {picture && (
+        <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Picture picture={picture} />
+        </Canvas>
       )}
-    </ImageBackground>
+      <View
+        style={[
+          styles.content,
+          {
+            top: contentInset,
+            bottom: contentInset,
+            left: contentInset,
+            right: contentInset,
+          },
+        ]}
+      >
+        {children}
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     overflow: 'hidden',
+  },
+  content: {
+    position: 'absolute',
   },
 });

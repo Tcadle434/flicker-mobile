@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ImageBackground,
   Image,
   StyleSheet,
   Modal,
@@ -12,7 +11,6 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useCurrencyStore } from '../../stores/currencyStore';
 import { getSurfacePreview } from '../../services/tent/tentSurfaceCatalog';
 import PixelPanel from './PixelPanel';
-import { HUD_ASSETS } from './hudAssets';
 import type { TentSurfaceStyle, TentSurfaceType } from '../../types/tent';
 
 function getPreviewSize(surfaceType: TentSurfaceType): { width: number; height: number } {
@@ -62,21 +60,17 @@ export default function TentSurfaceConfirmPopup({
         />
 
         <Animated.View style={styles.center} entering={FadeInDown.duration(300)}>
-          <PixelPanel variant={1} style={styles.panel}>
+          <PixelPanel style={styles.panel} inset={8}>
             <View style={styles.content}>
-              <ImageBackground
-                source={HUD_ASSETS.itemShopBg}
-                style={styles.thumbWrap}
-                resizeMode="stretch"
-              >
+              <PixelPanel scale={1} style={styles.thumbWrap}>
                 {preview && (
                   <Image
                     source={preview}
-                    style={previewSize}
+                    style={[previewSize, { alignSelf: 'center' }]}
                     resizeMode="stretch"
                   />
                 )}
-              </ImageBackground>
+              </PixelPanel>
 
               <Text style={styles.itemName}>{styleItem.name}</Text>
 

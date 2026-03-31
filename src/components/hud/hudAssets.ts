@@ -18,6 +18,8 @@ export const HUD_ASSETS = {
   xClose: require('../../../assets/ui/hud-x.png'),
   rotate: require('../../../assets/ui/hud-rotate.png'),
   edit: require('../../../assets/ui/hud-edit.png'),
+  flickerCalmBase: require('../../../assets/flicker_calm_base_transparent.png'),
+  flickerNeutralBase: require('../../../assets/flicker_neutral_base_transparent.png'),
 
   // Component backgrounds (pixel art frames)
   componentBg: require('../../../assets/ui/component-background.png'),
@@ -26,6 +28,8 @@ export const HUD_ASSETS = {
   itemShopBg: require('../../../assets/ui/item-shop-background.png'),
 
   balanceBg: require('../../../assets/ui/balance_component_background.png'),
+  panelSlice: require('../../../assets/ui/component_background_panel.png'),
+  panelSlice2: require('../../../assets/ui/component_background_panel_2.png'),
 
   // Volume icons
   volumeUnmuted: require('../../../assets/ui/volume_unmuted.png'),

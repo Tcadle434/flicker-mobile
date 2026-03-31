@@ -13,6 +13,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LightBalanceDisplay from './LightBalanceDisplay';
 import HudIconButton from './HudIconButton';
+import StoreButton from './StoreButton';
 import MuteToggleButton from './MuteToggleButton';
 import { HUD_ASSETS } from './hudAssets';
 
@@ -56,7 +57,7 @@ export default function TentViewHud({ onBack, onDecorate, onOpenShop }: Props) {
 
       {/* Shop button — bottom right, above decorate */}
       <Animated.View style={[styles.bottomBtn, { bottom: 112 }]}>
-        <HudIconButton icon="shop" onPress={onOpenShop} />
+        <StoreButton onPress={onOpenShop} />
       </Animated.View>
 
       {/* Decorate button — bottom right */}
