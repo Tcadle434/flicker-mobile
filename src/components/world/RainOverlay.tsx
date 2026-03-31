@@ -3,6 +3,7 @@ import { Dimensions } from 'react-native';
 import { Fill, Group, Shader, Skia, rect } from '@shopify/react-native-skia';
 import { useSharedValue, useFrameCallback, useDerivedValue } from 'react-native-reanimated';
 import { rainShaderSource } from '../../shaders/rain';
+import { rainSplashShaderSource } from '../../shaders/rainSplash';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -21,7 +22,8 @@ export default function RainOverlay({
   mapOffsetY,
   mapHeight,
 }: Props) {
-  const effect = useMemo(() => Skia.RuntimeEffect.Make(rainShaderSource), []);
+  const rainEffect = useMemo(() => Skia.RuntimeEffect.Make(rainShaderSource), []);
+  const splashEffect = useMemo(() => Skia.RuntimeEffect.Make(rainSplashShaderSource), []);
 
   const time = useSharedValue(0);
 
@@ -30,7 +32,7 @@ export default function RainOverlay({
     time.value += info.timeSincePreviousFrame / 1000;
   });
 
-  const uniforms = useDerivedValue(() => ({
+  const rainUniforms = useDerivedValue(() => ({
     uTime: time.value,
     uResolution: [SCREEN_W, SCREEN_H],
     uIntensity: intensity,
@@ -38,12 +40,21 @@ export default function RainOverlay({
     uAngle: angle,
   }));
 
+  const groundTop = mapOffsetY + mapHeight * 0.25;
+
+  const splashUniforms = useDerivedValue(() => ({
+    uTime: time.value,
+    uResolution: [SCREEN_W, SCREEN_H],
+    uIntensity: intensity,
+    uGroundTop: groundTop,
+  }));
+
   const clipRect = useMemo(
     () => rect(0, mapOffsetY, SCREEN_W, mapHeight),
     [mapOffsetY, mapHeight],
   );
 
-  if (!effect) return null;
+  if (!rainEffect || !splashEffect) return null;
 
   return (
     <Group clip={clipRect}>
@@ -52,7 +63,13 @@ export default function RainOverlay({
       {/* Rain streaks */}
       <Group blendMode="srcOver">
         <Fill>
-          <Shader source={effect} uniforms={uniforms} />
+          <Shader source={rainEffect} uniforms={rainUniforms} />
+        </Fill>
+      </Group>
+      {/* Ground splashes */}
+      <Group blendMode="srcOver">
+        <Fill>
+          <Shader source={splashEffect} uniforms={splashUniforms} />
         </Fill>
       </Group>
     </Group>

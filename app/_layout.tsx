@@ -31,6 +31,8 @@ export default function RootLayout() {
   });
 
   const initialize = useAuthStore((state) => state.initialize);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const authLoading = useAuthStore((state) => state.isLoading);
   const hydrateCurrency = useCurrencyStore((state) => state.hydrate);
   const hydrateSanctuary = useSanctuaryStore((state) => state.hydrate);
   const hydrateTent = useTentStore((state) => state.hydrate);
@@ -43,17 +45,41 @@ export default function RootLayout() {
   const appStateRef = useRef(AppState.currentState);
 
   useEffect(() => {
-    // Initialize Superwall before any entitlement checks
-    paywallService.initialize().catch(() => undefined);
-    initialize();
-    hydrateCurrency();
-    hydrateSession();
-    hydrateSanctuary().then(() => loadSanctuaryData());
-    hydrateTent();
-    hydrateAudioSettings();
-    // Re-schedule daily streak reminder on every app boot
-    scheduleStreakReminder();
-  }, []);
+    let isCancelled = false;
+
+    const boot = async () => {
+      paywallService.initialize().catch(() => undefined);
+      hydrateSession();
+      hydrateAudioSettings();
+      scheduleStreakReminder();
+
+      await initialize();
+      if (isCancelled) return;
+
+      await Promise.all([
+        hydrateCurrency(),
+        hydrateSanctuary().then(() => loadSanctuaryData()),
+        hydrateTent(),
+      ]);
+    };
+
+    boot().catch(() => undefined);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [hydrateAudioSettings, hydrateCurrency, hydrateSanctuary, hydrateSession, hydrateTent, initialize]);
+
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!isAuthenticated) {
+      useTentStore.getState().resetForAuthChange();
+      return;
+    }
+
+    hydrateTent().catch(() => undefined);
+  }, [authLoading, hydrateTent, isAuthenticated]);
 
   // Start background music once audio settings are hydrated
   useEffect(() => {

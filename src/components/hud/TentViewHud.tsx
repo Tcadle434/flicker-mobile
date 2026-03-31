@@ -8,13 +8,14 @@
  */
 
 import React from 'react';
-import { StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LightBalanceDisplay from './LightBalanceDisplay';
-import HudIconButton from './HudIconButton';
 import StoreButton from './StoreButton';
+import DecorateButton from './DecorateButton';
 import MuteToggleButton from './MuteToggleButton';
+import PixelPanel from './PixelPanel';
 import { HUD_ASSETS } from './hudAssets';
 
 interface Props {
@@ -38,11 +39,15 @@ export default function TentViewHud({ onBack, onDecorate, onOpenShop }: Props) {
         activeOpacity={0.7}
         style={[styles.backBtn, { top: insets.top + 8 }]}
       >
-        <Image
-          source={HUD_ASSETS.backArrow}
-          style={styles.backIcon}
-          resizeMode="contain"
-        />
+        <PixelPanel scale={1} style={styles.backPanel}>
+          <View style={styles.backIconWrap}>
+            <Image
+              source={HUD_ASSETS.backArrow}
+              style={styles.backIcon}
+              resizeMode="contain"
+            />
+          </View>
+        </PixelPanel>
       </TouchableOpacity>
 
       {/* Mute toggle — top right */}
@@ -62,7 +67,7 @@ export default function TentViewHud({ onBack, onDecorate, onOpenShop }: Props) {
 
       {/* Decorate button — bottom right */}
       <Animated.View style={[styles.bottomBtn, { bottom: 52 }]}>
-        <HudIconButton icon="decorate" onPress={onDecorate} />
+        <DecorateButton onPress={onDecorate} />
       </Animated.View>
     </Animated.View>
   );
@@ -75,14 +80,19 @@ const styles = StyleSheet.create({
   backBtn: {
     position: 'absolute',
     left: 16,
-    width: 40,
-    height: 40,
+  },
+  backPanel: {
+    width: 48,
+    height: 48,
+  },
+  backIconWrap: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backIcon: {
-    width: 32,
-    height: 32,
+    width: 24,
+    height: 24,
   },
   lightBalance: {
     position: 'absolute',

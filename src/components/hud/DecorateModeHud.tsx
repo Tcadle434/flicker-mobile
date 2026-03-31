@@ -13,7 +13,6 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDecorateStore } from '../../stores/decorateStore';
 import { getCatalogItem } from '../../services/tent/tentCatalog';
-import HudIconButton from './HudIconButton';
 import { HUD_ASSETS } from './hudAssets';
 
 interface Props {
@@ -57,19 +56,12 @@ export default function DecorateModeHud({
         activeOpacity={0.7}
         style={[styles.doneBtn, { top: insets.top + 8 }]}
       >
-        <View style={styles.doneBg}>
-          <Image
-            source={HUD_ASSETS.xClose}
-            style={styles.doneIcon}
-            resizeMode="contain"
-          />
-        </View>
+        <Image
+          source={HUD_ASSETS.xClose}
+          style={styles.doneIcon}
+          resizeMode="contain"
+        />
       </TouchableOpacity>
-
-      {/* Shop button — top left */}
-      <View style={[styles.shopBtn, { top: insets.top + 8 }]}>
-        <HudIconButton icon="shop" onPress={onOpenShop} />
-      </View>
 
       {/* Placement controls — bottom right, horizontal row */}
       {hasGhost && (
@@ -181,26 +173,14 @@ const styles = StyleSheet.create({
   doneBtn: {
     position: 'absolute',
     right: 16,
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  doneBg: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    borderRadius: 8,
   },
   doneIcon: {
-    width: 24,
-    height: 24,
-  },
-  shopBtn: {
-    position: 'absolute',
-    left: 16,
+    width: 40,
+    height: 40,
   },
   placementControls: {
     position: 'absolute',
