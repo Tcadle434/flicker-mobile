@@ -149,7 +149,7 @@ export default function TentInteriorScene({ onReady }: Props) {
       {/* Walls layer */}
       {renderSurfaceLayer('wall')}
 
-      {/* Placed items (sorted by tileY for depth) */}
+      {/* Placed items (sorted by render plane, layer, and sprite foot depth) */}
       <TentItemsRenderer scale={scale} offsetY={offsetY} />
 
       {/* Ghost item being placed/moved */}

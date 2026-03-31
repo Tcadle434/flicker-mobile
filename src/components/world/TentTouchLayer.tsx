@@ -10,7 +10,8 @@ import React, { useCallback, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useDecorateStore } from '../../stores/decorateStore';
 import { useTentStore } from '../../stores/tentStore';
-import { getCatalogItem, getItemDimensions } from '../../services/tent/tentCatalog';
+import { getItemDimensions } from '../../services/tent/tentCatalog';
+import { compareTentPlacementsForRender } from '../../services/tent/tentRenderOrder';
 
 interface Props {
   scale: number;
@@ -28,6 +29,12 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
   const placements = useTentStore((s) => s.placements);
   const currentRoomId = useTentStore((s) => s.currentRoomId);
   const surfacePreviewActive = !!previewRoomId && (!!previewFloorStyleId || !!previewWallStyleId);
+  const sortedRoomPlacements = React.useMemo(
+    () => placements
+      .filter((p) => p.roomId === currentRoomId)
+      .sort(compareTentPlacementsForRender),
+    [placements, currentRoomId],
+  );
 
   // Drag offset: difference between touch point and ghost origin
   const dragOffsetRef = useRef<{ dx: number; dy: number } | null>(null);
@@ -44,10 +51,9 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
   /** Find the placed item at a given tilemap pixel position */
   const findPlacementAt = useCallback(
     (px: number, py: number) => {
-      const roomPlacements = placements.filter((p) => p.roomId === currentRoomId);
-      // Check in reverse (top-most items first)
-      for (let i = roomPlacements.length - 1; i >= 0; i--) {
-        const p = roomPlacements[i];
+      // Check in reverse render order so top-most visible item wins.
+      for (let i = sortedRoomPlacements.length - 1; i >= 0; i--) {
+        const p = sortedRoomPlacements[i];
         const dims = getItemDimensions(p.itemId, p.direction);
         if (!dims) continue;
         if (px >= p.x && px < p.x + dims.w && py >= p.y && py < p.y + dims.h) {
@@ -56,7 +62,7 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
       }
       return null;
     },
-    [placements, currentRoomId],
+    [sortedRoomPlacements],
   );
 
   const handleTouchStart = useCallback(

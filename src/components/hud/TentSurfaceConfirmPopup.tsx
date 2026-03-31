@@ -24,6 +24,7 @@ interface Props {
   surfaceType: TentSurfaceType | null;
   isOwned: boolean;
   isEquipped: boolean;
+  isSaving: boolean;
   onPurchaseOrEquip: (style: TentSurfaceStyle, surfaceType: TentSurfaceType) => void;
   onPreview: (style: TentSurfaceStyle, surfaceType: TentSurfaceType) => void;
   onCancel: () => void;
@@ -34,6 +35,7 @@ export default function TentSurfaceConfirmPopup({
   surfaceType,
   isOwned,
   isEquipped,
+  isSaving,
   onPurchaseOrEquip,
   onPreview,
   onCancel,
@@ -46,9 +48,13 @@ export default function TentSurfaceConfirmPopup({
   const preview = getSurfacePreview(styleItem.id);
   const previewSize = getPreviewSize(surfaceType);
 
-  let primaryLabel = `Purchase`;
-  if (isEquipped) primaryLabel = 'Equipped';
+  let primaryLabel = 'Purchase';
+  if (isSaving) primaryLabel = 'Saving...';
+  else if (isEquipped) primaryLabel = 'Equipped';
   else if (isOwned) primaryLabel = 'Equip';
+
+  const primaryDisabled = !canAfford || isEquipped || isSaving;
+  const secondaryDisabled = isSaving;
 
   return (
     <Modal visible transparent animationType="none">
@@ -56,7 +62,8 @@ export default function TentSurfaceConfirmPopup({
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
-          onPress={onCancel}
+          disabled={secondaryDisabled}
+          onPress={secondaryDisabled ? undefined : onCancel}
         />
 
         <Animated.View style={styles.center} entering={FadeInDown.duration(300)}>
@@ -87,29 +94,32 @@ export default function TentSurfaceConfirmPopup({
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity
-                  onPress={canAfford && !isEquipped ? () => onPurchaseOrEquip(styleItem, surfaceType) : undefined}
-                  activeOpacity={canAfford && !isEquipped ? 0.7 : 1}
-                  style={[styles.actionBtn, styles.purchaseBtn, (!canAfford || isEquipped) && styles.actionBtnDisabled]}
+                  disabled={primaryDisabled}
+                  onPress={primaryDisabled ? undefined : () => onPurchaseOrEquip(styleItem, surfaceType)}
+                  activeOpacity={primaryDisabled ? 1 : 0.7}
+                  style={[styles.actionBtn, styles.purchaseBtn, primaryDisabled && styles.actionBtnDisabled]}
                 >
-                  <Text style={[styles.actionText, styles.purchaseText, (!canAfford || isEquipped) && styles.actionTextDisabled]}>
+                  <Text style={[styles.actionText, styles.purchaseText, primaryDisabled && styles.actionTextDisabled]}>
                     {primaryLabel}
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() => onPreview(styleItem, surfaceType)}
-                  activeOpacity={0.7}
-                  style={[styles.actionBtn, styles.previewBtn]}
+                  disabled={secondaryDisabled}
+                  onPress={secondaryDisabled ? undefined : () => onPreview(styleItem, surfaceType)}
+                  activeOpacity={secondaryDisabled ? 1 : 0.7}
+                  style={[styles.actionBtn, styles.previewBtn, secondaryDisabled && styles.actionBtnDisabled]}
                 >
-                  <Text style={[styles.actionText, styles.previewText]}>Preview</Text>
+                  <Text style={[styles.actionText, styles.previewText, secondaryDisabled && styles.actionTextDisabled]}>Preview</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={onCancel}
-                  activeOpacity={0.7}
-                  style={[styles.actionBtn, styles.cancelBtn]}
+                  disabled={secondaryDisabled}
+                  onPress={secondaryDisabled ? undefined : onCancel}
+                  activeOpacity={secondaryDisabled ? 1 : 0.7}
+                  style={[styles.actionBtn, styles.cancelBtn, secondaryDisabled && styles.actionBtnDisabled]}
                 >
-                  <Text style={[styles.actionText, styles.cancelText]}>Cancel</Text>
+                  <Text style={[styles.actionText, styles.cancelText, secondaryDisabled && styles.actionTextDisabled]}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </View>

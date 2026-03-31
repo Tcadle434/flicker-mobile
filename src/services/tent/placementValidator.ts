@@ -30,11 +30,37 @@ function getPlacementAABB(p: TentPlacement): AABB | null {
 }
 
 const TILE_SIZE = 16;
-const BASE_H = 8; // collision base height — bottom portion of sprite
+const BASE_H = 8; // tile validation base height — bottom portion of sprite
+const MIN_FOOTPRINT_H = 8;
+const MAX_FOOTPRINT_H = 16;
 
-/** Return the collision base (bottom BASE_H pixels) for a floor item. */
-function getCollisionBase(x: number, y: number, w: number, h: number): AABB {
-  return { x, y: y + h - BASE_H, w, h: BASE_H };
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function getFloorCollisionMode(item: CatalogItem): 'solid' | 'overlay' {
+  return item.floorCollisionMode ?? 'solid';
+}
+
+function getCollisionFootprintHeight(item: CatalogItem, spriteHeight: number): number {
+  return item.collisionFootprintHeight
+    ?? clamp(Math.round(spriteHeight * 0.35), MIN_FOOTPRINT_H, MAX_FOOTPRINT_H);
+}
+
+function getFloorCollisionFootprint(
+  item: CatalogItem,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+): AABB {
+  const footprintHeight = getCollisionFootprintHeight(item, h);
+  return {
+    x,
+    y: y + h - footprintHeight,
+    w,
+    h: footprintHeight,
+  };
 }
 
 /**
@@ -44,7 +70,8 @@ function getCollisionBase(x: number, y: number, w: number, h: number): AABB {
  * - Item must be within room bounds
  * - Bottom portion of floor/rug items must be over floor tiles
  * - Upper portion can be over floor or wall tiles (e.g. bookshelf against wall)
- * - Floor items can't overlap other floor items (rugs allowed underneath)
+ * - Solid floor furniture can't overlap other solid floor furniture
+ * - Overlay floor decor can overlap floor furniture visually
  * - Rugs can go under floor items but not overlap other rugs
  * - Wall items must be over wall tiles and can't overlap other wall items
  * - Tabletop items must overlap a provideSurface floor item, can't overlap other tabletop items
@@ -113,12 +140,23 @@ export function validatePlacement(
     const placedBox = getPlacementAABB(p);
     if (!placedBox) continue;
 
-    // Floor-vs-floor: only check collision between bases (bottom BASE_H px).
-    // This lets upper sprites overlap naturally (depth sort handles draw order).
+    // Floor-vs-floor: overlay decor may visually overlap solid furniture.
+    // Solid furniture still blocks other solid furniture via grounded footprints.
     if (item.surface === 'floor' && placedItem.surface === 'floor') {
-      const itemBase = getCollisionBase(x, y, dims.w, dims.h);
-      const placedBase = getCollisionBase(placedBox.x, placedBox.y, placedBox.w, placedBox.h);
-      if (aabbOverlap(itemBase, placedBase)) return false;
+      const itemMode = getFloorCollisionMode(item);
+      const placedMode = getFloorCollisionMode(placedItem);
+
+      if (itemMode === 'solid' && placedMode === 'solid') {
+        const itemFootprint = getFloorCollisionFootprint(item, x, y, dims.w, dims.h);
+        const placedFootprint = getFloorCollisionFootprint(
+          placedItem,
+          placedBox.x,
+          placedBox.y,
+          placedBox.w,
+          placedBox.h,
+        );
+        if (aabbOverlap(itemFootprint, placedFootprint)) return false;
+      }
       continue;
     }
 

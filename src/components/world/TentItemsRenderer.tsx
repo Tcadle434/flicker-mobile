@@ -2,7 +2,7 @@
  * Tent Items Renderer
  *
  * Renders all placed items in the current room.
- * Items sorted by tileY for correct depth ordering.
+ * Items are sorted by render plane, configured layer, and sprite foot depth.
  * Uses Skia Image with RN asset sources loaded via useImage.
  */
 
@@ -13,6 +13,7 @@ import { useImage } from '@shopify/react-native-skia';
 import { useTentStore } from '../../stores/tentStore';
 import { useDecorateStore } from '../../stores/decorateStore';
 import { getCatalogItem, getItemSprite, getItemDimensions } from '../../services/tent/tentCatalog';
+import { compareTentPlacementsForRender } from '../../services/tent/tentRenderOrder';
 import type { TentPlacement } from '../../types/tent';
 
 interface Props {
@@ -67,19 +68,11 @@ export default function TentItemsRenderer({ scale, offsetY }: Props) {
   const ghostPlacementId = useDecorateStore((s) => s.ghostPlacementId);
 
   // Filter to current room, exclude item being moved.
-  // Sort: surface layer first (floor/rug/wall before tabletop), then by y for depth.
-  // This guarantees tabletop items always render on top of the furniture they sit on.
+  // Sort by render plane, catalog-controlled layer, then sprite foot depth.
   const sortedPlacements = useMemo(() => {
     return placements
       .filter((p) => p.roomId === currentRoomId && p.id !== ghostPlacementId)
-      .sort((a, b) => {
-        const aItem = getCatalogItem(a.itemId);
-        const bItem = getCatalogItem(b.itemId);
-        const aLayer = aItem?.surface === 'tabletop' ? 1 : 0;
-        const bLayer = bItem?.surface === 'tabletop' ? 1 : 0;
-        if (aLayer !== bLayer) return aLayer - bLayer;
-        return a.y - b.y;
-      });
+      .sort(compareTentPlacementsForRender);
   }, [placements, currentRoomId, ghostPlacementId]);
 
   return (

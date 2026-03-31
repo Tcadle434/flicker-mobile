@@ -7,7 +7,8 @@
 			"surface": "floor",
 			"price": 45,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "bed_large_02",
@@ -16,7 +17,8 @@
 			"surface": "floor",
 			"price": 45,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "bed_large_03",
@@ -25,7 +27,8 @@
 			"surface": "floor",
 			"price": 45,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "bed_large_04",
@@ -34,7 +37,8 @@
 			"surface": "floor",
 			"price": 45,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "bed_large_05",
@@ -43,7 +47,8 @@
 			"surface": "floor",
 			"price": 45,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "bed_small_01",
@@ -52,7 +57,8 @@
 			"surface": "floor",
 			"price": 30,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "bed_small_02",
@@ -61,7 +67,8 @@
 			"surface": "floor",
 			"price": 30,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "bed_small_03",
@@ -70,7 +77,8 @@
 			"surface": "floor",
 			"price": 30,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "bed_small_04",
@@ -79,7 +87,8 @@
 			"surface": "floor",
 			"price": 30,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "bedside_table_01",
@@ -190,7 +199,9 @@
 			"surface": "floor",
 			"price": 15,
 			"rotatable": true,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "christmas_tree_01",
@@ -199,7 +210,9 @@
 			"surface": "floor",
 			"price": 30,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "christmas_tree_02",
@@ -208,7 +221,9 @@
 			"surface": "floor",
 			"price": 35,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "christmas_tree_03",
@@ -217,7 +232,9 @@
 			"surface": "floor",
 			"price": 40,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "coffee_table_books",
@@ -314,7 +331,8 @@
 			"surface": "floor",
 			"price": 80,
 			"rotatable": true,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "kitchen_counter_01",
@@ -360,7 +378,8 @@
 			"surface": "floor",
 			"price": 50,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"collisionFootprintHeight": 14
 		},
 		{
 			"id": "sink_01",
@@ -414,7 +433,9 @@
 			"surface": "floor",
 			"price": 15,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "floor_lamp_02",
@@ -423,7 +444,9 @@
 			"surface": "floor",
 			"price": 20,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "table_lamp_01",
@@ -486,7 +509,9 @@
 			"surface": "floor",
 			"price": 10,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "cactus_02",
@@ -495,7 +520,9 @@
 			"surface": "floor",
 			"price": 12,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "cactus_03",
@@ -504,7 +531,9 @@
 			"surface": "floor",
 			"price": 14,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "flowers_01",
@@ -513,7 +542,9 @@
 			"surface": "floor",
 			"price": 8,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "flowers_02",
@@ -522,7 +553,9 @@
 			"surface": "floor",
 			"price": 10,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "flowers_03",
@@ -531,7 +564,9 @@
 			"surface": "floor",
 			"price": 8,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "flowers_04",
@@ -540,7 +575,9 @@
 			"surface": "floor",
 			"price": 10,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "flowers_05",
@@ -549,7 +586,9 @@
 			"surface": "floor",
 			"price": 8,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "flowers_06",
@@ -558,7 +597,9 @@
 			"surface": "floor",
 			"price": 12,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "flowers_07",
@@ -567,7 +608,9 @@
 			"surface": "floor",
 			"price": 6,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "plant_large_01",
@@ -576,7 +619,9 @@
 			"surface": "floor",
 			"price": 25,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "plant_tall_01",
@@ -585,7 +630,9 @@
 			"surface": "floor",
 			"price": 20,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "plant_tall_02",
@@ -594,7 +641,9 @@
 			"surface": "floor",
 			"price": 22,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "potted_plant_01",
@@ -630,7 +679,9 @@
 			"surface": "floor",
 			"price": 15,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "rug_01",
@@ -855,7 +906,9 @@
 			"surface": "floor",
 			"price": 20,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "guitar_02",
@@ -864,7 +917,9 @@
 			"surface": "floor",
 			"price": 25,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "guitar_03",
@@ -873,7 +928,9 @@
 			"surface": "floor",
 			"price": 30,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "kitchen_knife_01",
@@ -927,7 +984,9 @@
 			"surface": "floor",
 			"price": 10,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "plushy_02",
@@ -936,7 +995,9 @@
 			"surface": "floor",
 			"price": 12,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "plushy_03",
@@ -945,7 +1006,9 @@
 			"surface": "floor",
 			"price": 15,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		},
 		{
 			"id": "potion_01",
@@ -990,7 +1053,9 @@
 			"surface": "floor",
 			"price": 10,
 			"rotatable": false,
-			"tier": 1
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
 		}
 	]
 }

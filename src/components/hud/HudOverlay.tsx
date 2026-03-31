@@ -4,6 +4,8 @@ import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StartSessionButton from './StartSessionButton';
 import HudIconButton from './HudIconButton';
+import SettingsButton from './SettingsButton';
+import TimerButton from './TimerButton';
 import LightBalanceDisplay from './LightBalanceDisplay';
 import MuteToggleButton from './MuteToggleButton';
 import EnterTentButton from './EnterTentButton';
@@ -46,14 +48,14 @@ export default function HudOverlay({ onStartSession, onDecorate, onEnterTent, on
         entering={FadeIn.delay(600).duration(350)}
         style={[styles.iconBtn, { bottom: 118, left: 20 }]}
       >
-        <HudIconButton icon="calendar" onPress={() => console.log('[HUD] calendar')} />
+        <TimerButton onPress={() => console.log('[HUD] calendar')} />
       </Animated.View>
 
       <Animated.View
         entering={FadeIn.delay(500).duration(350)}
         style={[styles.iconBtn, { bottom: 44, left: 20 }]}
       >
-        <HudIconButton icon="settings" onPress={() => console.log('[HUD] settings')} />
+        <SettingsButton onPress={() => console.log('[HUD] settings')} />
       </Animated.View>
 
       {/* Center: Start Session CTA */}

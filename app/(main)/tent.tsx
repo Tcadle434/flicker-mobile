@@ -6,7 +6,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { Alert, View, StyleSheet, Dimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import TentInteriorScene from '../../src/components/world/TentInteriorScene';
@@ -32,6 +32,19 @@ interface SurfaceSelectionState {
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
+function getSurfaceSaveErrorMessage(errorCode?: string): string {
+  switch (errorCode) {
+    case 'insufficient_funds':
+      return 'You do not have enough Light to purchase this style.';
+    case 'auth_required':
+      return 'Please sign in again before changing your tent surfaces.';
+    case 'invalid_surface_type':
+      return 'That surface could not be applied.';
+    default:
+      return 'We could not save that floor or wallpaper change right now. Please try again.';
+  }
+}
+
 export default function TentScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ decorate?: string; shop?: string }>();
@@ -55,9 +68,9 @@ export default function TentScreen() {
   const previewSurfaceStyle = useDecorateStore((s) => s.previewSurfaceStyle);
   const switchToEditMode = useDecorateStore((s) => s.switchToEditMode);
   const purchaseItem = useTentStore((s) => s.purchaseItem);
-  const purchaseSurfaceStyle = useTentStore((s) => s.purchaseSurfaceStyle);
-  const equipSurfaceStyle = useTentStore((s) => s.equipSurfaceStyle);
+  const commitSurfaceStyleSelection = useTentStore((s) => s.commitSurfaceStyleSelection);
   const isSurfaceStyleOwned = useTentStore((s) => s.isSurfaceStyleOwned);
+  const isSavingSurfaceStyle = useTentStore((s) => s.isSavingSurfaceStyle);
   const getRoomStyleSelection = useTentStore((s) => s.getRoomStyleSelection);
   const currentRoomId = useTentStore((s) => s.currentRoomId);
 
@@ -193,13 +206,12 @@ export default function TentScreen() {
   }, [currentRoomId, enterDecorate, previewSurfaceStyle, switchToEditMode]);
 
   const handlePurchaseOrEquipSurface = useCallback(async (style: TentSurfaceStyle, surfaceType: TentSurfaceType) => {
-    const owned = isSurfaceStyleOwned(style.id);
-    if (!owned) {
-      const purchased = await purchaseSurfaceStyle(style.id, style.price);
-      if (!purchased) return;
+    const result = await commitSurfaceStyleSelection(currentRoomId, surfaceType, style.id);
+    if (!result.ok) {
+      Alert.alert('Could Not Save Surface', getSurfaceSaveErrorMessage(result.errorCode));
+      return;
     }
 
-    equipSurfaceStyle(currentRoomId, surfaceType, style.id);
     clearSurfacePreview(surfaceType);
     setPreviewingSurfaceSelection(null);
     setSurfaceConfirmSelection(null);
@@ -207,11 +219,9 @@ export default function TentScreen() {
     switchToEditMode();
   }, [
     clearSurfacePreview,
+    commitSurfaceStyleSelection,
     currentRoomId,
     enterDecorate,
-    equipSurfaceStyle,
-    isSurfaceStyleOwned,
-    purchaseSurfaceStyle,
     switchToEditMode,
   ]);
 
@@ -275,6 +285,7 @@ export default function TentScreen() {
         surfaceType={surfaceConfirmSelection?.surfaceType ?? null}
         isOwned={surfaceConfirmOwned}
         isEquipped={surfaceConfirmEquipped}
+        isSaving={isSavingSurfaceStyle}
         onPurchaseOrEquip={handlePurchaseOrEquipSurface}
         onPreview={handlePreviewSurface}
         onCancel={handleCancelSurfaceConfirm}

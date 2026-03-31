@@ -23,6 +23,10 @@ export interface CatalogItem {
   rotatable: boolean;                   // has directional sprites
   tier: number;                         // min room tier required (1 = base tent)
   provideSurface?: boolean;             // allows tabletop items to be stacked on this item
+  renderLayer?: number;                 // higher renders later within the same surface plane
+  renderDepthBias?: number;             // pixel adjustment for odd sprites whose feet aren't at sprite bottom
+  floorCollisionMode?: 'solid' | 'overlay'; // floor-only: overlay items may visually overlap other floor items
+  collisionFootprintHeight?: number;    // floor-only: height of the grounded blocking footprint in pixels
 }
 
 export interface TentSurfaceStyle {
