@@ -17,9 +17,10 @@ interface HudOverlayProps {
   onDecorate?: () => void;
   onEnterTent?: () => void;
   onOpenShop?: () => void;
+  onOpenSettings?: () => void;
 }
 
-export default function HudOverlay({ onStartSession, onDecorate, onEnterTent, onOpenShop }: HudOverlayProps) {
+export default function HudOverlay({ onStartSession, onDecorate, onEnterTent, onOpenShop, onOpenSettings }: HudOverlayProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -55,7 +56,7 @@ export default function HudOverlay({ onStartSession, onDecorate, onEnterTent, on
         entering={FadeIn.delay(500).duration(350)}
         style={[styles.iconBtn, { bottom: 44, left: 20 }]}
       >
-        <SettingsButton onPress={() => console.log('[HUD] settings')} />
+        <SettingsButton onPress={() => onOpenSettings?.()} />
       </Animated.View>
 
       {/* Center: Start Session CTA */}

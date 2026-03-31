@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import Animated, { FadeIn, useSharedValue, withTiming, runOnJS, Easing } from 'react-native-reanimated';
 import OverworldScene, { AmbientEffect, getTentScreenRect } from '../../src/components/world/OverworldScene';
 import { HudOverlay, SessionPanel } from '../../src/components/hud';
+import SettingsPanel from '../../src/components/hud/SettingsPanel';
 import { forestMap } from '../../src/services/world/tiledMapLoader';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -22,6 +23,7 @@ export default function HomeScreen() {
   const [ready, setReady] = useState(false);
   const [ambientEffect, setAmbientEffect] = useState<AmbientEffect>('rain');
   const [sessionPanelVisible, setSessionPanelVisible] = useState(false);
+  const [settingsPanelVisible, setSettingsPanelVisible] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
   const handleReady = useCallback(() => setReady(true), []);
 
@@ -185,12 +187,19 @@ export default function HomeScreen() {
           onDecorate={handleDecorate}
           onEnterTent={handleTentTap}
           onOpenShop={handleOpenShop}
+          onOpenSettings={() => setSettingsPanelVisible(true)}
         />
       )}
       {ready && (
         <SessionPanel
           visible={sessionPanelVisible}
           onClose={() => setSessionPanelVisible(false)}
+        />
+      )}
+      {ready && (
+        <SettingsPanel
+          visible={settingsPanelVisible}
+          onClose={() => setSettingsPanelVisible(false)}
         />
       )}
     </View>
