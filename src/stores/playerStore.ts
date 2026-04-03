@@ -18,12 +18,25 @@ import {
   getModeTrackCatalog,
   getSelectedTracks,
 } from '../services/audio/loopLibrary';
+import {
+  buildResetSessionLayerConfigs,
+  getInitialResetSessionSelections,
+  getInitialResetSessionVolumes,
+  getResetSessionAudioProfile,
+  getResetSessionSelectedTracks,
+  getResetSessionStandaloneLayer,
+  getResetSessionTrackCatalog,
+} from '../services/audio/resetSessionAudioProfiles';
 import { AdaptiveController } from '../integration/AdaptiveController';
 import { logger } from '../lib/logger';
-import type { PlayerState, SoundscapeMode, AudioLayer, PlaybackState } from '../types';
+import type {
+  AudioLayer,
+  PlayerState,
+  ResetSessionAudioMode,
+  SoundscapeMode,
+} from '../types';
 
 interface PlayerStore extends PlayerState {
-  // Actions
   initialize: () => Promise<void>;
   setMode: (mode: SoundscapeMode) => Promise<void>;
   play: () => Promise<void>;
@@ -35,22 +48,36 @@ interface PlayerStore extends PlayerState {
   setLayerMuted: (layer: AudioLayer, muted: boolean) => void;
   toggleAdaptive: () => void;
   updateAdaptiveParameters: () => Promise<void>;
+  resetResetSessionAudioState: () => void;
+  setResetSessionAudioMode: (mode: ResetSessionAudioMode) => Promise<void>;
+  cycleResetSessionStandaloneTrack: (direction: -1 | 1) => Promise<void>;
+  setResetSessionStandaloneVolume: (volume: number) => void;
 }
 
-// Get native audio bridge singleton
 const audioEngine = getNativeAudioBridge();
 const adaptiveController = new AdaptiveController();
 let adaptiveInterval: ReturnType<typeof setInterval> | null = null;
 let adaptiveUpdateInFlight = false;
 
-const mapNativeLayerToStore = (layer: string): AudioLayer => {
-  return layer === 'binaural' ? 'synthesis' : (layer as AudioLayer);
-};
-
 type LoopSelectionMap = Partial<Record<AudioLayer, string | null>>;
 type VolumeMap = Partial<Record<AudioLayer, number>>;
 
 const KEY_LOCKED_LAYERS: AudioLayer[] = ['ambient', 'melody'];
+
+const defaultAdaptiveInputs = {
+  timeOfDay: getTimeOfDayInput(),
+  weather: null,
+  heartRate: null,
+  season: getSeason(),
+};
+
+const defaultAdaptiveParameters = mapAdaptiveParameters(defaultAdaptiveInputs, 10);
+
+const createInitialResetSessionState = () => ({
+  resetSessionAudioMode: 'custom' as ResetSessionAudioMode,
+  resetSessionSelections: getInitialResetSessionSelections(),
+  resetSessionVolumes: getInitialResetSessionVolumes(),
+});
 
 const getPartnerLayer = (layer: AudioLayer): AudioLayer | null => {
   if (layer === 'ambient') return 'melody';
@@ -58,10 +85,8 @@ const getPartnerLayer = (layer: AudioLayer): AudioLayer | null => {
   return null;
 };
 
-const areTracksCompatible = (
-  currentKey?: string,
-  partnerKey?: string,
-) => !currentKey || !partnerKey || currentKey === partnerKey;
+const areTracksCompatible = (currentKey?: string, partnerKey?: string) =>
+  !currentKey || !partnerKey || currentKey === partnerKey;
 
 const getLayerSelections = (layers: PlayerState['layers']): LoopSelectionMap =>
   Object.fromEntries(
@@ -98,6 +123,66 @@ const buildModeLayerState = (
       ])
     ) as PlayerState['layers'],
   };
+};
+
+const buildResetSessionLayerState = (
+  currentLayers: PlayerState['layers'],
+  resetSessionAudioMode: ResetSessionAudioMode,
+  loopSelections: LoopSelectionMap = {},
+  volumeOverrides: VolumeMap = {},
+) => {
+  const profile = getResetSessionAudioProfile(resetSessionAudioMode);
+  const trackCatalog = getResetSessionTrackCatalog(resetSessionAudioMode);
+  const selectedTracks = getResetSessionSelectedTracks(resetSessionAudioMode, loopSelections);
+  const layerConfigs = buildResetSessionLayerConfigs(
+    resetSessionAudioMode,
+    loopSelections,
+    volumeOverrides,
+  );
+
+  return {
+    layerConfigs,
+    layers: Object.fromEntries(
+      AUDIO_LAYERS.map((layer) => [
+        layer,
+        {
+          ...currentLayers[layer],
+          currentLoopId: selectedTracks[layer]?.id ?? null,
+          availableTracks: trackCatalog[layer],
+          volume:
+            volumeOverrides[layer] ??
+            profile.defaultVolumes[layer] ??
+            currentLayers[layer].volume ??
+            DEFAULT_MIX[layer],
+        },
+      ])
+    ) as PlayerState['layers'],
+  };
+};
+
+const buildPlaybackLayerState = (
+  state: Pick<
+    PlayerState,
+    'layers' | 'mode' | 'resetSessionAudioMode' | 'resetSessionSelections' | 'resetSessionVolumes'
+  >,
+  modeOverride: SoundscapeMode = state.mode,
+) => {
+  if (modeOverride === 'relax') {
+    const resetSessionAudioMode = state.resetSessionAudioMode;
+    return buildResetSessionLayerState(
+      state.layers,
+      resetSessionAudioMode,
+      state.resetSessionSelections[resetSessionAudioMode],
+      state.resetSessionVolumes[resetSessionAudioMode],
+    );
+  }
+
+  return buildModeLayerState(
+    state.layers,
+    modeOverride,
+    getLayerSelections(state.layers),
+    getLayerVolumes(state.layers),
+  );
 };
 
 const resolveLoopChange = (
@@ -148,14 +233,25 @@ const resolveLoopChange = (
   return nextSelections;
 };
 
-const defaultAdaptiveInputs = {
-  timeOfDay: getTimeOfDayInput(),
-  weather: null,
-  heartRate: null,
-  season: getSeason(),
+const shouldApplyAdaptiveBehavior = (state: PlayerState) => {
+  if (!state.adaptiveEnabled) {
+    return false;
+  }
+
+  if (state.mode !== 'relax') {
+    return true;
+  }
+
+  return getResetSessionAudioProfile(state.resetSessionAudioMode).adaptiveBehavior;
 };
 
-const defaultAdaptiveParameters = mapAdaptiveParameters(defaultAdaptiveInputs, 10);
+const applyAdaptiveParametersIfNeeded = async (state: PlayerState) => {
+  if (!shouldApplyAdaptiveBehavior(state)) {
+    return;
+  }
+
+  await audioEngine.updateAdaptiveParameters(state.adaptiveParameters);
+};
 
 const syncNativeMutes = (layers: PlayerState['layers']) => {
   (Object.keys(layers) as AudioLayer[]).forEach((layer) => {
@@ -184,7 +280,6 @@ const startAdaptiveLoop = (set: (partial: Partial<PlayerState>) => void, get: ()
 };
 
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
-  // Initial state
   mode: 'focus',
   playbackState: 'idle',
   layers: {
@@ -198,12 +293,8 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   adaptiveEnabled: true,
   adaptiveInputs: defaultAdaptiveInputs,
   adaptiveParameters: defaultAdaptiveParameters,
+  ...createInitialResetSessionState(),
 
-  // Actions
-
-  /**
-   * Initialize audio engine
-   */
   initialize: async () => {
     try {
       logger.info('Initializing audio engine from playerStore...');
@@ -211,13 +302,11 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
       await audioEngine.initialize();
 
-      // Load default mode (Focus)
-      const state = get();
-      const nextState = buildModeLayerState(get().layers, state.mode);
-      await audioEngine.loadMode(state.mode, state.adaptiveParameters, nextState.layerConfigs);
+      const nextState = buildPlaybackLayerState(get());
+      await audioEngine.loadMode(get().mode, get().adaptiveParameters, nextState.layerConfigs);
       set({ layers: nextState.layers });
       syncNativeMutes(get().layers);
-      await audioEngine.updateAdaptiveParameters(state.adaptiveParameters);
+      await applyAdaptiveParametersIfNeeded(get());
       startAdaptiveLoop(set, get);
 
       set({ playbackState: 'idle' });
@@ -229,23 +318,20 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
   },
 
-  /**
-   * Change soundscape mode
-   */
   setMode: async (mode: SoundscapeMode) => {
     try {
       logger.info('Changing mode', { mode });
       set({ playbackState: 'loading' });
 
-      const state = get();
-      const nextState = buildModeLayerState(get().layers, mode);
-      await audioEngine.loadMode(mode, state.adaptiveParameters, nextState.layerConfigs);
-      set({ layers: nextState.layers });
+      const current = get();
+      const nextState = buildPlaybackLayerState(current, mode);
+      await audioEngine.loadMode(mode, current.adaptiveParameters, nextState.layerConfigs);
+      set({ mode, layers: nextState.layers });
       syncNativeMutes(get().layers);
-      await audioEngine.updateAdaptiveParameters(state.adaptiveParameters);
+      await applyAdaptiveParametersIfNeeded(get());
       startAdaptiveLoop(set, get);
 
-      set({ mode, playbackState: 'idle' });
+      set({ playbackState: 'idle' });
       logger.info('Mode changed successfully', { mode });
     } catch (error) {
       logger.error('Failed to change mode', { mode, error });
@@ -254,14 +340,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
   },
 
-  /**
-   * Start playback
-   */
   play: async () => {
     try {
       let didInitialize = false;
 
-      // Initialize if not ready
       if (!audioEngine.isReady()) {
         await get().initialize();
         didInitialize = true;
@@ -269,15 +351,12 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
       const state = get();
 
-      // If idle, need to load mode first using the store's current loop selections and volumes.
       if (!didInitialize && state.playbackState === 'idle') {
-        const loopSelections = getLayerSelections(state.layers);
-        const volumeOverrides = getLayerVolumes(state.layers);
-        const nextState = buildModeLayerState(state.layers, state.mode, loopSelections, volumeOverrides);
+        const nextState = buildPlaybackLayerState(state);
         await audioEngine.loadMode(state.mode, state.adaptiveParameters, nextState.layerConfigs);
         set({ layers: nextState.layers });
         syncNativeMutes(get().layers);
-        await audioEngine.updateAdaptiveParameters(state.adaptiveParameters);
+        await applyAdaptiveParametersIfNeeded(get());
       }
 
       logger.info('Starting playback');
@@ -292,9 +371,6 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
   },
 
-  /**
-   * Pause playback
-   */
   pause: () => {
     try {
       logger.info('Pausing playback');
@@ -305,9 +381,6 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
   },
 
-  /**
-   * Stop playback
-   */
   stop: () => {
     try {
       logger.info('Stopping playback');
@@ -318,12 +391,46 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
   },
 
-  /**
-   * Swap the current loop for a layer.
-   */
   setLayerLoop: async (layer: AudioLayer, loopId: string) => {
     try {
       const state = get();
+
+      if (state.mode === 'relax' && state.resetSessionAudioMode !== 'custom') {
+        const standaloneLayer = getResetSessionStandaloneLayer(state.resetSessionAudioMode);
+        if (!standaloneLayer || layer !== standaloneLayer) {
+          return;
+        }
+
+        const trackCatalog = getResetSessionTrackCatalog(state.resetSessionAudioMode);
+        const track = trackCatalog[layer].find((candidate) => candidate.id === loopId);
+        if (!track) {
+          return;
+        }
+
+        await audioEngine.setLayerLoop(layer, track.id, track.filename, state.layers[layer].volume);
+
+        set((current) => ({
+          layers: {
+            ...current.layers,
+            [layer]: {
+              ...current.layers[layer],
+              currentLoopId: track.id,
+              availableTracks: trackCatalog[layer],
+            },
+          },
+          resetSessionSelections: {
+            ...current.resetSessionSelections,
+            [current.resetSessionAudioMode]: {
+              ...current.resetSessionSelections[current.resetSessionAudioMode],
+              [layer]: track.id,
+            },
+          },
+        }));
+
+        logger.info('Standalone layer loop updated', { layer, loopId });
+        return;
+      }
+
       const nextSelections = resolveLoopChange(state.mode, state.layers, layer, loopId);
 
       if (!nextSelections) {
@@ -369,6 +476,21 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
             ])
           ),
         },
+        resetSessionSelections:
+          current.mode === 'relax' && current.resetSessionAudioMode === 'custom'
+            ? {
+                ...current.resetSessionSelections,
+                custom: {
+                  ...current.resetSessionSelections.custom,
+                  ...Object.fromEntries(
+                    changedLayers.map((candidateLayer) => [
+                      candidateLayer,
+                      nextSelectedTracks[candidateLayer]?.id ?? null,
+                    ])
+                  ),
+                },
+              }
+            : current.resetSessionSelections,
       }));
 
       logger.info('Layer loop updated', { layer, loopId, changedLayers });
@@ -377,26 +499,49 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
   },
 
-  /**
-   * Set layer volume
-   */
   setLayerVolume: (layer: AudioLayer, volume: number) => {
     try {
-      audioEngine.setLayerVolume(layer, volume, 0.1); // 100ms fade
+      audioEngine.setLayerVolume(layer, volume, 0.1);
       if (volume > 0.001) {
         audioEngine.setLayerMuted(layer, false);
       }
 
-      set((state) => ({
-        layers: {
-          ...state.layers,
-          [layer]: {
-            ...state.layers[layer],
-            volume,
-            muted: volume > 0.001 ? false : state.layers[layer].muted,
+      set((state) => {
+        const standaloneLayer = getResetSessionStandaloneLayer(state.resetSessionAudioMode);
+        const shouldSyncStandaloneVolume =
+          state.mode === 'relax' &&
+          state.resetSessionAudioMode !== 'custom' &&
+          standaloneLayer === layer;
+
+        return {
+          layers: {
+            ...state.layers,
+            [layer]: {
+              ...state.layers[layer],
+              volume,
+              muted: volume > 0.001 ? false : state.layers[layer].muted,
+            },
           },
-        },
-      }));
+          resetSessionVolumes:
+            state.mode === 'relax' && state.resetSessionAudioMode === 'custom'
+              ? {
+                  ...state.resetSessionVolumes,
+                  custom: {
+                    ...state.resetSessionVolumes.custom,
+                    [layer]: volume,
+                  },
+                }
+              : shouldSyncStandaloneVolume
+                ? {
+                    ...state.resetSessionVolumes,
+                    [state.resetSessionAudioMode]: {
+                      ...state.resetSessionVolumes[state.resetSessionAudioMode],
+                      [layer]: volume,
+                    },
+                  }
+                : state.resetSessionVolumes,
+        };
+      });
 
       logger.debug('Layer volume updated', { layer, volume });
     } catch (error) {
@@ -404,12 +549,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
   },
 
-  /**
-   * Set master volume
-   */
   setMasterVolume: (volume: number) => {
     try {
-      audioEngine.setMasterVolume(volume, 0.1); // 100ms fade
+      audioEngine.setMasterVolume(volume, 0.1);
       set({ masterVolume: volume });
       logger.debug('Master volume updated', { volume });
     } catch (error) {
@@ -417,12 +559,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
   },
 
-  /**
-   * Mute/unmute layer
-   */
   setLayerMuted: (layer: AudioLayer, muted: boolean) => {
     try {
-      audioEngine.setLayerMuted(layer, muted, 0.1); // 100ms fade
+      audioEngine.setLayerMuted(layer, muted, 0.1);
 
       set((state) => ({
         layers: {
@@ -440,9 +579,6 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
   },
 
-  /**
-   * Toggle adaptive mode
-   */
   toggleAdaptive: () => {
     set((state) => {
       const newEnabled = !state.adaptiveEnabled;
@@ -451,9 +587,6 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     });
   },
 
-  /**
-   * Update adaptive parameters based on current inputs
-   */
   updateAdaptiveParameters: async () => {
     try {
       const state = get();
@@ -472,11 +605,171 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
       set({ adaptiveParameters: parameters });
 
+      if (!shouldApplyAdaptiveBehavior({ ...state, adaptiveParameters: parameters })) {
+        logger.debug('Adaptive behavior bypassed for current reset session audio mode');
+        return;
+      }
+
       await audioEngine.updateAdaptiveParameters(parameters);
 
       logger.info('Adaptive parameters updated', { parameters });
     } catch (error) {
       logger.error('Failed to update adaptive parameters', error);
+    }
+  },
+
+  resetResetSessionAudioState: () => {
+    set(createInitialResetSessionState());
+  },
+
+  setResetSessionAudioMode: async (mode: ResetSessionAudioMode) => {
+    try {
+      const state = get();
+      const nextSelections = {
+        ...state.resetSessionSelections,
+        [mode]: {
+          ...getInitialResetSessionSelections()[mode],
+          ...state.resetSessionSelections[mode],
+        },
+      };
+      const nextVolumes = {
+        ...state.resetSessionVolumes,
+        [mode]: {
+          ...getInitialResetSessionVolumes()[mode],
+          ...state.resetSessionVolumes[mode],
+        },
+      };
+
+      const nextState = buildResetSessionLayerState(
+        state.layers,
+        mode,
+        nextSelections[mode],
+        nextVolumes[mode],
+      );
+
+      if (state.mode === 'relax') {
+        await audioEngine.loadLayerConfigs(`reset:${mode}`, nextState.layerConfigs);
+      }
+
+      set({
+        resetSessionAudioMode: mode,
+        resetSessionSelections: nextSelections,
+        resetSessionVolumes: nextVolumes,
+        layers: nextState.layers,
+      });
+
+      syncNativeMutes(get().layers);
+      await applyAdaptiveParametersIfNeeded(get());
+
+      logger.info('Reset session audio mode updated', { mode });
+    } catch (error) {
+      logger.error('Failed to set reset session audio mode', { mode, error });
+    }
+  },
+
+  cycleResetSessionStandaloneTrack: async (direction: -1 | 1) => {
+    try {
+      const state = get();
+      const standaloneLayer = getResetSessionStandaloneLayer(state.resetSessionAudioMode);
+      if (!standaloneLayer) {
+        return;
+      }
+
+      const trackCatalog = getResetSessionTrackCatalog(state.resetSessionAudioMode);
+      const tracks = trackCatalog[standaloneLayer];
+      if (tracks.length < 2) {
+        return;
+      }
+
+      const currentLoopId =
+        state.resetSessionSelections[state.resetSessionAudioMode][standaloneLayer] ??
+        state.layers[standaloneLayer].currentLoopId;
+      const currentIndex = tracks.findIndex((track) => track.id === currentLoopId);
+      const startIndex = currentIndex >= 0 ? currentIndex : 0;
+      const nextIndex = (startIndex + direction + tracks.length) % tracks.length;
+      const nextTrack = tracks[nextIndex];
+      if (!nextTrack) {
+        return;
+      }
+
+      const volume =
+        state.resetSessionVolumes[state.resetSessionAudioMode][standaloneLayer] ??
+        state.layers[standaloneLayer].volume ??
+        DEFAULT_MIX[standaloneLayer];
+
+      await audioEngine.setLayerLoop(
+        standaloneLayer,
+        nextTrack.id,
+        nextTrack.filename,
+        volume,
+      );
+
+      set((current) => ({
+        layers: {
+          ...current.layers,
+          [standaloneLayer]: {
+            ...current.layers[standaloneLayer],
+            currentLoopId: nextTrack.id,
+            availableTracks: tracks,
+          },
+        },
+        resetSessionSelections: {
+          ...current.resetSessionSelections,
+          [current.resetSessionAudioMode]: {
+            ...current.resetSessionSelections[current.resetSessionAudioMode],
+            [standaloneLayer]: nextTrack.id,
+          },
+        },
+      }));
+
+      logger.info('Reset session standalone track cycled', {
+        mode: state.resetSessionAudioMode,
+        layer: standaloneLayer,
+        loopId: nextTrack.id,
+      });
+    } catch (error) {
+      logger.error('Failed to cycle reset session standalone track', error);
+    }
+  },
+
+  setResetSessionStandaloneVolume: (volume: number) => {
+    try {
+      const state = get();
+      const standaloneLayer = getResetSessionStandaloneLayer(state.resetSessionAudioMode);
+      if (!standaloneLayer) {
+        return;
+      }
+
+      audioEngine.setLayerVolume(standaloneLayer, volume, 0.1);
+      if (volume > 0.001) {
+        audioEngine.setLayerMuted(standaloneLayer, false);
+      }
+
+      set((current) => ({
+        layers: {
+          ...current.layers,
+          [standaloneLayer]: {
+            ...current.layers[standaloneLayer],
+            volume,
+            muted: volume > 0.001 ? false : current.layers[standaloneLayer].muted,
+          },
+        },
+        resetSessionVolumes: {
+          ...current.resetSessionVolumes,
+          [current.resetSessionAudioMode]: {
+            ...current.resetSessionVolumes[current.resetSessionAudioMode],
+            [standaloneLayer]: volume,
+          },
+        },
+      }));
+
+      logger.debug('Reset session standalone volume updated', {
+        mode: state.resetSessionAudioMode,
+        layer: standaloneLayer,
+        volume,
+      });
+    } catch (error) {
+      logger.error('Failed to set reset session standalone volume', { volume, error });
     }
   },
 }));

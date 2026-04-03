@@ -21,7 +21,7 @@ import type { LayerConfig } from './nativeAudioModule';
  */
 class NativeAudioBridge {
   private initialized = false;
-  private currentMode: SoundscapeMode | null = null;
+  private currentMode: string | null = null;
 
   /**
    * Check if audio engine is ready
@@ -77,6 +77,23 @@ class NativeAudioBridge {
       return configs;
     } catch (error) {
       logger.error(`Failed to load mode: ${mode}`, error);
+      throw error;
+    }
+  }
+
+  async loadLayerConfigs(modeLabel: string, layerConfigs: LayerConfig[]): Promise<void> {
+    try {
+      logger.info(`Loading layer configs: ${modeLabel}`, { layers: layerConfigs.length });
+
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
+      this.currentMode = modeLabel;
+      await NativeAudioEngine.loadMode(modeLabel, layerConfigs);
+      logger.info(`✅ Layer configs loaded: ${modeLabel}`, { layers: layerConfigs.length });
+    } catch (error) {
+      logger.error(`Failed to load layer configs: ${modeLabel}`, error);
       throw error;
     }
   }

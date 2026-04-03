@@ -4,52 +4,128 @@ import { Canvas, Fill, Rect, LinearGradient, vec, useImage } from '@shopify/reac
 import { useSharedValue } from 'react-native-reanimated';
 import TilemapRenderer from './TilemapRenderer';
 import AnimatedSprite from './AnimatedSprite';
-import { zenGardenMap } from '../../services/world/zenGardenLoader';
+import zenGardenMapJson from '../../../assets/tiled/zen-garden-tilemap.json';
+import focusNookMapJson from '../../../assets/tiled/focus_nook.json';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
-// Flicker meditate sprite constants
+type SceneVariant = 'relax' | 'focus';
+
+interface SceneMap {
+  width: number;
+  height: number;
+  tileWidth: number;
+  tileHeight: number;
+  tilesetColumns: number;
+  data: number[];
+}
+
+interface SceneVariantConfig {
+  map: SceneMap;
+  tilesetSource: number;
+  spriteSource: number;
+  flickerTileX: number;
+  flickerTileY: number;
+  flickerDisplayTiles: number;
+  overlayColor: string;
+  backgroundColor: string;
+  topGradientColors: string[];
+  bottomGradientColors: string[];
+}
+
+interface Props {
+  onReady?: () => void;
+  variant?: SceneVariant;
+}
+
+const normalizeSceneMap = (mapJson: {
+  width: number;
+  height: number;
+  tilewidth: number;
+  tileheight: number;
+  layers: { name?: string; data?: number[] }[];
+  tilesets: { columns: number }[];
+}): SceneMap => {
+  const visualLayer = mapJson.layers[0];
+
+  return {
+    width: mapJson.width,
+    height: mapJson.height,
+    tileWidth: mapJson.tilewidth,
+    tileHeight: mapJson.tileheight,
+    tilesetColumns: mapJson.tilesets[0]?.columns ?? 1,
+    data: visualLayer?.data ?? [],
+  };
+};
+
+const zenGardenMap = normalizeSceneMap(zenGardenMapJson as Parameters<typeof normalizeSceneMap>[0]);
+const focusNookMap = normalizeSceneMap(focusNookMapJson as Parameters<typeof normalizeSceneMap>[0]);
+
 const FRAME_WIDTH = 512;
 const FRAME_HEIGHT = 293;
 const FRAME_COUNT = 61;
 const COLUMNS = 8;
 const FPS = 12;
 
-// Flicker position on the map (tile coords)
-const FLICKER_TILE_X = 24;
-const FLICKER_TILE_Y = 62;
-const FLICKER_DISPLAY_TILES = 14;
+const SCENE_VARIANTS: Record<SceneVariant, SceneVariantConfig> = {
+  relax: {
+    map: zenGardenMap,
+    tilesetSource: require('../../../assets/tiled/zen-garden-tileset.png'),
+    spriteSource: require('../../../assets/sprites/flicker_calm_meditate.png'),
+    flickerTileX: 24,
+    flickerTileY: 62,
+    flickerDisplayTiles: 14,
+    overlayColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: '#0A0A0B',
+    topGradientColors: ['#0A0A0B', '#0A0A0B', '#0A0A0B00'],
+    bottomGradientColors: ['#0A0A0B00', '#0A0A0B'],
+  },
+  focus: {
+    map: focusNookMap,
+    tilesetSource: require('../../../assets/tiled/focus_nook.png'),
+    spriteSource: require('../../../assets/sprites/flicker_neutral_focus.png'),
+    flickerTileX: 38,
+    flickerTileY: 69,
+    flickerDisplayTiles: 12,
+    overlayColor: 'rgba(8,10,12,0.46)',
+    backgroundColor: '#0B0C10',
+    topGradientColors: ['#08090B', '#08090B', '#08090B00'],
+    bottomGradientColors: ['#08090B00', '#08090B'],
+  },
+};
 
-interface Props {
-  onReady?: () => void;
-}
+export default function ZenGardenScene({ onReady, variant = 'relax' }: Props) {
+  const sceneConfig = SCENE_VARIANTS[variant];
+  const tileset = useImage(sceneConfig.tilesetSource);
+  const spriteSheet = useImage(sceneConfig.spriteSource);
 
-export default function ZenGardenScene({ onReady }: Props) {
-  const tileset = useImage(require('../../../assets/tiled/zen-garden-tileset.png'));
-  const meditateSheet = useImage(require('../../../assets/sprites/flicker_calm_meditate.png'));
-
-  const { width: mapWidth, height: mapHeight, tileWidth } = zenGardenMap;
+  const {
+    width: mapWidth,
+    height: mapHeight,
+    tileWidth,
+    tileHeight,
+    tilesetColumns,
+    data,
+  } = sceneConfig.map;
 
   const { scale, offsetY, mapPixelH } = useMemo(() => {
     const s = SCREEN_W / (mapWidth * tileWidth);
-    const mph = mapHeight * tileWidth * s;
+    const mph = mapHeight * tileHeight * s;
     const oY = (SCREEN_H - mph) / 2;
     return { scale: s, offsetY: oY, mapPixelH: mph };
-  }, [mapWidth, mapHeight, tileWidth]);
+  }, [mapHeight, mapWidth, tileHeight, tileWidth]);
 
-  // Flicker display size (~10 tiles tall, maintain aspect ratio)
-  const flickerHeight = FLICKER_DISPLAY_TILES * tileWidth * scale;
+  const flickerHeight = sceneConfig.flickerDisplayTiles * tileWidth * scale;
   const flickerWidth = flickerHeight * (FRAME_WIDTH / FRAME_HEIGHT);
 
-  // Screen position (centered on anchor tile)
   const flickerX = useSharedValue(
-    FLICKER_TILE_X * tileWidth * scale - flickerWidth / 2,
+    sceneConfig.flickerTileX * tileWidth * scale - flickerWidth / 2,
   );
   const flickerY = useSharedValue(
-    offsetY + FLICKER_TILE_Y * tileWidth * scale - flickerHeight / 2,
+    offsetY + sceneConfig.flickerTileY * tileWidth * scale - flickerHeight / 2,
   );
 
-  const allLoaded = !!tileset && !!meditateSheet;
+  const allLoaded = !!tileset && !!spriteSheet;
   const firedRef = useRef(false);
 
   useEffect(() => {
@@ -63,29 +139,25 @@ export default function ZenGardenScene({ onReady }: Props) {
 
   return (
     <Canvas style={styles.canvas}>
-      {/* Solid dark background */}
-      <Fill color="#0A0A0B" />
+      <Fill color={sceneConfig.backgroundColor} />
 
-      {/* Zen garden tilemap */}
       <TilemapRenderer
         tileset={tileset}
-        tilesetColumns={zenGardenMap.tilesetColumns}
-        tileWidth={zenGardenMap.tileWidth}
-        tileHeight={zenGardenMap.tileHeight}
+        tilesetColumns={tilesetColumns}
+        tileWidth={tileWidth}
+        tileHeight={tileHeight}
         mapWidth={mapWidth}
         mapHeight={mapHeight}
-        data={zenGardenMap.data}
+        data={data}
         scale={scale}
         offsetY={offsetY}
         screenHeight={SCREEN_H}
       />
 
-      {/* Dark meditative dim overlay */}
-      <Rect x={0} y={0} width={SCREEN_W} height={SCREEN_H} color="rgba(0,0,0,0.7)" />
+      <Rect x={0} y={0} width={SCREEN_W} height={SCREEN_H} color={sceneConfig.overlayColor} />
 
-      {/* Flicker meditating (rendered above dim so character stays bright) */}
       <AnimatedSprite
-        image={meditateSheet}
+        image={spriteSheet}
         frameWidth={FRAME_WIDTH}
         frameHeight={FRAME_HEIGHT}
         frameCount={FRAME_COUNT}
@@ -98,22 +170,19 @@ export default function ZenGardenScene({ onReady }: Props) {
         nearestFilter={false}
       />
 
-      {/* Top vignette */}
       <Rect x={0} y={0} width={SCREEN_W} height={offsetY + 80}>
         <LinearGradient
           start={vec(0, 0)}
           end={vec(0, offsetY + 80)}
-          colors={['#0A0A0B', '#0A0A0B', '#0A0A0B00']}
-          positions={[0, 0.5, 1]}
+          colors={sceneConfig.topGradientColors}
         />
       </Rect>
 
-      {/* Bottom vignette */}
       <Rect x={0} y={offsetY + mapPixelH - 100} width={SCREEN_W} height={100}>
         <LinearGradient
           start={vec(0, offsetY + mapPixelH - 100)}
           end={vec(0, offsetY + mapPixelH)}
-          colors={['#0A0A0B00', '#0A0A0B']}
+          colors={sceneConfig.bottomGradientColors}
         />
       </Rect>
     </Canvas>

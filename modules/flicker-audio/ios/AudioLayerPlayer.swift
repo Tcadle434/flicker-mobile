@@ -40,11 +40,13 @@ class AudioLayerPlayer {
 
     // State
     private var currentBuffer: AVAudioPCMBuffer?
+    private var currentFileURL: URL?
     private var nextBuffer: AVAudioPCMBuffer?
     private var isPlaying = false
     private var isMuted = false
     private var volume: Float = 1.0
     private var crossfadeTimer: Timer?
+    private var filePlaybackGeneration = 0
 
     // Audio format (48kHz stereo)
     private let format = AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2)!
@@ -101,8 +103,18 @@ class AudioLayerPlayer {
 
     /// Load a buffer for this layer
     func loadBuffer(_ buffer: AVAudioPCMBuffer) {
+        invalidateFilePlayback()
         currentBuffer = buffer
+        currentFileURL = nil
         print("[AudioLayerPlayer] Loaded buffer for \(layerType.rawValue): \(buffer.frameLength) frames")
+    }
+
+    func loadFile(_ fileURL: URL) {
+        invalidateFilePlayback()
+        currentBuffer = nil
+        currentFileURL = fileURL
+        nextBuffer = nil
+        print("[AudioLayerPlayer] Loaded streamed file for \(layerType.rawValue): \(fileURL.lastPathComponent)")
     }
 
     /// Prepare a buffer for crossfading
@@ -115,12 +127,13 @@ class AudioLayerPlayer {
 
     /// Start playing the current buffer
     func play(at time: AVAudioTime? = nil) {
-        guard let buffer = currentBuffer else {
-            print("[AudioLayerPlayer] No buffer loaded for \(layerType.rawValue)")
+        guard currentBuffer != nil || currentFileURL != nil else {
+            print("[AudioLayerPlayer] No source loaded for \(layerType.rawValue)")
             return
         }
 
         cancelCrossfade()
+        invalidateFilePlayback()
 
         // Make sure the current player is audible
         if isUsingPlayerA {
@@ -131,9 +144,11 @@ class AudioLayerPlayer {
             gainNodeB.outputVolume = 1.0
         }
 
-        // Schedule buffer with looping
         currentPlayer.stop()
-        currentPlayer.scheduleBuffer(buffer, at: nil, options: .loops)
+        // Queue the source immediately, then use play(at:) for synchronized starts.
+        // Scheduling the source itself at the future render time regressed normal
+        // multi-layer playback and left session layers silent.
+        scheduleCurrentSource(on: currentPlayer)
 
         if let time = time {
             currentPlayer.play(at: time)
@@ -148,6 +163,7 @@ class AudioLayerPlayer {
     /// Pause playback
     func pause() {
         cancelCrossfade()
+        invalidateFilePlayback()
         playerNodeA.pause()
         playerNodeB.pause()
         isPlaying = false
@@ -157,16 +173,33 @@ class AudioLayerPlayer {
     /// Stop playback
     func stop() {
         cancelCrossfade()
+        invalidateFilePlayback()
         playerNodeA.stop()
         playerNodeB.stop()
         isPlaying = false
         print("[AudioLayerPlayer] Stopped \(layerType.rawValue)")
     }
 
+    func deactivate() {
+        cancelCrossfade()
+        invalidateFilePlayback()
+        playerNodeA.stop()
+        playerNodeB.stop()
+        currentBuffer = nil
+        currentFileURL = nil
+        nextBuffer = nil
+        isPlaying = false
+        gainNodeA.outputVolume = 0.0
+        gainNodeB.outputVolume = 0.0
+        print("[AudioLayerPlayer] Deactivated \(layerType.rawValue)")
+    }
+
     func replaceBuffer(_ buffer: AVAudioPCMBuffer, restartPlayback: Bool) {
         cancelCrossfade()
+        invalidateFilePlayback()
 
         currentBuffer = buffer
+        currentFileURL = nil
         nextBuffer = nil
 
         let activeGain = isUsingPlayerA ? gainNodeA : gainNodeB
@@ -179,7 +212,7 @@ class AudioLayerPlayer {
         playerNodeB.stop()
 
         currentPlayer.stop()
-        currentPlayer.scheduleBuffer(buffer, at: nil, options: .loops)
+        scheduleCurrentSource(on: currentPlayer)
 
         if restartPlayback {
             currentPlayer.play()
@@ -187,6 +220,34 @@ class AudioLayerPlayer {
         }
 
         print("[AudioLayerPlayer] Replaced buffer for \(layerType.rawValue)")
+    }
+
+    func replaceFile(_ fileURL: URL, restartPlayback: Bool) {
+        cancelCrossfade()
+        invalidateFilePlayback()
+
+        currentBuffer = nil
+        currentFileURL = fileURL
+        nextBuffer = nil
+
+        let activeGain = isUsingPlayerA ? gainNodeA : gainNodeB
+        let inactiveGain = isUsingPlayerA ? gainNodeB : gainNodeA
+
+        inactiveGain.outputVolume = 0.0
+        activeGain.outputVolume = 1.0
+
+        playerNodeA.stop()
+        playerNodeB.stop()
+
+        currentPlayer.stop()
+        scheduleCurrentSource(on: currentPlayer)
+
+        if restartPlayback {
+            currentPlayer.play()
+            isPlaying = true
+        }
+
+        print("[AudioLayerPlayer] Replaced streamed file for \(layerType.rawValue): \(fileURL.lastPathComponent)")
     }
 
     // MARK: - Crossfading
@@ -343,5 +404,57 @@ class AudioLayerPlayer {
     private func cancelCrossfade() {
         crossfadeTimer?.invalidate()
         crossfadeTimer = nil
+    }
+
+    private func invalidateFilePlayback() {
+        filePlaybackGeneration += 1
+    }
+
+    private func scheduleCurrentSource(on player: AVAudioPlayerNode) {
+        if let buffer = currentBuffer {
+            player.scheduleBuffer(buffer, at: nil, options: .loops)
+            return
+        }
+
+        guard let fileURL = currentFileURL else {
+            return
+        }
+
+        let generation = filePlaybackGeneration
+        scheduleFileLoop(on: player, fileURL: fileURL, at: nil, generation: generation)
+    }
+
+    private func scheduleFileLoop(
+        on player: AVAudioPlayerNode,
+        fileURL: URL,
+        at time: AVAudioTime? = nil,
+        generation: Int
+    ) {
+        do {
+            let audioFile = try AVAudioFile(forReading: fileURL)
+            player.scheduleFile(audioFile, at: time) { [weak self, weak player] in
+                guard let self, let player else { return }
+                DispatchQueue.main.async {
+                    self.handleFilePlaybackCompletion(on: player, fileURL: fileURL, generation: generation)
+                }
+            }
+        } catch {
+            print("[AudioLayerPlayer] Failed to schedule streamed file for \(layerType.rawValue): \(error)")
+        }
+    }
+
+    private func handleFilePlaybackCompletion(
+        on player: AVAudioPlayerNode,
+        fileURL: URL,
+        generation: Int
+    ) {
+        guard isPlaying else { return }
+        guard generation == filePlaybackGeneration else { return }
+        guard currentFileURL == fileURL else { return }
+
+        scheduleFileLoop(on: player, fileURL: fileURL, generation: generation)
+        if !player.isPlaying {
+            player.play()
+        }
     }
 }

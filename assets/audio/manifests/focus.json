@@ -4,16 +4,21 @@
   "description": "Enhanced concentration and productivity with balanced ambient soundscapes",
   "color": "#2DD4BF",
   "loops": {
-    "ambient": ["120_D_GentlyDrone_SG_24.wav"],
-    "nature": ["Soft_Rain_Loop_1.wav"],
-    "melody": ["D_Major_Glass_Loop_2026-02-03T170416.wav"],
+    "ambient": [
+      {
+        "filename": "focus_1.wav",
+        "label": "Focus 1"
+      }
+    ],
+    "nature": [],
+    "melody": [],
     "rhythm": [],
     "synthesis": []
   },
   "defaultMix": {
-    "ambient": 0.72,
-    "nature": 0.24,
-    "melody": 0.18,
+    "ambient": 0.5,
+    "nature": 0.0,
+    "melody": 0.0,
     "rhythm": 0.0,
     "synthesis": 0.0
   },

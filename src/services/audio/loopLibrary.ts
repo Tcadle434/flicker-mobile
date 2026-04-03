@@ -18,7 +18,7 @@ type VolumeMap = Partial<Record<AudioLayer, number>>;
 
 const KEY_LOCKED_LAYERS: AudioLayer[] = ['ambient', 'melody'];
 
-const mapLayerToNative = (layer: AudioLayer) => (layer === 'synthesis' ? 'binaural' : layer);
+export const mapLayerToNative = (layer: AudioLayer) => (layer === 'synthesis' ? 'binaural' : layer);
 
 const areTracksCompatible = (left: AudioTrackOption, right: AudioTrackOption) => {
   if (!left.key || !right.key) {

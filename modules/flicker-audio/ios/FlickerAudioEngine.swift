@@ -50,6 +50,8 @@ class FlickerAudioEngine {
     private var masterVolume: Float = 1.0
     private var isInitialized = false
     private var useMultiLayerMode = false // Toggle between Phase 1 and Phase 2 modes
+    private var currentModeName: String?
+    private var currentActiveLayerTypes: Set<LayerType> = []
 
     // Effects (Phase 4)
     private var effectsChain: EffectsChain?
@@ -187,6 +189,8 @@ class FlickerAudioEngine {
 
         isInitialized = false
         state = .stopped
+        currentModeName = nil
+        currentActiveLayerTypes = []
 
         print("[FlickerAudioEngine] Disposed")
     }
@@ -308,6 +312,8 @@ class FlickerAudioEngine {
         layers[.binaural]?.setVolume(0.3)
 
         useMultiLayerMode = true
+        currentModeName = "test"
+        currentActiveLayerTypes = Set([.ambient, .nature, .melody, .rhythm, .binaural])
         print("[FlickerAudioEngine] Multi-layer mode enabled")
     }
 
@@ -322,6 +328,26 @@ class FlickerAudioEngine {
         }
 
         return layer
+    }
+
+    private func scheduleActiveLayers(_ activeLayers: Set<LayerType>) {
+        if let renderTime = engine?.outputNode.lastRenderTime {
+            let sampleRate = renderTime.sampleRate
+            let startSampleTime = renderTime.sampleTime + AVAudioFramePosition(sampleRate * 0.05)
+            let startTime = AVAudioTime(sampleTime: startSampleTime, atRate: sampleRate)
+
+            for layerType in activeLayers {
+                layers[layerType]?.play(at: startTime)
+            }
+        } else {
+            for layerType in activeLayers {
+                layers[layerType]?.play()
+            }
+        }
+    }
+
+    private func shouldPreferStreamingStandaloneMode(mode: String, activeLayers: Set<LayerType>) -> Bool {
+        return mode.hasPrefix("reset:") && activeLayers.count == 1
     }
 
     // MARK: - Test Tone Generation (Phase 1)
@@ -417,12 +443,29 @@ class FlickerAudioEngine {
         fadeTime: TimeInterval
     ) throws {
         let layer = try getLayer(layerName)
-        let buffer = try AudioBufferManager.shared.loadBuffer(fromFile: filename)
+        let layerType = LayerType(rawValue: layerName.lowercased())
+        let preferStreaming =
+            currentModeName.map { $0.hasPrefix("reset:") } == true &&
+            currentActiveLayerTypes.count == 1 &&
+            layerType.map { currentActiveLayerTypes.contains($0) } == true
+        let playbackAsset = try AudioBufferManager.shared.loadPlaybackAsset(
+            fromFile: filename,
+            preferStreaming: preferStreaming
+        )
 
-        if state == .playing {
-            layer.replaceBuffer(buffer, restartPlayback: true)
-        } else {
-            layer.replaceBuffer(buffer, restartPlayback: false)
+        switch playbackAsset {
+        case .buffer(let buffer):
+            if state == .playing {
+                layer.replaceBuffer(buffer, restartPlayback: true)
+            } else {
+                layer.replaceBuffer(buffer, restartPlayback: false)
+            }
+        case .streamedFile(let fileURL):
+            if state == .playing {
+                layer.replaceFile(fileURL, restartPlayback: true)
+            } else {
+                layer.replaceFile(fileURL, restartPlayback: false)
+            }
         }
 
         layer.setVolume(volume)
@@ -437,6 +480,16 @@ class FlickerAudioEngine {
         }
 
         print("[FlickerAudioEngine] Loading mode: \(mode)")
+
+        let activeLayerTypes = Set(
+            layerConfigs.compactMap { layerConfig -> LayerType? in
+                guard let layerName = layerConfig["layer"] as? String else {
+                    return nil
+                }
+
+                return LayerType(rawValue: layerName.lowercased())
+            }
+        )
 
         // Check if we should use real audio files or test tones
         var useRealAudio = false
@@ -456,6 +509,17 @@ class FlickerAudioEngine {
             return
         }
 
+        let preferStreamingStandaloneMode = shouldPreferStreamingStandaloneMode(
+            mode: mode,
+            activeLayers: activeLayerTypes
+        )
+
+        for (layerType, layer) in layers {
+            if !activeLayerTypes.contains(layerType) {
+                layer.deactivate()
+            }
+        }
+
         // Load real audio files
         print("[FlickerAudioEngine] Loading real audio files...")
         var loadedLayerCount = 0
@@ -473,19 +537,35 @@ class FlickerAudioEngine {
             // Get the layer
             do {
                 let layer = try getLayer(layerName)
+                let layerType = LayerType(rawValue: layerName.lowercased())
+                let preferStreaming =
+                    preferStreamingStandaloneMode &&
+                    layerType.map { activeLayerTypes.contains($0) } == true
 
                 // Load audio file
                 print("[FlickerAudioEngine] Loading \(filename) for \(layerName) layer...")
-                let buffer = try AudioBufferManager.shared.loadBuffer(fromFile: filename)
+                let playbackAsset = try AudioBufferManager.shared.loadPlaybackAsset(
+                    fromFile: filename,
+                    preferStreaming: preferStreaming
+                )
 
-                // Load buffer into layer
-                layer.loadBuffer(buffer)
+                switch playbackAsset {
+                case .buffer(let buffer):
+                    layer.loadBuffer(buffer)
+                case .streamedFile(let fileURL):
+                    layer.loadFile(fileURL)
+                }
+
                 layer.setVolume(volume)
                 loadedLayerCount += 1
 
                 print("[FlickerAudioEngine] ✅ Loaded \(layerName): \(filename) at volume \(volume)")
             } catch {
                 print("[FlickerAudioEngine] ❌ Failed to load \(layerName): \(error)")
+                if let layerName = layerConfig["layer"] as? String,
+                   let layerType = LayerType(rawValue: layerName.lowercased()) {
+                    layers[layerType]?.deactivate()
+                }
                 // Continue with other layers even if one fails
             }
         }
@@ -495,6 +575,13 @@ class FlickerAudioEngine {
         }
 
         useMultiLayerMode = true
+        currentModeName = mode
+        currentActiveLayerTypes = activeLayerTypes
+
+        if state == .playing {
+            scheduleActiveLayers(activeLayerTypes)
+        }
+
         print("[FlickerAudioEngine] Mode loaded successfully: \(mode) with \(loadedLayerCount) layers")
     }
 

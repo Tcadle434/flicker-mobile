@@ -10,6 +10,8 @@ export type SoundscapeMode = 'focus' | 'relax' | 'sleep' | 'energize';
 
 export type AudioLayer = 'ambient' | 'nature' | 'melody' | 'rhythm' | 'synthesis';
 
+export type ResetSessionAudioMode = 'custom' | '432hz' | 'binauralBeats';
+
 export interface ManifestLoopTrack {
   filename: string;
   label: string;
@@ -138,6 +140,9 @@ export interface PlayerState {
   adaptiveEnabled: boolean;
   adaptiveInputs: AdaptiveInputs;
   adaptiveParameters: AdaptiveParameters;
+  resetSessionAudioMode: ResetSessionAudioMode;
+  resetSessionSelections: Record<ResetSessionAudioMode, Partial<Record<AudioLayer, string | null>>>;
+  resetSessionVolumes: Record<ResetSessionAudioMode, Partial<Record<AudioLayer, number>>>;
 }
 
 // ============================================================================

@@ -8,7 +8,7 @@
     ],
     "fileStates": {
         "": {
-            "scaleInDock": 0.2139
+            "scaleInDock": 1
         },
         "#forest": {
             "scaleInEditor": 1
@@ -48,11 +48,11 @@
             "scaleInDock": 1.5115
         },
         "tent-interior-phase-1-tilemap.json": {
-            "scale": 2.1901,
+            "scale": 2.2816,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 90.17853066070042,
-                "y": 114.83493904387926
+                "x": 97.51928471248247,
+                "y": 80.86430575035064
             }
         },
         "tent-interior-phase-1-tilemap.json#fantasy-interior-sprites": {
@@ -85,11 +85,11 @@
             "scaleInDock": 1.3861
         },
         "zen-garden-tilemap.json": {
-            "scale": 0.4382,
+            "scale": 0.4835,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 437.01506161570063,
-                "y": 594.4774075764491
+                "x": 387.7973112719752,
+                "y": 677.3526370217166
             }
         },
         "zen-garden-tilemap.json#zen-garden": {

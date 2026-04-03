@@ -14,7 +14,13 @@ import Foundation
 enum BufferLoadError: Error {
     case fileNotFound(String)
     case invalidFormat(String)
+    case bufferTooLarge(String)
     case decodingError(String)
+}
+
+enum AudioPlaybackAsset {
+    case buffer(AVAudioPCMBuffer)
+    case streamedFile(URL)
 }
 
 // MARK: - Audio Buffer Manager
@@ -28,6 +34,7 @@ class AudioBufferManager {
 
     private var bufferCache = NSCache<NSString, AVAudioPCMBuffer>()
     private let fileManager = FileManager.default
+    private let maxDecodedBufferBytes: UInt64 = 256 * 1024 * 1024
 
     // Supported audio formats
     private let supportedExtensions = ["wav", "m4a", "mp3", "aac", "caf"]
@@ -85,32 +92,41 @@ class AudioBufferManager {
     /// - Parameter filename: Name of the audio file (e.g., "ambient_01.m4a")
     /// - Returns: AVAudioPCMBuffer containing the decoded audio
     func loadBuffer(fromFile filename: String) throws -> AVAudioPCMBuffer {
-        // Check cache first
+        let playbackAsset = try loadPlaybackAsset(fromFile: filename)
+        switch playbackAsset {
+        case .buffer(let buffer):
+            return buffer
+        case .streamedFile(let url):
+            throw BufferLoadError.bufferTooLarge("Asset must be streamed from disk: \(url.lastPathComponent)")
+        }
+    }
+
+    func loadPlaybackAsset(fromFile filename: String, preferStreaming: Bool = false) throws -> AudioPlaybackAsset {
         let cacheKey = NSString(string: filename)
-        if let cachedBuffer = bufferCache.object(forKey: cacheKey) {
+        if !preferStreaming, let cachedBuffer = bufferCache.object(forKey: cacheKey) {
             print("[AudioBufferManager] Cache hit: \(filename)")
-            return cachedBuffer
+            return .buffer(cachedBuffer)
         }
 
         print("[AudioBufferManager] Loading file: \(filename)")
+        let fileURL = try resolveFileURL(filename: filename)
 
-        // Find file in bundle
-        guard let fileURL = findFileInBundle(filename: filename) else {
-            let bundlePaths = searchableBundles.map(\.bundlePath).joined(separator: ", ")
-            print("[AudioBufferManager] Search failed for \(filename). Bundles: \(bundlePaths)")
-            throw BufferLoadError.fileNotFound("File not found in bundle: \(filename)")
+        if preferStreaming {
+            print("[AudioBufferManager] Using streamed file playback for \(filename)")
+            return .streamedFile(fileURL)
         }
 
-        // Load and decode audio file
-        let buffer = try loadAndDecodeFile(at: fileURL)
+        do {
+            let buffer = try loadAndDecodeFile(at: fileURL)
+            let bufferSize = Int(buffer.frameLength * buffer.format.streamDescription.pointee.mBytesPerFrame)
+            bufferCache.setObject(buffer, forKey: cacheKey, cost: bufferSize)
 
-        // Cache the buffer
-        let bufferSize = Int(buffer.frameLength * buffer.format.streamDescription.pointee.mBytesPerFrame)
-        bufferCache.setObject(buffer, forKey: cacheKey, cost: bufferSize)
-
-        print("[AudioBufferManager] Loaded and cached: \(filename) (\(bufferSize) bytes)")
-
-        return buffer
+            print("[AudioBufferManager] Loaded and cached: \(filename) (\(bufferSize) bytes)")
+            return .buffer(buffer)
+        } catch BufferLoadError.bufferTooLarge {
+            print("[AudioBufferManager] Falling back to streamed file playback for \(filename)")
+            return .streamedFile(fileURL)
+        }
     }
 
     /// Load multiple audio files concurrently
@@ -138,6 +154,16 @@ class AudioBufferManager {
     }
 
     // MARK: - Private Methods
+
+    func resolveFileURL(filename: String) throws -> URL {
+        guard let fileURL = findFileInBundle(filename: filename) else {
+            let bundlePaths = searchableBundles.map(\.bundlePath).joined(separator: ", ")
+            print("[AudioBufferManager] Search failed for \(filename). Bundles: \(bundlePaths)")
+            throw BufferLoadError.fileNotFound("File not found in bundle: \(filename)")
+        }
+
+        return fileURL
+    }
 
     private func findFileInBundle(filename: String) -> URL? {
         // Accept direct file paths from JS/native callers.
@@ -216,6 +242,8 @@ class AudioBufferManager {
         // Get file format
         let fileFormat = audioFile.processingFormat
         let frameCount = AVAudioFrameCount(audioFile.length)
+        let bytesPerFrame = UInt64(fileFormat.streamDescription.pointee.mBytesPerFrame)
+        let estimatedDecodedSize = UInt64(frameCount) * bytesPerFrame
 
         print("[AudioBufferManager] File info:")
         print("  - Format: \(fileFormat)")
@@ -223,6 +251,18 @@ class AudioBufferManager {
         print("  - Channels: \(fileFormat.channelCount)")
         print("  - Frame count: \(frameCount)")
         print("  - Duration: \(Double(frameCount) / fileFormat.sampleRate) seconds")
+        print("  - Estimated decoded size: \(estimatedDecodedSize) bytes")
+
+        if bytesPerFrame == 0 {
+            throw BufferLoadError.invalidFormat("Invalid PCM format: bytes per frame is 0")
+        }
+
+        if estimatedDecodedSize > maxDecodedBufferBytes {
+            throw BufferLoadError.bufferTooLarge(
+                "Decoded audio buffer too large (\(estimatedDecodedSize) bytes). " +
+                "This engine currently supports shorter loop assets only."
+            )
+        }
 
         // Create buffer
         guard let buffer = AVAudioPCMBuffer(pcmFormat: fileFormat, frameCapacity: frameCount) else {

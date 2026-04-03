@@ -10,16 +10,28 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { theme } from '../../src/constants/theme';
-import { useMoodStore } from '../../src/stores/moodStore';
 import { useSessionStore } from '../../src/stores/sessionStore';
 import { usePlayerStore } from '../../src/stores/playerStore';
 import { SessionFlowController } from '../../src/controllers/SessionFlowController';
 import ZenGardenScene from '../../src/components/world/ZenGardenScene';
 import SessionMixer from '../../src/components/hud/SessionMixer';
+import StandaloneSessionAudioPanel from '../../src/components/hud/StandaloneSessionAudioPanel';
+import {
+  getResetSessionAudioProfile,
+  getResetSessionStandaloneLayer,
+  getResetSessionTrackCatalog,
+} from '../../src/services/audio/resetSessionAudioProfiles';
+import type { ResetSessionAudioMode } from '../../src/types';
 import {
   DEV_RELAX_SESSION_CONFIG,
   DEV_RELAX_SESSION_MINUTES,
 } from '../../src/constants/devSession';
+
+const RESET_SESSION_AUDIO_MODES: ResetSessionAudioMode[] = [
+  'custom',
+  '432hz',
+  'binauralBeats',
+];
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -34,12 +46,16 @@ export default function ResetSession() {
     devSession?: string;
   }>();
   const { setMode: setPlayerMode } = usePlayerStore();
-  const currentMood = useMoodStore((s) => s.currentMood);
+  const resetSessionAudioMode = usePlayerStore((s) => s.resetSessionAudioMode);
+  const setResetSessionAudioMode = usePlayerStore((s) => s.setResetSessionAudioMode);
+  const cycleResetSessionStandaloneTrack = usePlayerStore((s) => s.cycleResetSessionStandaloneTrack);
+  const resetResetSessionAudioState = usePlayerStore((s) => s.resetResetSessionAudioState);
   const phase = useSessionStore((s) => s.phase);
   const sessionId = useSessionStore((s) => s.sessionId);
   const setSessionMode = useSessionStore((s) => s.setMode);
   const abandonSession = useSessionStore((s) => s.abandonSession);
   const [mixerVisible, setMixerVisible] = useState(false);
+  const [standalonePanelVisible, setStandalonePanelVisible] = useState(false);
 
   const controllerRef = useRef<SessionFlowController | null>(null);
   const [stillRemaining, setStillRemaining] = useState(0);
@@ -52,14 +68,21 @@ export default function ResetSession() {
     return Number.isFinite(value) && value > 0 ? value : fallback;
   }, [isDevSession, params.duration]);
 
-  // Phase-driven animations
+  const currentAudioProfile = useMemo(
+    () => getResetSessionAudioProfile(resetSessionAudioMode),
+    [resetSessionAudioMode],
+  );
+  const standaloneLayer = useMemo(
+    () => getResetSessionStandaloneLayer(resetSessionAudioMode),
+    [resetSessionAudioMode],
+  );
+
   const fadeTextOpacity = useSharedValue(1);
   const controlsOpacity = useSharedValue(0);
   const returnTextOpacity = useSharedValue(0);
   const visualOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Setup audio mode, load soundscape, then start session
     const controller = new SessionFlowController(
       durationMinutes,
       isDevSession ? DEV_RELAX_SESSION_CONFIG : undefined,
@@ -70,13 +93,14 @@ export default function ResetSession() {
       try {
         setSessionMode('reset');
         await setPlayerMode('relax');
+        resetResetSessionAudioState();
+        await setResetSessionAudioMode('custom');
       } catch {
         // ignore, session still renders
       }
       controller.start();
     })();
 
-    // Update still timer display
     const displayInterval = setInterval(() => {
       if (controllerRef.current) {
         setStillRemaining(controllerRef.current.getStillRemaining());
@@ -86,19 +110,35 @@ export default function ResetSession() {
     return () => {
       clearInterval(displayInterval);
       controller.dispose();
+      resetResetSessionAudioState();
       if (useSessionStore.getState().status === 'active') {
         abandonSession();
       }
     };
-  }, [durationMinutes, abandonSession, isDevSession]);
+  }, [
+    durationMinutes,
+    abandonSession,
+    isDevSession,
+    resetResetSessionAudioState,
+    setPlayerMode,
+    setResetSessionAudioMode,
+    setSessionMode,
+  ]);
 
-  // React to phase changes
+  useEffect(() => {
+    if (resetSessionAudioMode === 'custom') {
+      setStandalonePanelVisible(false);
+      return;
+    }
+
+    setMixerVisible(false);
+  }, [resetSessionAudioMode]);
+
   useEffect(() => {
     switch (phase) {
       case 'fade':
         visualOpacity.value = withTiming(1, { duration: 3000, easing: Easing.inOut(Easing.ease) });
         fadeTextOpacity.value = withTiming(0, { duration: 8000 });
-        // Show controls 5s into fade phase
         setTimeout(() => {
           controlsOpacity.value = withTiming(0.5, { duration: 2000 });
         }, 5000);
@@ -115,7 +155,7 @@ export default function ResetSession() {
         router.replace('/(main)/home');
         break;
     }
-  }, [phase, sessionId, durationMinutes, isDevSession]);
+  }, [phase, sessionId, durationMinutes, isDevSession, controlsOpacity, fadeTextOpacity, returnTextOpacity, router, visualOpacity]);
 
   const fadeTextStyle = useAnimatedStyle(() => ({
     opacity: fadeTextOpacity.value,
@@ -135,8 +175,28 @@ export default function ResetSession() {
 
   const handleExitSession = () => {
     controllerRef.current?.dispose();
+    resetResetSessionAudioState();
     abandonSession();
     router.replace('/(main)/home');
+  };
+
+  const handleModePress = (mode: ResetSessionAudioMode) => {
+    if (mode === resetSessionAudioMode) {
+      return;
+    }
+
+    void setResetSessionAudioMode(mode);
+  };
+
+  const handleAudioControlPress = () => {
+    if (currentAudioProfile.showFullMixer) {
+      setMixerVisible(true);
+      return;
+    }
+
+    if (currentAudioProfile.showStandaloneVolumeControl) {
+      setStandalonePanelVisible(true);
+    }
   };
 
   return (
@@ -145,19 +205,18 @@ export default function ResetSession() {
       <View style={styles.container}>
         <StatusBar style="light" />
 
-        {/* Session visual background — Flicker meditate animation */}
         <Animated.View style={[StyleSheet.absoluteFill, visualStyle]}>
           <ZenGardenScene onReady={() => {}} />
         </Animated.View>
 
         <SafeAreaView style={styles.safeArea}>
-          {/* Top row: timer + mixer button (visible during fade & still) */}
           {(phase === 'fade' || phase === 'still') && (
             <Animated.View style={[styles.topRow, controlsStyle]}>
               <Text style={styles.timer}>
                 {formatTime(stillRemaining)}
               </Text>
-              <View style={styles.actionsRow}>
+
+              <View style={styles.rightStack}>
                 <TouchableOpacity
                   style={styles.exitButton}
                   onPress={handleExitSession}
@@ -165,9 +224,67 @@ export default function ResetSession() {
                 >
                   <Text style={styles.exitButtonText}>Exit</Text>
                 </TouchableOpacity>
+
+                <View style={styles.audioModeRail}>
+                  {RESET_SESSION_AUDIO_MODES.map((mode) => {
+                    const profile = getResetSessionAudioProfile(mode);
+                    const isSelected = mode === resetSessionAudioMode;
+                    const rowStandaloneLayer = getResetSessionStandaloneLayer(mode);
+                    const rowTrackCount = rowStandaloneLayer
+                      ? getResetSessionTrackCatalog(mode)[rowStandaloneLayer].length
+                      : 0;
+                    const showTrackArrows =
+                      isSelected &&
+                      profile.showStandaloneVolumeControl &&
+                      rowTrackCount > 1;
+
+                    return (
+                      <View key={mode} style={styles.audioModeRow}>
+                        {showTrackArrows && (
+                          <TouchableOpacity
+                            style={styles.trackArrowButton}
+                            onPress={() => void cycleResetSessionStandaloneTrack(-1)}
+                            activeOpacity={0.75}
+                          >
+                            <Text style={styles.trackArrowText}>{'<'}</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        <TouchableOpacity
+                          style={[
+                            styles.audioModeBubble,
+                            isSelected && styles.audioModeBubbleActive,
+                          ]}
+                          onPress={() => handleModePress(mode)}
+                          activeOpacity={0.78}
+                        >
+                          <Text
+                            style={[
+                              styles.audioModeBubbleText,
+                              isSelected && styles.audioModeBubbleTextActive,
+                            ]}
+                          >
+                            {profile.label}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {showTrackArrows && (
+                          <TouchableOpacity
+                            style={styles.trackArrowButton}
+                            onPress={() => void cycleResetSessionStandaloneTrack(1)}
+                            activeOpacity={0.75}
+                          >
+                            <Text style={styles.trackArrowText}>{'>'}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+
                 <TouchableOpacity
                   style={styles.mixerButton}
-                  onPress={() => setMixerVisible(true)}
+                  onPress={handleAudioControlPress}
                   activeOpacity={0.7}
                 >
                   <View style={styles.eqBars}>
@@ -180,14 +297,12 @@ export default function ResetSession() {
             </Animated.View>
           )}
 
-          {/* Fade phase text */}
           {phase === 'fade' && (
             <Animated.View style={[styles.centerText, fadeTextStyle]}>
               <Text style={styles.phaseText}>Entering your mental reset...</Text>
             </Animated.View>
           )}
 
-          {/* Return phase text */}
           {phase === 'return' && (
             <Animated.View style={[styles.centerText, returnTextStyle]}>
               <Text style={styles.phaseText}>Welcome back.</Text>
@@ -195,9 +310,12 @@ export default function ResetSession() {
           )}
         </SafeAreaView>
 
-        {/* Session mixer overlay */}
-        {mixerVisible && (
+        {mixerVisible && resetSessionAudioMode === 'custom' && (
           <SessionMixer onClose={() => setMixerVisible(false)} />
+        )}
+
+        {standalonePanelVisible && resetSessionAudioMode !== 'custom' && (
+          <StandaloneSessionAudioPanel onClose={() => setStandalonePanelVisible(false)} visible />
         )}
       </View>
     </>
@@ -216,7 +334,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xl,
     paddingHorizontal: theme.spacing.lg,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   timer: {
@@ -224,19 +342,8 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.md,
     letterSpacing: 2,
   },
-  mixerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  rightStack: {
+    alignItems: 'flex-end',
     gap: theme.spacing.sm,
   },
   exitButton: {
@@ -255,6 +362,66 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     fontWeight: theme.typography.fontWeight.semibold,
+  },
+  audioModeRail: {
+    alignItems: 'flex-end',
+    gap: theme.spacing.xs,
+  },
+  audioModeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  audioModeBubble: {
+    minWidth: 104,
+    minHeight: 42,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  audioModeBubbleActive: {
+    backgroundColor: 'rgba(45, 212, 191, 0.18)',
+    borderColor: 'rgba(94, 234, 212, 0.46)',
+  },
+  audioModeBubbleText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.semibold,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  audioModeBubbleTextActive: {
+    color: theme.colors.text,
+  },
+  trackArrowButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  trackArrowText: {
+    color: theme.colors.text,
+    fontSize: 14,
+    fontWeight: theme.typography.fontWeight.semibold,
+  },
+  mixerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
   },
   eqBars: {
     flexDirection: 'row',
