@@ -1,7 +1,13 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, StyleSheet } from 'react-native';
 import { Canvas, Fill, Group, Rect, LinearGradient, vec, useImage, Skia } from '@shopify/react-native-skia';
-import { useDerivedValue, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import {
+  runOnJS,
+  useAnimatedReaction,
+  useDerivedValue,
+  useSharedValue,
+  type SharedValue,
+} from 'react-native-reanimated';
 import TilemapRenderer from './TilemapRenderer';
 import SpriteRenderer from './SpriteRenderer';
 import AnimatedSprite from './AnimatedSprite';
@@ -9,7 +15,7 @@ import RainOverlay from './RainOverlay';
 import FirefliesOverlay from './FirefliesOverlay';
 import WindOverlay from './WindOverlay';
 import SnowOverlay from './SnowOverlay';
-import useFlickerWander from './useFlickerWander';
+import useFlickerWander, { type Direction } from './useFlickerWander';
 import { forestMap } from '../../services/world/tiledMapLoader';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -88,6 +94,7 @@ export default function OverworldScene({
     FLICKER_START_TILE_X,
     FLICKER_START_TILE_Y,
   );
+  const [currentFacing, setCurrentFacing] = useState<Direction>('south');
 
   // Convert tile positions to screen positions (centered on Flicker)
   const screenX = useDerivedValue(() => {
@@ -97,19 +104,27 @@ export default function OverworldScene({
     return offsetY + tileY.value * tileWidth * scale - flickerSize / 2;
   });
 
-  // Direction-based sprite visibility
-  const southOpacity = useDerivedValue(() => {
-    return facing.value === 'south' ? 1 : 0;
-  });
-  const northOpacity = useDerivedValue(() => {
-    return facing.value === 'north' ? 1 : 0;
-  });
-  const eastOpacity = useDerivedValue(() => {
-    return facing.value === 'east' ? 1 : 0;
-  });
-  const westOpacity = useDerivedValue(() => {
-    return facing.value === 'west' ? 1 : 0;
-  });
+  const syncFacing = useCallback((nextFacing: Direction) => {
+    setCurrentFacing((current) => (current === nextFacing ? current : nextFacing));
+  }, []);
+
+  useAnimatedReaction(
+    () => facing.value,
+    (nextFacing, previousFacing) => {
+      if (nextFacing !== previousFacing) {
+        runOnJS(syncFacing)(nextFacing);
+      }
+    },
+    [syncFacing],
+  );
+
+  const flickerImage = useMemo(() => {
+    if (currentFacing === 'north') return flickerNorth;
+    if (currentFacing === 'east' || currentFacing === 'west') return flickerEast;
+    return flickerSouth;
+  }, [currentFacing, flickerEast, flickerNorth, flickerSouth]);
+
+  const flickerFlipX = currentFacing === 'west';
 
   // Campfire screen position (static)
   const campfireSize = CAMPFIRE_DISPLAY_TILES * tileWidth * scale;
@@ -142,6 +157,8 @@ export default function OverworldScene({
   }, [allLoaded, onReady]);
 
   if (!allLoaded) return null;
+
+  const activeFlickerImage = flickerImage ?? flickerSouth;
 
   return (
     <Canvas style={styles.canvas}>
@@ -179,63 +196,19 @@ export default function OverworldScene({
         width={campfireSize}
         height={campfireSize}
       />
-      <Group opacity={southOpacity}>
-        <AnimatedSprite
-          image={flickerSouth}
-          frameWidth={FLICKER_FRAME_W}
-          frameHeight={FLICKER_FRAME_H}
-          frameCount={FLICKER_FRAME_COUNT}
-          fps={3}
-          x={screenX}
-          y={screenY}
-          width={flickerSize}
-          height={flickerSize}
-          isAnimating={isMoving}
-        />
-      </Group>
-      <Group opacity={northOpacity}>
-        <AnimatedSprite
-          image={flickerNorth}
-          frameWidth={FLICKER_FRAME_W}
-          frameHeight={FLICKER_FRAME_H}
-          frameCount={FLICKER_FRAME_COUNT}
-          fps={3}
-          x={screenX}
-          y={screenY}
-          width={flickerSize}
-          height={flickerSize}
-          isAnimating={isMoving}
-        />
-      </Group>
-      <Group opacity={eastOpacity}>
-        <AnimatedSprite
-          image={flickerEast}
-          frameWidth={FLICKER_FRAME_W}
-          frameHeight={FLICKER_FRAME_H}
-          frameCount={FLICKER_FRAME_COUNT}
-          fps={3}
-          x={screenX}
-          y={screenY}
-          width={flickerSize}
-          height={flickerSize}
-          isAnimating={isMoving}
-        />
-      </Group>
-      <Group opacity={westOpacity}>
-        <AnimatedSprite
-          image={flickerEast}
-          frameWidth={FLICKER_FRAME_W}
-          frameHeight={FLICKER_FRAME_H}
-          frameCount={FLICKER_FRAME_COUNT}
-          fps={3}
-          x={screenX}
-          y={screenY}
-          width={flickerSize}
-          height={flickerSize}
-          isAnimating={isMoving}
-          flipX
-        />
-      </Group>
+      <AnimatedSprite
+        image={activeFlickerImage}
+        frameWidth={FLICKER_FRAME_W}
+        frameHeight={FLICKER_FRAME_H}
+        frameCount={FLICKER_FRAME_COUNT}
+        fps={3}
+        x={screenX}
+        y={screenY}
+        width={flickerSize}
+        height={flickerSize}
+        isAnimating={isMoving}
+        flipX={flickerFlipX}
+      />
       {ambientEffect === 'rain' && <RainOverlay mapOffsetY={offsetY} mapHeight={mapPixelH} />}
       {ambientEffect === 'fireflies' && <FirefliesOverlay mapOffsetY={offsetY} mapHeight={mapPixelH} />}
       {ambientEffect === 'wind' && <WindOverlay mapOffsetY={offsetY} mapHeight={mapPixelH} />}

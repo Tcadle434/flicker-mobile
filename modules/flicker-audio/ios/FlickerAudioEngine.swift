@@ -409,6 +409,26 @@ class FlickerAudioEngine {
         }
     }
 
+    func setLayerLoop(
+        layer layerName: String,
+        loopId: String,
+        filename: String,
+        volume: Float,
+        fadeTime: TimeInterval
+    ) throws {
+        let layer = try getLayer(layerName)
+        let buffer = try AudioBufferManager.shared.loadBuffer(fromFile: filename)
+
+        if state == .playing {
+            layer.replaceBuffer(buffer, restartPlayback: true)
+        } else {
+            layer.replaceBuffer(buffer, restartPlayback: false)
+        }
+
+        layer.setVolume(volume)
+        print("[FlickerAudioEngine] Set loop for \(layerName): \(loopId) (\(filename))")
+    }
+
     // MARK: - Mode Loading (Phase 3)
 
     func loadMode(mode: String, layers layerConfigs: [[String: Any]]) throws {

@@ -26,6 +26,7 @@ interface SessionStore {
   status: SessionStatus;
   phase: SessionPhase;
   durationMinutes: number;
+  completedDurationMinutes: number;
   targetSeconds: number;
   elapsed: number;
   totalRemaining: number;
@@ -35,6 +36,7 @@ interface SessionStore {
 
   setMode: (mode: SessionMode) => void;
   setDuration: (minutes: number) => void;
+  setCompletedDurationMinutes: (minutes: number) => void;
   startSession: (input?: {
     mode?: SessionMode;
     phase?: SessionPhase;
@@ -93,6 +95,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   status: 'idle',
   phase: 'idle',
   durationMinutes: 3,
+  completedDurationMinutes: 0,
   targetSeconds: 0,
   elapsed: 0,
   totalRemaining: 0,
@@ -106,6 +109,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   setDuration: (minutes: number) => {
     set({ durationMinutes: minutes });
+  },
+
+  setCompletedDurationMinutes: (minutes: number) => {
+    set({ completedDurationMinutes: minutes });
   },
 
   startSession: (input) => {
@@ -194,6 +201,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       status: 'abandoned',
       phase: 'idle',
       sessionId: null,
+      completedDurationMinutes: 0,
       targetSeconds: 0,
       elapsed: 0,
       totalRemaining: 0,
@@ -208,6 +216,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       sessionId: null,
       status: 'idle',
       phase: 'idle',
+      completedDurationMinutes: 0,
       targetSeconds: 0,
       elapsed: 0,
       totalRemaining: 0,

@@ -16,6 +16,10 @@ import { usePlayerStore } from '../../src/stores/playerStore';
 import { SessionFlowController } from '../../src/controllers/SessionFlowController';
 import ZenGardenScene from '../../src/components/world/ZenGardenScene';
 import SessionMixer from '../../src/components/hud/SessionMixer';
+import {
+  DEV_RELAX_SESSION_CONFIG,
+  DEV_RELAX_SESSION_MINUTES,
+} from '../../src/constants/devSession';
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -25,7 +29,10 @@ function formatTime(totalSeconds: number) {
 
 export default function ResetSession() {
   const router = useRouter();
-  const params = useLocalSearchParams();
+  const params = useLocalSearchParams<{
+    duration?: string;
+    devSession?: string;
+  }>();
   const { setMode: setPlayerMode } = usePlayerStore();
   const currentMood = useMoodStore((s) => s.currentMood);
   const phase = useSessionStore((s) => s.phase);
@@ -36,12 +43,14 @@ export default function ResetSession() {
 
   const controllerRef = useRef<SessionFlowController | null>(null);
   const [stillRemaining, setStillRemaining] = useState(0);
+  const isDevSession = params.devSession === '1';
 
   const durationMinutes = useMemo(() => {
     const raw = Array.isArray(params.duration) ? params.duration[0] : params.duration;
-    const value = Number(raw ?? 3);
-    return Number.isFinite(value) ? value : 3;
-  }, [params.duration]);
+    const fallback = isDevSession ? DEV_RELAX_SESSION_MINUTES : 3;
+    const value = Number(raw ?? fallback);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+  }, [isDevSession, params.duration]);
 
   // Phase-driven animations
   const fadeTextOpacity = useSharedValue(1);
@@ -51,13 +60,16 @@ export default function ResetSession() {
 
   useEffect(() => {
     // Setup audio mode, load soundscape, then start session
-    const controller = new SessionFlowController(durationMinutes);
+    const controller = new SessionFlowController(
+      durationMinutes,
+      isDevSession ? DEV_RELAX_SESSION_CONFIG : undefined,
+    );
     controllerRef.current = controller;
 
     (async () => {
       try {
         setSessionMode('reset');
-        await setPlayerMode('focus');
+        await setPlayerMode('relax');
       } catch {
         // ignore, session still renders
       }
@@ -78,7 +90,7 @@ export default function ResetSession() {
         abandonSession();
       }
     };
-  }, [durationMinutes, abandonSession]);
+  }, [durationMinutes, abandonSession, isDevSession]);
 
   // React to phase changes
   useEffect(() => {
@@ -99,17 +111,11 @@ export default function ResetSession() {
         returnTextOpacity.value = withTiming(1, { duration: 3000 });
         break;
       case 'complete':
-        router.replace({
-          pathname: '/complete',
-          params: {
-            sessionId: sessionId ?? undefined,
-            duration: String(durationMinutes),
-            mode: 'reset',
-          },
-        });
+        useSessionStore.getState().setCompletedDurationMinutes(durationMinutes);
+        router.replace('/(main)/home');
         break;
     }
-  }, [phase, sessionId, durationMinutes]);
+  }, [phase, sessionId, durationMinutes, isDevSession]);
 
   const fadeTextStyle = useAnimatedStyle(() => ({
     opacity: fadeTextOpacity.value,

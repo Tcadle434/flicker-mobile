@@ -50,11 +50,12 @@ export default function EnterTentButton({ onPress, style }: Props) {
 	const isPlaying = useRef(false);
 
 	const onAnimationDone = useCallback(() => {
+		frameCallback.setActive(false);
 		isPlaying.current = false;
 		onPress();
 	}, [onPress]);
 
-	useFrameCallback((info) => {
+	const frameCallback = useFrameCallback((info) => {
 		if (!playing.value) return;
 		if (info.timeSincePreviousFrame === null) return;
 
@@ -70,7 +71,7 @@ export default function EnterTentButton({ onPress, style }: Props) {
 				frameIndex.value = next;
 			}
 		}
-	});
+	}, false);
 
 	const animatedStyle = useAnimatedStyle(() => ({
 		transform: [{ translateX: -(frameIndex.value * FRAME_DISPLAY_W) - PAD_DISPLAY }],
@@ -83,7 +84,8 @@ export default function EnterTentButton({ onPress, style }: Props) {
 		frameIndex.value = 0;
 		elapsed.value = 0;
 		playing.value = true;
-	}, [frameIndex, elapsed, playing]);
+		frameCallback.setActive(true);
+	}, [frameCallback, frameIndex, elapsed, playing]);
 
 	const tap = Gesture.Tap().onEnd(() => {
 		runOnJS(handlePress)();

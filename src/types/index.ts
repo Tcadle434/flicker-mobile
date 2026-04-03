@@ -10,11 +10,26 @@ export type SoundscapeMode = 'focus' | 'relax' | 'sleep' | 'energize';
 
 export type AudioLayer = 'ambient' | 'nature' | 'melody' | 'rhythm' | 'synthesis';
 
+export interface ManifestLoopTrack {
+  filename: string;
+  label: string;
+  key?: string;
+}
+
+export interface AudioTrackOption {
+  id: string;
+  filename: string;
+  label: string;
+  key?: string;
+  layer: AudioLayer;
+}
+
 export interface AudioLayerState {
   id: AudioLayer;
   volume: number;
   muted: boolean;
   currentLoopId: string | null;
+  availableTracks: AudioTrackOption[];
 }
 
 export interface LoopMetadata {
@@ -40,7 +55,7 @@ export interface ModeManifest {
   description: string;
   color: string;
   loops: {
-    [key in AudioLayer]?: string[]; // Array of loop IDs
+    [key in AudioLayer]?: Array<string | ManifestLoopTrack>;
   };
   defaultMix: {
     [key in AudioLayer]?: number; // Default volume 0-1

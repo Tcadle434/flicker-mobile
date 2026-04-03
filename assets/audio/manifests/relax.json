@@ -1,35 +1,44 @@
 {
-  "id": "relax",
-  "name": "Relax",
-  "description": "Deep relaxation and calm with soft ambient textures",
-  "color": "#60A5FA",
-  "loops": {
-    "ambient": ["120_D_GentlyDrone_SG_24.wav"],
-    "nature": ["Soft_Rain_Loop_1.wav"],
-    "melody": ["D_Major_Glass_Loop_2026-02-03T170416.wav"],
-    "rhythm": [],
-    "synthesis": []
-  },
-  "defaultMix": {
-    "ambient": 0.75,
-    "nature": 0.25,
-    "melody": 0.16,
-    "rhythm": 0.0,
-    "synthesis": 0.0
-  },
-  "binauralFrequency": {
-    "min": 7.5,
-    "max": 9
-  },
-  "adaptiveParameters": {
-    "energyRange": {
-      "min": 0.1,
-      "max": 0.6
-    },
-    "densityRange": {
-      "min": 0.2,
-      "max": 0.6
-    },
-    "binauralBase": 7.5
-  }
+	"id": "relax",
+	"name": "Relax",
+	"description": "Deep relaxation and calm with soft ambient textures",
+	"color": "#60A5FA",
+	"loops": {
+		"ambient": [
+			{ "filename": "D_drone_1.wav", "label": "Drone 1", "key": "D" },
+			{ "filename": "D_drone_2.wav", "label": "Drone 2", "key": "D" }
+		],
+		"nature": [
+			{ "filename": "Soft_Rain_Loop_1.wav", "label": "Rain" },
+			{ "filename": "Fire_Loop.wav", "label": "Fire" }
+		],
+		"melody": [
+			{ "filename": "D_melody_1.wav", "label": "Melody 1", "key": "D" },
+			{ "filename": "D_melody_2.wav", "label": "Melody 2", "key": "D" }
+		],
+		"rhythm": [],
+		"synthesis": []
+	},
+	"defaultMix": {
+		"ambient": 0.4,
+		"nature": 0.35,
+		"melody": 0.25,
+		"rhythm": 0.0,
+		"synthesis": 0.0
+	},
+	"binauralFrequency": {
+		"min": 7.5,
+		"max": 9
+	},
+	"adaptiveParameters": {
+		"energyRange": {
+			"min": 0.1,
+			"max": 0.6
+		},
+		"densityRange": {
+			"min": 0.2,
+			"max": 0.6
+		},
+		"binauralBase": 7.5
+	}
 }

@@ -92,6 +92,22 @@ public class FlickerAudioModule: Module {
             promise.resolve(["success": true])
         }
 
+        AsyncFunction("setLayerLoop") { (layer: String, loopId: String, filename: String, volume: Float, fadeMs: Float, promise: Promise) in
+            let fadeTime = TimeInterval(fadeMs / 1000.0)
+            do {
+                try FlickerAudioEngine.shared.setLayerLoop(layer: layer, loopId: loopId, filename: filename, volume: volume, fadeTime: fadeTime)
+                promise.resolve(["success": true])
+            } catch {
+                let errorMessage = "Failed to set layer loop: \(error.localizedDescription)"
+                print("[FlickerAudioModule] \(errorMessage)")
+                self.sendEvent("error", [
+                    "message": errorMessage,
+                    "code": "SET_LAYER_LOOP_ERROR"
+                ])
+                promise.reject("SET_LAYER_LOOP_ERROR", errorMessage)
+            }
+        }
+
         // MARK: - Mode Loading (Phase 2+)
 
         AsyncFunction("loadMode") { (mode: String, layers: [[String: Any]], promise: Promise) in
