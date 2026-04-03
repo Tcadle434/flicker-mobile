@@ -44,6 +44,7 @@ class AudioLayerPlayer {
     private var isPlaying = false
     private var isMuted = false
     private var volume: Float = 1.0
+    private var crossfadeTimer: Timer?
 
     // Audio format (48kHz stereo)
     private let format = AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2)!
@@ -119,6 +120,8 @@ class AudioLayerPlayer {
             return
         }
 
+        cancelCrossfade()
+
         // Make sure the current player is audible
         if isUsingPlayerA {
             gainNodeA.outputVolume = 1.0
@@ -144,6 +147,7 @@ class AudioLayerPlayer {
 
     /// Pause playback
     func pause() {
+        cancelCrossfade()
         playerNodeA.pause()
         playerNodeB.pause()
         isPlaying = false
@@ -152,10 +156,37 @@ class AudioLayerPlayer {
 
     /// Stop playback
     func stop() {
+        cancelCrossfade()
         playerNodeA.stop()
         playerNodeB.stop()
         isPlaying = false
         print("[AudioLayerPlayer] Stopped \(layerType.rawValue)")
+    }
+
+    func replaceBuffer(_ buffer: AVAudioPCMBuffer, restartPlayback: Bool) {
+        cancelCrossfade()
+
+        currentBuffer = buffer
+        nextBuffer = nil
+
+        let activeGain = isUsingPlayerA ? gainNodeA : gainNodeB
+        let inactiveGain = isUsingPlayerA ? gainNodeB : gainNodeA
+
+        inactiveGain.outputVolume = 0.0
+        activeGain.outputVolume = 1.0
+
+        playerNodeA.stop()
+        playerNodeB.stop()
+
+        currentPlayer.stop()
+        currentPlayer.scheduleBuffer(buffer, at: nil, options: .loops)
+
+        if restartPlayback {
+            currentPlayer.play()
+            isPlaying = true
+        }
+
+        print("[AudioLayerPlayer] Replaced buffer for \(layerType.rawValue)")
     }
 
     // MARK: - Crossfading
@@ -170,6 +201,8 @@ class AudioLayerPlayer {
             loadBuffer(newBuffer)
             return
         }
+
+        cancelCrossfade()
 
         print("[AudioLayerPlayer] Crossfading \(layerType.rawValue) over \(duration)s")
 
@@ -219,6 +252,7 @@ class AudioLayerPlayer {
                 self.currentBuffer = newBuffer
 
                 print("[AudioLayerPlayer] Crossfade complete for \(self.layerType.rawValue)")
+                self.crossfadeTimer = nil
                 timer.invalidate()
                 return
             }
@@ -231,6 +265,7 @@ class AudioLayerPlayer {
         }
 
         // Add timer to run loop
+        crossfadeTimer = timer
         RunLoop.main.add(timer, forMode: .common)
     }
 
@@ -303,5 +338,10 @@ class AudioLayerPlayer {
 
     var muted: Bool {
         return isMuted
+    }
+
+    private func cancelCrossfade() {
+        crossfadeTimer?.invalidate()
+        crossfadeTimer = nil
     }
 }

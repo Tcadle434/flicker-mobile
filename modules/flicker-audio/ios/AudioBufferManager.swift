@@ -31,17 +31,28 @@ class AudioBufferManager {
 
     // Supported audio formats
     private let supportedExtensions = ["wav", "m4a", "mp3", "aac", "caf"]
+    private let resourceBundleNames = ["FlickerAudioAssets", "FlickerAudio-FlickerAudioAssets"]
 
     private lazy var searchableBundles: [Bundle] = {
-        var bundles: [Bundle] = [Bundle.main]
+        let rootBundles: [Bundle] = [Bundle.main, Bundle(for: FlickerAudioModule.self)]
+        var bundles: [Bundle] = rootBundles
 
         // Include the module bundle so local pod resources are discoverable.
-        bundles.append(Bundle(for: FlickerAudioModule.self))
+        for rootBundle in rootBundles {
+            if let resourceURL = rootBundle.resourceURL {
+                for bundleName in resourceBundleNames {
+                    let directBundleURL = resourceURL.appendingPathComponent("\(bundleName).bundle")
+                    if let bundle = Bundle(url: directBundleURL) {
+                        bundles.append(bundle)
+                    }
+                }
+            }
 
-        if let bundleURLs = Bundle.main.urls(forResourcesWithExtension: "bundle", subdirectory: nil) {
-            for url in bundleURLs {
-                if let bundle = Bundle(url: url) {
-                    bundles.append(bundle)
+            if let bundleURLs = rootBundle.urls(forResourcesWithExtension: "bundle", subdirectory: nil) {
+                for url in bundleURLs {
+                    if let bundle = Bundle(url: url) {
+                        bundles.append(bundle)
+                    }
                 }
             }
         }
@@ -85,6 +96,8 @@ class AudioBufferManager {
 
         // Find file in bundle
         guard let fileURL = findFileInBundle(filename: filename) else {
+            let bundlePaths = searchableBundles.map(\.bundlePath).joined(separator: ", ")
+            print("[AudioBufferManager] Search failed for \(filename). Bundles: \(bundlePaths)")
             throw BufferLoadError.fileNotFound("File not found in bundle: \(filename)")
         }
 

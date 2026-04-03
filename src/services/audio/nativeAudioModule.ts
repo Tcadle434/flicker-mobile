@@ -152,6 +152,16 @@ export const NativeAudioEngine = {
     return callNative<{ success: boolean }>('setLayerMuted', [layer, muted]);
   },
 
+  setLayerLoop: async (
+    layer: string,
+    loopId: string,
+    filename: string,
+    volume: number,
+    fadeMs: number = 0,
+  ): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('setLayerLoop', [layer, loopId, filename, volume, fadeMs]);
+  },
+
   // MARK: - Mode Loading
 
   loadMode: async (mode: string, layers: LayerConfig[]): Promise<{ success: boolean }> => {

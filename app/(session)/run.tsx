@@ -293,14 +293,8 @@ export default function ModeSessionRun() {
       actualDuration = Math.ceil(elapsedSeconds / 60);
     }
 
-    router.replace({
-      pathname: '/complete',
-      params: {
-        sessionId: sessionId ?? undefined,
-        mode,
-        duration: String(actualDuration),
-      },
-    });
+    useSessionStore.getState().setCompletedDurationMinutes(actualDuration);
+    router.replace('/(main)/home');
   }, [
     sessionStatus, router, sessionId, mode, durationMinutes,
     stopAudio, isMove, elapsedSeconds, pomodoroEnabled, pomodoroBlocks,

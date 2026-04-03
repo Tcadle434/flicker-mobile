@@ -11,6 +11,7 @@ interface Props {
   intensity?: number;
   speed?: number;
   angle?: number;
+  showSplashes?: boolean;
   mapOffsetY: number;
   mapHeight: number;
 }
@@ -19,11 +20,15 @@ export default function RainOverlay({
   intensity = 0.6,
   speed = 1.0,
   angle = 0.15,
+  showSplashes = true,
   mapOffsetY,
   mapHeight,
 }: Props) {
   const rainEffect = useMemo(() => Skia.RuntimeEffect.Make(rainShaderSource), []);
-  const splashEffect = useMemo(() => Skia.RuntimeEffect.Make(rainSplashShaderSource), []);
+  const splashEffect = useMemo(
+    () => (showSplashes ? Skia.RuntimeEffect.Make(rainSplashShaderSource) : null),
+    [showSplashes],
+  );
 
   const time = useSharedValue(0);
 
@@ -53,8 +58,12 @@ export default function RainOverlay({
     () => rect(0, mapOffsetY, SCREEN_W, mapHeight),
     [mapOffsetY, mapHeight],
   );
+  const splashClipRect = useMemo(
+    () => rect(0, groundTop, SCREEN_W, Math.max(0, mapOffsetY + mapHeight - groundTop)),
+    [groundTop, mapHeight, mapOffsetY],
+  );
 
-  if (!rainEffect || !splashEffect) return null;
+  if (!rainEffect || (showSplashes && !splashEffect)) return null;
 
   return (
     <Group clip={clipRect}>
@@ -66,12 +75,13 @@ export default function RainOverlay({
           <Shader source={rainEffect} uniforms={rainUniforms} />
         </Fill>
       </Group>
-      {/* Ground splashes */}
-      <Group blendMode="srcOver">
-        <Fill>
-          <Shader source={splashEffect} uniforms={splashUniforms} />
-        </Fill>
-      </Group>
+      {showSplashes && splashEffect && (
+        <Group clip={splashClipRect} blendMode="srcOver">
+          <Fill>
+            <Shader source={splashEffect} uniforms={splashUniforms} />
+          </Fill>
+        </Group>
+      )}
     </Group>
   );
 }

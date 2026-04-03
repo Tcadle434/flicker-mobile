@@ -23,7 +23,20 @@ const LAYERS: { key: AudioLayer; label: string; color: string }[] = [
 
 export default function SessionMixer({ onClose }: Props) {
   const layers = usePlayerStore((s) => s.layers);
+  const setLayerLoop = usePlayerStore((s) => s.setLayerLoop);
   const setLayerVolume = usePlayerStore((s) => s.setLayerVolume);
+
+  const getAdjacentLoopId = (layerKey: AudioLayer, direction: -1 | 1) => {
+    const tracks = layers[layerKey].availableTracks;
+    if (tracks.length < 2) {
+      return null;
+    }
+
+    const currentIndex = tracks.findIndex((track) => track.id === layers[layerKey].currentLoopId);
+    const startIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex = (startIndex + direction + tracks.length) % tracks.length;
+    return tracks[nextIndex]?.id ?? null;
+  };
 
   return (
     <Pressable style={styles.overlay} onPress={onClose}>
@@ -37,27 +50,73 @@ export default function SessionMixer({ onClose }: Props) {
         </View>
 
         {/* Layer sliders */}
-        {LAYERS.map(({ key, label, color }) => (
-          <View key={key} style={styles.sliderRow}>
-            <View style={styles.labelRow}>
-              <Text style={styles.layerLabel}>{label}</Text>
-              <Text style={[styles.percentage, { color }]}>
-                {Math.round(layers[key].volume * 100)}%
-              </Text>
+        {LAYERS.map(({ key, label, color }) => {
+          const layerState = layers[key];
+          const currentTrack =
+            layerState.availableTracks.find((track) => track.id === layerState.currentLoopId) ??
+            layerState.availableTracks[0] ??
+            null;
+          const canCycleTracks = layerState.availableTracks.length > 1;
+
+          return (
+            <View key={key} style={styles.sliderRow}>
+              <View style={styles.labelRow}>
+                <Text style={styles.layerLabel}>{label}</Text>
+                <Text style={[styles.percentage, { color }]}>
+                  {Math.round(layerState.volume * 100)}%
+                </Text>
+              </View>
+
+              {canCycleTracks && currentTrack && (
+                <View style={styles.trackRow}>
+                  <TouchableOpacity
+                    style={styles.trackButton}
+                    activeOpacity={0.75}
+                    onPress={() => {
+                      const previousLoopId = getAdjacentLoopId(key, -1);
+                      if (previousLoopId) {
+                        void setLayerLoop(key, previousLoopId);
+                      }
+                    }}
+                  >
+                    <Text style={styles.trackButtonText}>{'<'}</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.trackChip}>
+                    <Text style={styles.trackChipText} numberOfLines={1}>
+                      {currentTrack.label}
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.trackButton}
+                    activeOpacity={0.75}
+                    onPress={() => {
+                      const nextLoopId = getAdjacentLoopId(key, 1);
+                      if (nextLoopId) {
+                        void setLayerLoop(key, nextLoopId);
+                      }
+                    }}
+                  >
+                    <Text style={styles.trackButtonText}>{'>'}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <Slider
+                value={layerState.volume}
+                onValueChange={(v) => setLayerVolume(key, v)}
+                minimumValue={0}
+                maximumValue={1}
+                step={0.01}
+                minimumTrackTintColor={color}
+                maximumTrackTintColor="rgba(255, 255, 255, 0.15)"
+                thumbTintColor={color}
+                style={styles.slider}
+              />
             </View>
-            <Slider
-              value={layers[key].volume}
-              onValueChange={(v) => setLayerVolume(key, v)}
-              minimumValue={0}
-              maximumValue={1}
-              step={0.01}
-              minimumTrackTintColor={color}
-              maximumTrackTintColor="rgba(255, 255, 255, 0.15)"
-              thumbTintColor={color}
-              style={styles.slider}
-            />
-          </View>
-        ))}
+          );
+        })}
       </Pressable>
     </Pressable>
   );
@@ -103,7 +162,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   sliderRow: {
-    marginBottom: 12,
+    marginBottom: 14,
   },
   labelRow: {
     flexDirection: 'row',
@@ -125,5 +184,41 @@ const styles = StyleSheet.create({
   slider: {
     width: '100%',
     height: 32,
+  },
+  trackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 2,
+  },
+  trackButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trackButtonText: {
+    color: theme.colors.text,
+    fontSize: 14,
+    fontWeight: theme.typography.fontWeight.semibold,
+  },
+  trackChip: {
+    flex: 1,
+    minHeight: 28,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.10)',
+    justifyContent: 'center',
+  },
+  trackChipText: {
+    color: theme.colors.textSecondary,
+    fontSize: theme.typography.fontSize.xs,
+    textAlign: 'center',
   },
 });

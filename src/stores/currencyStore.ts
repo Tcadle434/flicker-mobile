@@ -8,6 +8,7 @@ interface CurrencyStore {
   balance: number;
   lifetimeEarned: number;
   claimedSessionIds: Record<string, boolean>;
+  awardedSessionAmounts: Record<string, number>;
   isHydrated: boolean;
 
   hydrate: () => Promise<void>;
@@ -47,6 +48,7 @@ export const useCurrencyStore = create<CurrencyStore>((set, get) => ({
   balance: 0,
   lifetimeEarned: 0,
   claimedSessionIds: {},
+  awardedSessionAmounts: {},
   isHydrated: false,
 
   hydrate: async () => {
@@ -71,7 +73,10 @@ export const useCurrencyStore = create<CurrencyStore>((set, get) => ({
 
     const state = get();
     if (state.claimedSessionIds[sessionId]) {
-      return { awarded: false, amount: 0 };
+      return {
+        awarded: false,
+        amount: state.awardedSessionAmounts[sessionId] ?? 0,
+      };
     }
 
     const minutes = normalizeMinutes(durationMinutes);
@@ -98,6 +103,10 @@ export const useCurrencyStore = create<CurrencyStore>((set, get) => ({
       claimedSessionIds: {
         ...state.claimedSessionIds,
         [sessionId]: true,
+      },
+      awardedSessionAmounts: {
+        ...state.awardedSessionAmounts,
+        [sessionId]: amount,
       },
     });
 

@@ -55,7 +55,11 @@ class NativeAudioBridge {
   /**
    * Load a soundscape mode
    */
-  async loadMode(mode: SoundscapeMode, adaptiveParameters: AdaptiveParameters): Promise<LayerConfig[]> {
+  async loadMode(
+    mode: SoundscapeMode,
+    adaptiveParameters: AdaptiveParameters,
+    layerConfigs?: LayerConfig[],
+  ): Promise<LayerConfig[]> {
     try {
       logger.info(`Loading mode: ${mode}`, { adaptiveParameters });
 
@@ -66,11 +70,11 @@ class NativeAudioBridge {
       // Store current mode
       this.currentMode = mode;
 
-      const layerConfigs = buildLayerConfigs(mode);
-      await NativeAudioEngine.loadMode(mode, layerConfigs);
+      const configs = layerConfigs ?? buildLayerConfigs(mode);
+      await NativeAudioEngine.loadMode(mode, configs);
 
-      logger.info(`✅ Mode loaded: ${mode}`, { layers: layerConfigs.length });
-      return layerConfigs;
+      logger.info(`✅ Mode loaded: ${mode}`, { layers: configs.length });
+      return configs;
     } catch (error) {
       logger.error(`Failed to load mode: ${mode}`, error);
       throw error;
@@ -167,6 +171,32 @@ class NativeAudioBridge {
       .catch((error) => {
         logger.error(`Failed to set layer mute: ${layer}`, error);
       });
+  }
+
+  /**
+   * Swap the loop for a single layer without reloading the full mode.
+   */
+  async setLayerLoop(
+    layer: AudioLayer,
+    loopId: string,
+    filename: string,
+    volume: number,
+    fadeTime: number = 1.2,
+  ): Promise<void> {
+    const nativeLayer = layer === 'synthesis' ? 'binaural' : layer;
+    const fadeMs = fadeTime * 1000;
+
+    try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
+      await NativeAudioEngine.setLayerLoop(nativeLayer, loopId, filename, volume, fadeMs);
+      logger.info(`Layer loop set: ${layer} -> ${loopId}`);
+    } catch (error) {
+      logger.error(`Failed to set layer loop: ${layer}`, error);
+      throw error;
+    }
   }
 
   /**

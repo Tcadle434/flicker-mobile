@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import Animated, { FadeIn, useSharedValue, withTiming, runOnJS, Easing } from 'react-native-reanimated';
 import OverworldScene, { AmbientEffect, getTentScreenRect } from '../../src/components/world/OverworldScene';
-import { HudOverlay, SessionPanel } from '../../src/components/hud';
+import { HudOverlay, SessionPanel, SessionCompletePopup } from '../../src/components/hud';
 import SettingsPanel from '../../src/components/hud/SettingsPanel';
 import { forestMap } from '../../src/services/world/tiledMapLoader';
 
@@ -202,6 +202,7 @@ export default function HomeScreen() {
           onClose={() => setSettingsPanelVisible(false)}
         />
       )}
+      {ready && <SessionCompletePopup onOpenShop={handleOpenShop} />}
     </View>
   );
 }
