@@ -1,0 +1,137 @@
+{
+	"flicker_calm_idle": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 298,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_overwhelmed_idle": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_neutral_idle": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_calm_meditate": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_overwhelmed_meditate": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_neutral_meditate": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_calm_focus": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_overwhelmed_focus": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_neutral_focus": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_calm_move": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_overwhelmed_move": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_neutral_move": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_calm_sitting_idle": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_calm_celebrate": {
+		"columns": 12,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 288,
+		"frameCount": 96,
+		"fps": 12,
+		"loop": true
+	},
+	"flicker_overwhelmed_sad": {
+		"columns": 8,
+		"rows": 8,
+		"frameWidth": 512,
+		"frameHeight": 293,
+		"frameCount": 61,
+		"fps": 12,
+		"loop": true
+	}
+}

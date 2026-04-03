@@ -1,42 +1,33 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { WeeklyStreak } from '../../types';
+/**
+ * Reset Storage
+ *
+ * Reads the last reset completion timestamp from session_logs.
+ * Used by moodStore to compute mood state (reset-specific).
+ */
 
-const LAST_RESET_KEY = '@sona:last_reset_at';
-const STREAK_CACHE_KEY = '@sona:streak_cache';
+import { supabase } from '../api/supabase';
 
+/**
+ * Get the most recent completed reset session timestamp from session_logs.
+ */
 export async function getLastResetAt(): Promise<number | null> {
   try {
-    const value = await AsyncStorage.getItem(LAST_RESET_KEY);
-    if (!value) return null;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('session_logs')
+      .select('created_at')
+      .eq('user_id', user.id)
+      .eq('mode', 'reset')
+      .eq('status', 'completed')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) return null;
+    return new Date(data.created_at).getTime();
   } catch {
     return null;
-  }
-}
-
-export async function setLastResetAt(timestamp: number): Promise<void> {
-  try {
-    await AsyncStorage.setItem(LAST_RESET_KEY, String(timestamp));
-  } catch {
-    // ignore storage failures
-  }
-}
-
-export async function getLocalStreakCache(): Promise<WeeklyStreak | null> {
-  try {
-    const value = await AsyncStorage.getItem(STREAK_CACHE_KEY);
-    if (!value) return null;
-    return JSON.parse(value) as WeeklyStreak;
-  } catch {
-    return null;
-  }
-}
-
-export async function setLocalStreakCache(data: WeeklyStreak): Promise<void> {
-  try {
-    await AsyncStorage.setItem(STREAK_CACHE_KEY, JSON.stringify(data));
-  } catch {
-    // ignore storage failures
   }
 }

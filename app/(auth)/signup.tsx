@@ -13,15 +13,10 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
+import { TextInput as RNTextInput } from 'react-native';
 import { useAuthStore } from '../../src/stores';
-import { TextInput } from '../../src/components/ui';
-import { ScreenBackground } from '../../src/components/visuals/ScreenBackground';
 import { theme } from '../../src/constants/theme';
 import { useMoodCycle, buildTitleColorInterpolation } from '../../src/hooks/useMoodCycle';
-
-const neutralImg = require('../../assets/sona_neutral_transparent.png');
-const calmImg = require('../../assets/sona_calm_transparent.png');
-const overwhelmedImg = require('../../assets/sona_overwhelmed_transparent.png');
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
@@ -34,8 +29,7 @@ export default function SignUp() {
   }>({});
 
   const { signUp, isLoading } = useAuthStore();
-  const { neutralOpacity, calmOpacity, overwhelmedOpacity, colorStep, CYCLE, MOOD_COLORS } =
-    useMoodCycle();
+  const { colorStep, CYCLE, MOOD_COLORS } = useMoodCycle();
 
   const animatedTitleColor = useMemo(
     () => buildTitleColorInterpolation(colorStep, CYCLE, MOOD_COLORS),
@@ -84,35 +78,18 @@ export default function SignUp() {
   };
 
   return (
-    <ScreenBackground mood="neutral" intensity={0.3}>
+    <View style={styles.background}>
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <StatusBar style="light" />
-        <Text style={styles.brandMark}>Sona</Text>
+        <Text style={styles.brandMark}>Flicker</Text>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <View style={styles.avatarContainer}>
-              <Animated.Image
-                source={neutralImg}
-                style={[styles.avatar, { opacity: neutralOpacity }]}
-                resizeMode="contain"
-              />
-              <Animated.Image
-                source={calmImg}
-                style={[styles.avatar, styles.avatarAbsolute, { opacity: calmOpacity }]}
-                resizeMode="contain"
-              />
-              <Animated.Image
-                source={overwhelmedImg}
-                style={[styles.avatar, styles.avatarAbsolute, { opacity: overwhelmedOpacity }]}
-                resizeMode="contain"
-              />
-            </View>
             <Animated.Text style={[styles.title, { color: animatedTitleColor }]}>
               Create account
             </Animated.Text>
@@ -122,34 +99,37 @@ export default function SignUp() {
           </View>
 
           <View style={styles.form}>
-            <TextInput
-              glass
+            <RNTextInput
               value={email}
               onChangeText={setEmail}
               placeholder="Email"
+              placeholderTextColor="rgba(255,255,255,0.4)"
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              error={errors.email}
+              style={styles.input}
             />
+            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-            <TextInput
-              glass
+            <RNTextInput
               value={password}
               onChangeText={setPassword}
               placeholder="Password"
-              secure
-              error={errors.password}
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              secureTextEntry
+              style={styles.input}
             />
+            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
-            <TextInput
-              glass
+            <RNTextInput
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               placeholder="Confirm password"
-              secure
-              error={errors.confirmPassword}
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              secureTextEntry
+              style={styles.input}
             />
+            {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
 
             <TouchableOpacity
               onPress={handleSignUp}
@@ -187,11 +167,15 @@ export default function SignUp() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ScreenBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    backgroundColor: '#0A0A0B',
+  },
   container: {
     flex: 1,
   },
@@ -213,19 +197,23 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
     alignItems: 'center',
   },
-  avatarContainer: {
-    width: 96,
-    height: 96,
-    marginBottom: theme.spacing.lg,
+  input: {
+    width: '100%',
+    height: 52,
+    borderRadius: theme.borderRadius.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    color: '#fff',
+    fontSize: 16,
+    paddingHorizontal: 16,
+    marginBottom: theme.spacing.sm,
   },
-  avatar: {
-    width: 96,
-    height: 96,
-  },
-  avatarAbsolute: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
+  errorText: {
+    color: theme.colors.error,
+    fontSize: 12,
+    marginBottom: theme.spacing.sm,
+    marginTop: -4,
   },
   title: {
     fontSize: theme.typography.fontSize.xxxl,

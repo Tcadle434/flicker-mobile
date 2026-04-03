@@ -1,92 +1,73 @@
 /**
  * Subscription Store
  *
- * Manages subscription state and offerings using Zustand
- * Note: RevenueCat stripped — will be replaced with Superwall later
+ * Manages entitlement state for hard paywall (Superwall).
+ * Development default: entitled = true so all features are accessible.
  */
 
 import { create } from 'zustand';
-import { paywallService } from '../services/subscription/paywallService';
-import type { SubscriptionStatus } from '../types';
+import { paywallService, type EntitlementState } from '../services/subscription/paywallService';
 
 interface SubscriptionStore {
-  // State
-  isPremium: boolean;
-  subscriptionStatus: SubscriptionStatus;
-  offerings: any[];
+  isEntitled: boolean;
+  isTrialActive: boolean;
+  trialDaysRemaining: number;
   isLoading: boolean;
-  error: Error | null;
-  paywallVisible: boolean;
 
-  // Actions
   initialize: () => Promise<void>;
-  fetchOfferings: () => Promise<void>;
-  purchasePackage: (packageToPurchase: any) => Promise<boolean>;
+  refreshEntitlement: () => Promise<void>;
+  presentPaywall: (placement?: string) => Promise<'purchased' | 'restored' | 'dismissed'>;
   restorePurchases: () => Promise<boolean>;
-  checkSubscriptionStatus: () => Promise<void>;
-  showPaywall: () => void;
-  hidePaywall: () => void;
-  shouldShowPaywall: () => Promise<boolean>;
-  markPaywallShown: () => Promise<void>;
 }
 
-export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
-  // Initial state
-  isPremium: false,
-  subscriptionStatus: 'free',
-  offerings: [],
+export const useSubscriptionStore = create<SubscriptionStore>((set) => ({
+  isEntitled: true, // dev default — Superwall will override in production
+  isTrialActive: false,
+  trialDaysRemaining: 0,
   isLoading: false,
-  error: null,
-  paywallVisible: false,
 
-  // Initialize subscription state
   initialize: async () => {
-    // No-op until Superwall is integrated
-    set({ isLoading: false, isPremium: false, subscriptionStatus: 'free' });
+    set({ isLoading: true });
+    try {
+      const state = await paywallService.getEntitlementState();
+      set({
+        isEntitled: state.isEntitled,
+        isTrialActive: state.isTrialActive,
+        trialDaysRemaining: state.trialDaysRemaining,
+        isLoading: false,
+      });
+    } catch {
+      set({ isLoading: false });
+    }
   },
 
-  // Fetch available offerings
-  fetchOfferings: async () => {
-    // No-op until Superwall is integrated
-    set({ offerings: [] });
+  refreshEntitlement: async () => {
+    try {
+      const state = await paywallService.getEntitlementState();
+      set({
+        isEntitled: state.isEntitled,
+        isTrialActive: state.isTrialActive,
+        trialDaysRemaining: state.trialDaysRemaining,
+      });
+    } catch {
+      // keep current state on failure
+    }
   },
 
-  // Purchase a package
-  purchasePackage: async (_packageToPurchase: any) => {
-    // No-op until Superwall is integrated
-    return false;
+  presentPaywall: async (placement = 'default') => {
+    return paywallService.presentPaywall(placement);
   },
 
-  // Restore previous purchases
   restorePurchases: async () => {
-    // No-op until Superwall is integrated
-    return false;
-  },
-
-  // Check current subscription status
-  checkSubscriptionStatus: async () => {
-    // No-op until Superwall is integrated
-    set({ isPremium: false, subscriptionStatus: 'free' });
-  },
-
-  // Show paywall
-  showPaywall: () => {
-    set({ paywallVisible: true });
-  },
-
-  // Hide paywall
-  hidePaywall: () => {
-    set({ paywallVisible: false });
-  },
-
-  // Check if paywall should be shown
-  shouldShowPaywall: async () => {
-    const { isPremium } = get();
-    return await paywallService.shouldShowPaywall(isPremium);
-  },
-
-  // Mark paywall as shown
-  markPaywallShown: async () => {
-    await paywallService.markPaywallShown();
+    const result = await paywallService.restorePurchases();
+    if (result) {
+      const state = await paywallService.getEntitlementState();
+      set({
+        isEntitled: state.isEntitled,
+        isTrialActive: state.isTrialActive,
+        trialDaysRemaining: state.trialDaysRemaining,
+      });
+    }
+    return result;
   },
 }));

@@ -1,5 +1,5 @@
 /**
- * Common TypeScript types for Sona
+ * Common TypeScript types for Flicker
  */
 
 // ============================================================================
@@ -10,11 +10,26 @@ export type SoundscapeMode = 'focus' | 'relax' | 'sleep' | 'energize';
 
 export type AudioLayer = 'ambient' | 'nature' | 'melody' | 'rhythm' | 'synthesis';
 
+export interface ManifestLoopTrack {
+  filename: string;
+  label: string;
+  key?: string;
+}
+
+export interface AudioTrackOption {
+  id: string;
+  filename: string;
+  label: string;
+  key?: string;
+  layer: AudioLayer;
+}
+
 export interface AudioLayerState {
   id: AudioLayer;
   volume: number;
   muted: boolean;
   currentLoopId: string | null;
+  availableTracks: AudioTrackOption[];
 }
 
 export interface LoopMetadata {
@@ -40,7 +55,7 @@ export interface ModeManifest {
   description: string;
   color: string;
   loops: {
-    [key in AudioLayer]?: string[]; // Array of loop IDs
+    [key in AudioLayer]?: Array<string | ManifestLoopTrack>;
   };
   defaultMix: {
     [key in AudioLayer]?: number; // Default volume 0-1
@@ -145,13 +160,13 @@ export interface CardProps {
 
 export type { MoodState } from '../constants/moodThemes';
 
-export type SessionPhase = 'idle' | 'fade' | 'still' | 'return' | 'complete';
+export type SessionPhase = 'idle' | 'fade' | 'still' | 'return' | 'active' | 'complete';
 
 export interface WeeklyStreak {
   weeklyMarks: boolean[]; // 7 bools, index 0 = Monday
   overallStreak: number;
-  totalResets: number;
-  lastResetAt: number | null;
+  totalSessions: number;
+  lastSessionAt: number | null;
 }
 
 // ============================================================================
@@ -177,13 +192,23 @@ export interface AudioVisualizerData {
 // Onboarding & Settings Types
 // ============================================================================
 
+export interface OnboardingPreferences {
+  goals: string[];
+  screenTime: string;        // "under-2h" | "2-4h" | "4-6h" | "6-8h" | "8h+"
+  screenTimeHours: number;   // numeric value for calculations
+  distraction: string;
+  noisiest: string;          // when mind feels noisiest
+  birthDate: string;         // ISO date string or empty
+}
+
 export interface OnboardingState {
   completed: boolean;
   currentStep: number;
+  preferences: OnboardingPreferences;
   permissionsGranted: {
     notifications: boolean;
-    location: boolean;
-    health: boolean;
+    screenTime: boolean;
+    tracking: boolean;
   };
 }
 

@@ -1,11 +1,11 @@
-import type { AudioLayer, ModeManifest, SoundscapeMode } from '../../types';
+import type { AudioLayer, AudioTrackOption, ModeManifest, SoundscapeMode } from '../../types';
 import type { LayerConfig } from './nativeAudioModule';
 import { getModeManifest } from './manifestLoader';
-import { selectLoopId } from './loopSelector';
+import { getManifestTracks } from './loopSelector';
 
-const LAYERS: AudioLayer[] = ['ambient', 'nature', 'melody', 'rhythm', 'synthesis'];
+export const AUDIO_LAYERS: AudioLayer[] = ['ambient', 'nature', 'melody', 'rhythm', 'synthesis'];
 
-const DEFAULT_MIX: Record<AudioLayer, number> = {
+export const DEFAULT_MIX: Record<AudioLayer, number> = {
   ambient: 0.7,
   nature: 0.5,
   melody: 0.0,
@@ -13,41 +13,112 @@ const DEFAULT_MIX: Record<AudioLayer, number> = {
   synthesis: 0.3,
 };
 
-const TEST_FILENAME = 'test.wav';
+type LoopSelectionMap = Partial<Record<AudioLayer, string | null>>;
+type VolumeMap = Partial<Record<AudioLayer, number>>;
 
-const isTestLoop = (loopId?: string) => {
-  if (!loopId) return true;
-  return loopId === 'test' || loopId.startsWith('test_');
-};
-
-const resolveFilename = (loopId?: string) => {
-  if (isTestLoop(loopId)) {
-    return TEST_FILENAME;
-  }
-
-  if (loopId && loopId.includes('.')) {
-    return loopId;
-  }
-
-  return `${loopId}.wav`;
-};
+const KEY_LOCKED_LAYERS: AudioLayer[] = ['ambient', 'melody'];
 
 const mapLayerToNative = (layer: AudioLayer) => (layer === 'synthesis' ? 'binaural' : layer);
 
-export function buildLayerConfigs(mode: SoundscapeMode): LayerConfig[] {
+const areTracksCompatible = (left: AudioTrackOption, right: AudioTrackOption) => {
+  if (!left.key || !right.key) {
+    return true;
+  }
+
+  return left.key === right.key;
+};
+
+const getPartnerLayer = (layer: AudioLayer): AudioLayer | null => {
+  if (layer === 'ambient') return 'melody';
+  if (layer === 'melody') return 'ambient';
+  return null;
+};
+
+const filterCompatibleTracks = (
+  tracks: AudioTrackOption[],
+  partnerTracks: AudioTrackOption[],
+): AudioTrackOption[] => {
+  if (tracks.length === 0 || partnerTracks.length === 0) {
+    return tracks;
+  }
+
+  const compatibleTracks = tracks.filter((track) =>
+    partnerTracks.some((partnerTrack) => areTracksCompatible(track, partnerTrack))
+  );
+
+  return compatibleTracks.length > 0 ? compatibleTracks : tracks;
+};
+
+const resolveSelectedTrack = (
+  tracks: AudioTrackOption[],
+  selectedLoopId?: string | null,
+): AudioTrackOption | null => {
+  if (tracks.length === 0) {
+    return null;
+  }
+
+  if (!selectedLoopId) {
+    return tracks[0];
+  }
+
+  return tracks.find((track) => track.id === selectedLoopId) ?? tracks[0];
+};
+
+export function getModeTrackCatalog(mode: SoundscapeMode): Record<AudioLayer, AudioTrackOption[]> {
   const manifest = getModeManifest(mode);
-  return LAYERS.map((layer) => buildLayerConfig(manifest, layer));
+
+  const rawCatalog = Object.fromEntries(
+    AUDIO_LAYERS.map((layer) => [layer, getManifestTracks(manifest, layer)])
+  ) as Record<AudioLayer, AudioTrackOption[]>;
+
+  return Object.fromEntries(
+    AUDIO_LAYERS.map((layer) => {
+      if (!KEY_LOCKED_LAYERS.includes(layer)) {
+        return [layer, rawCatalog[layer]];
+      }
+
+      const partnerLayer = getPartnerLayer(layer);
+      if (!partnerLayer) {
+        return [layer, rawCatalog[layer]];
+      }
+
+      return [layer, filterCompatibleTracks(rawCatalog[layer], rawCatalog[partnerLayer])];
+    })
+  ) as Record<AudioLayer, AudioTrackOption[]>;
 }
 
-function buildLayerConfig(manifest: ModeManifest, layer: AudioLayer): LayerConfig {
-  const loopId = selectLoopId(manifest, layer);
-  const filename = resolveFilename(loopId);
-  const volume = manifest.defaultMix?.[layer] ?? DEFAULT_MIX[layer];
+export function getSelectedTracks(
+  mode: SoundscapeMode,
+  selectedLoopIds: LoopSelectionMap = {},
+): Record<AudioLayer, AudioTrackOption | null> {
+  const catalog = getModeTrackCatalog(mode);
 
-  return {
-    layer: mapLayerToNative(layer),
-    loopId,
-    filename,
-    volume,
-  };
+  return Object.fromEntries(
+    AUDIO_LAYERS.map((layer) => [layer, resolveSelectedTrack(catalog[layer], selectedLoopIds[layer])])
+  ) as Record<AudioLayer, AudioTrackOption | null>;
+}
+
+export function buildLayerConfigs(
+  mode: SoundscapeMode,
+  selectedLoopIds: LoopSelectionMap = {},
+  volumes: VolumeMap = {},
+): LayerConfig[] {
+  const manifest = getModeManifest(mode);
+  const selectedTracks = getSelectedTracks(mode, selectedLoopIds);
+
+  return AUDIO_LAYERS.flatMap((layer) => {
+    const track = selectedTracks[layer];
+    if (!track) {
+      return [];
+    }
+
+    return [
+      {
+        layer: mapLayerToNative(layer),
+        loopId: track.id,
+        filename: track.filename,
+        volume: volumes[layer] ?? manifest.defaultMix?.[layer] ?? DEFAULT_MIX[layer],
+      },
+    ];
+  });
 }

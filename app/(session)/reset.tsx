@@ -9,13 +9,17 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { SessionVisual } from '../../src/components/visuals/SessionVisual';
-import { SessionMixer } from '../../src/components/ui/SessionMixer';
 import { theme } from '../../src/constants/theme';
 import { useMoodStore } from '../../src/stores/moodStore';
 import { useSessionStore } from '../../src/stores/sessionStore';
 import { usePlayerStore } from '../../src/stores/playerStore';
 import { SessionFlowController } from '../../src/controllers/SessionFlowController';
+import ZenGardenScene from '../../src/components/world/ZenGardenScene';
+import SessionMixer from '../../src/components/hud/SessionMixer';
+import {
+  DEV_RELAX_SESSION_CONFIG,
+  DEV_RELAX_SESSION_MINUTES,
+} from '../../src/constants/devSession';
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -25,20 +29,28 @@ function formatTime(totalSeconds: number) {
 
 export default function ResetSession() {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const { setMode } = usePlayerStore();
+  const params = useLocalSearchParams<{
+    duration?: string;
+    devSession?: string;
+  }>();
+  const { setMode: setPlayerMode } = usePlayerStore();
   const currentMood = useMoodStore((s) => s.currentMood);
   const phase = useSessionStore((s) => s.phase);
+  const sessionId = useSessionStore((s) => s.sessionId);
+  const setSessionMode = useSessionStore((s) => s.setMode);
+  const abandonSession = useSessionStore((s) => s.abandonSession);
   const [mixerVisible, setMixerVisible] = useState(false);
 
   const controllerRef = useRef<SessionFlowController | null>(null);
   const [stillRemaining, setStillRemaining] = useState(0);
+  const isDevSession = params.devSession === '1';
 
   const durationMinutes = useMemo(() => {
     const raw = Array.isArray(params.duration) ? params.duration[0] : params.duration;
-    const value = Number(raw ?? 3);
-    return Number.isFinite(value) ? value : 3;
-  }, [params.duration]);
+    const fallback = isDevSession ? DEV_RELAX_SESSION_MINUTES : 3;
+    const value = Number(raw ?? fallback);
+    return Number.isFinite(value) && value > 0 ? value : fallback;
+  }, [isDevSession, params.duration]);
 
   // Phase-driven animations
   const fadeTextOpacity = useSharedValue(1);
@@ -47,18 +59,22 @@ export default function ResetSession() {
   const visualOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Setup audio mode and start session
+    // Setup audio mode, load soundscape, then start session
+    const controller = new SessionFlowController(
+      durationMinutes,
+      isDevSession ? DEV_RELAX_SESSION_CONFIG : undefined,
+    );
+    controllerRef.current = controller;
+
     (async () => {
       try {
-        await setMode('focus');
+        setSessionMode('reset');
+        await setPlayerMode('relax');
       } catch {
         // ignore, session still renders
       }
+      controller.start();
     })();
-
-    const controller = new SessionFlowController(durationMinutes);
-    controllerRef.current = controller;
-    controller.start();
 
     // Update still timer display
     const displayInterval = setInterval(() => {
@@ -70,8 +86,11 @@ export default function ResetSession() {
     return () => {
       clearInterval(displayInterval);
       controller.dispose();
+      if (useSessionStore.getState().status === 'active') {
+        abandonSession();
+      }
     };
-  }, [durationMinutes]);
+  }, [durationMinutes, abandonSession, isDevSession]);
 
   // React to phase changes
   useEffect(() => {
@@ -92,10 +111,11 @@ export default function ResetSession() {
         returnTextOpacity.value = withTiming(1, { duration: 3000 });
         break;
       case 'complete':
-        router.replace('/complete');
+        useSessionStore.getState().setCompletedDurationMinutes(durationMinutes);
+        router.replace('/(main)/home');
         break;
     }
-  }, [phase]);
+  }, [phase, sessionId, durationMinutes, isDevSession]);
 
   const fadeTextStyle = useAnimatedStyle(() => ({
     opacity: fadeTextOpacity.value,
@@ -113,15 +133,21 @@ export default function ResetSession() {
     opacity: visualOpacity.value,
   }));
 
+  const handleExitSession = () => {
+    controllerRef.current?.dispose();
+    abandonSession();
+    router.replace('/(main)/home');
+  };
+
   return (
     <>
       <Stack.Screen options={{ gestureEnabled: false }} />
       <View style={styles.container}>
         <StatusBar style="light" />
 
-        {/* Session visual background */}
+        {/* Session visual background — Flicker meditate animation */}
         <Animated.View style={[StyleSheet.absoluteFill, visualStyle]}>
-          <SessionVisual mood={currentMood} padX={0} padY={0} />
+          <ZenGardenScene onReady={() => {}} />
         </Animated.View>
 
         <SafeAreaView style={styles.safeArea}>
@@ -131,17 +157,26 @@ export default function ResetSession() {
               <Text style={styles.timer}>
                 {formatTime(stillRemaining)}
               </Text>
-              <TouchableOpacity
-                style={styles.mixerButton}
-                onPress={() => setMixerVisible(true)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.eqBars}>
-                  <View style={[styles.eqBar, styles.eqBarShort]} />
-                  <View style={[styles.eqBar, styles.eqBarTall]} />
-                  <View style={[styles.eqBar, styles.eqBarMedium]} />
-                </View>
-              </TouchableOpacity>
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  style={styles.exitButton}
+                  onPress={handleExitSession}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.exitButtonText}>Exit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.mixerButton}
+                  onPress={() => setMixerVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.eqBars}>
+                    <View style={[styles.eqBar, styles.eqBarShort]} />
+                    <View style={[styles.eqBar, styles.eqBarTall]} />
+                    <View style={[styles.eqBar, styles.eqBarMedium]} />
+                  </View>
+                </TouchableOpacity>
+              </View>
             </Animated.View>
           )}
 
@@ -160,8 +195,8 @@ export default function ResetSession() {
           )}
         </SafeAreaView>
 
-        {/* Mixer overlay */}
-        {mixerVisible && phase === 'still' && (
+        {/* Session mixer overlay */}
+        {mixerVisible && (
           <SessionMixer onClose={() => setMixerVisible(false)} />
         )}
       </View>
@@ -198,6 +233,28 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  exitButton: {
+    height: 40,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  exitButtonText: {
+    color: 'rgba(255, 255, 255, 0.72)',
+    fontSize: theme.typography.fontSize.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
   eqBars: {
     flexDirection: 'row',

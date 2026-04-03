@@ -1,0 +1,4 @@
+interface:
+  display_name: "Remove Image Background"
+  short_description: "Remove image backgrounds to transparent PNG"
+  default_prompt: "Remove an image background, preserve the subject, and return the PNG path."

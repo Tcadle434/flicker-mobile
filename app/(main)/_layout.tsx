@@ -6,13 +6,8 @@ export default function MainLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: '#0A0A0B' },
-        animation: 'fade',
+        animation: 'none',
       }}
-    >
-      <Stack.Screen name="home" />
-      <Stack.Screen name="profile" />
-      <Stack.Screen name="mixer" />
-      <Stack.Screen name="modes" />
-    </Stack>
+    />
   );
 }

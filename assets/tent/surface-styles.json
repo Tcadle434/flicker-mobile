@@ -1,0 +1,911 @@
+{
+	"styles": [
+		{
+			"id": "floor_01",
+			"name": "Default Floor",
+			"surfaceType": "floor",
+			"price": 0,
+			"tier": 1,
+			"sheetAssetKey": "floor_01",
+			"defaultOwned": true
+		},
+		{
+			"id": "floor_02",
+			"name": "White Tile",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_02"
+		},
+		{
+			"id": "floor_03",
+			"name": "Brown Hardwood",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_03"
+		},
+		{
+			"id": "floor_04",
+			"name": "White Grid",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_04"
+		},
+		{
+			"id": "floor_05",
+			"name": "Crosshatch Tile",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_05"
+		},
+		{
+			"id": "floor_06",
+			"name": "Stone Gray",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_06"
+		},
+		{
+			"id": "floor_07",
+			"name": "Light Tiles",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_07"
+		},
+		{
+			"id": "floor_08",
+			"name": "Honey Parquet",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_08"
+		},
+		{
+			"id": "floor_09",
+			"name": "Golden Oak",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_09"
+		},
+		{
+			"id": "floor_10",
+			"name": "Dark Oak",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_10"
+		},
+		{
+			"id": "floor_11",
+			"name": "Brown Herringbone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_11"
+		},
+		{
+			"id": "floor_12",
+			"name": "Brick Grid",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_12"
+		},
+		{
+			"id": "floor_13",
+			"name": "Tan Blocks",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_13"
+		},
+		{
+			"id": "floor_14",
+			"name": "Pink Pine",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_14"
+		},
+		{
+			"id": "floor_15",
+			"name": "Wooden Planks",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_15"
+		},
+		{
+			"id": "floor_16",
+			"name": "Warm Plank",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_16"
+		},
+		{
+			"id": "floor_17",
+			"name": "Tan Herringbone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_17"
+		},
+		{
+			"id": "floor_18",
+			"name": "Gray Brick",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_18"
+		},
+		{
+			"id": "floor_19",
+			"name": "Gray Herringbone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_19"
+		},
+		{
+			"id": "floor_20",
+			"name": "Light Stone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_20"
+		},
+		{
+			"id": "floor_21",
+			"name": "Cream Tile",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_21"
+		},
+		{
+			"id": "floor_22",
+			"name": "Beige Grid",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_22"
+		},
+		{
+			"id": "floor_23",
+			"name": "Sandstone Tile",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_23"
+		},
+		{
+			"id": "floor_24",
+			"name": "Striped Wood",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_24"
+		},
+		{
+			"id": "floor_25",
+			"name": "Sandy Stone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_25"
+		},
+		{
+			"id": "floor_26",
+			"name": "Orange Grid",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_26"
+		},
+		{
+			"id": "floor_27",
+			"name": "Terracotta Check",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_27"
+		},
+		{
+			"id": "floor_28",
+			"name": "Light Bamboo",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_28"
+		},
+		{
+			"id": "floor_29",
+			"name": "Clay Hexagon",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_29"
+		},
+		{
+			"id": "floor_30",
+			"name": "Brown Tile",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_30"
+		},
+		{
+			"id": "floor_31",
+			"name": "Stone Blocks",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_31"
+		},
+		{
+			"id": "floor_32",
+			"name": "Gray Flagstone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_32"
+		},
+		{
+			"id": "floor_33",
+			"name": "Cool Stone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_33"
+		},
+		{
+			"id": "floor_34",
+			"name": "Purple Diamond",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_34"
+		},
+		{
+			"id": "floor_35",
+			"name": "Mauve Texture",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_35"
+		},
+		{
+			"id": "floor_36",
+			"name": "Pale Pink",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_36"
+		},
+		{
+			"id": "floor_37",
+			"name": "Pink Rings",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_37"
+		},
+		{
+			"id": "floor_38",
+			"name": "Red Herringbone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_38"
+		},
+		{
+			"id": "floor_39",
+			"name": "Terracotta Plank",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_39"
+		},
+		{
+			"id": "floor_40",
+			"name": "Red Checkerboard",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_40"
+		},
+		{
+			"id": "floor_41",
+			"name": "Lavender Stripe",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_41"
+		},
+		{
+			"id": "floor_42",
+			"name": "Lavender Grid",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_42"
+		},
+		{
+			"id": "floor_43",
+			"name": "Blue Pattern",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_43"
+		},
+		{
+			"id": "floor_44",
+			"name": "Ivory Grid",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_44"
+		},
+		{
+			"id": "floor_45",
+			"name": "Cyan Tiles",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_45"
+		},
+		{
+			"id": "floor_46",
+			"name": "Blue Gray Slab",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_46"
+		},
+		{
+			"id": "floor_47",
+			"name": "Slate Tile",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_47"
+		},
+		{
+			"id": "floor_48",
+			"name": "Blue Tile",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_48"
+		},
+		{
+			"id": "floor_49",
+			"name": "Brushed Stone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_49"
+		},
+		{
+			"id": "floor_50",
+			"name": "Pale Stone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_50"
+		},
+		{
+			"id": "floor_51",
+			"name": "Sage Stone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_51"
+		},
+		{
+			"id": "floor_52",
+			"name": "Checker Stone",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_52"
+		},
+		{
+			"id": "floor_53",
+			"name": "Warm Slab",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_53"
+		},
+		{
+			"id": "floor_54",
+			"name": "Mauve Slab",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_54"
+		},
+		{
+			"id": "floor_55",
+			"name": "Warm Grid",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_55"
+		},
+		{
+			"id": "floor_56",
+			"name": "Taupe Grid",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_56"
+		},
+		{
+			"id": "floor_57",
+			"name": "Charcoal Tile",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_57"
+		},
+		{
+			"id": "floor_58",
+			"name": "Dark Hardwood",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_58"
+		},
+		{
+			"id": "floor_59",
+			"name": "Blue Diamond",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_59"
+		},
+		{
+			"id": "floor_60",
+			"name": "Ice Tile",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_60"
+		},
+		{
+			"id": "floor_61",
+			"name": "Mint Tile",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_61"
+		},
+		{
+			"id": "floor_62",
+			"name": "Granite",
+			"surfaceType": "floor",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "floor_62"
+		},
+		{
+			"id": "wall_01",
+			"name": "Default Wall",
+			"surfaceType": "wall",
+			"price": 0,
+			"tier": 1,
+			"sheetAssetKey": "wall_01",
+			"defaultOwned": true
+		},
+		{
+			"id": "wall_02",
+			"name": "Yellow Stripe",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_02"
+		},
+		{
+			"id": "wall_03",
+			"name": "Wood Panel",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_03",
+			"defaultOwned": true
+		},
+		{
+			"id": "wall_04",
+			"name": "Blue Border",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_04"
+		},
+		{
+			"id": "wall_05",
+			"name": "Light Gray",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_05"
+		},
+		{
+			"id": "wall_06",
+			"name": "Gray Stripe",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_06"
+		},
+		{
+			"id": "wall_07",
+			"name": "Cream Smooth",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_07"
+		},
+		{
+			"id": "wall_08",
+			"name": "Beige Plain",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_08"
+		},
+		{
+			"id": "wall_09",
+			"name": "Tan Smooth",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_09"
+		},
+		{
+			"id": "wall_10",
+			"name": "Tan Matte",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_10"
+		},
+		{
+			"id": "wall_11",
+			"name": "Brown Stripe",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_11"
+		},
+		{
+			"id": "wall_12",
+			"name": "Gold Stripe",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_12"
+		},
+		{
+			"id": "wall_13",
+			"name": "Brown Plaster",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_13"
+		},
+		{
+			"id": "wall_14",
+			"name": "Tan Flat",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_14"
+		},
+		{
+			"id": "wall_15",
+			"name": "Brown Plank",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_15"
+		},
+		{
+			"id": "wall_16",
+			"name": "Dark Gray",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_16"
+		},
+		{
+			"id": "wall_17",
+			"name": "Gray Matte",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_17"
+		},
+		{
+			"id": "wall_18",
+			"name": "Charcoal Dark",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_18"
+		},
+		{
+			"id": "wall_19",
+			"name": "Brown Wood",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_19"
+		},
+		{
+			"id": "wall_20",
+			"name": "Brown Tan",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_20"
+		},
+		{
+			"id": "wall_21",
+			"name": "Red Wood",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_21"
+		},
+		{
+			"id": "wall_22",
+			"name": "Red Plank",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_22"
+		},
+		{
+			"id": "wall_23",
+			"name": "Mauve Stripe",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_23"
+		},
+		{
+			"id": "wall_24",
+			"name": "Brown Solid",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_24"
+		},
+		{
+			"id": "wall_25",
+			"name": "Brown Grid",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_25"
+		},
+		{
+			"id": "wall_26",
+			"name": "Brown Vertical",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_26"
+		},
+		{
+			"id": "wall_27",
+			"name": "Red Orange",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_27"
+		},
+		{
+			"id": "wall_28",
+			"name": "Rust Brown",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_28"
+		},
+		{
+			"id": "wall_29",
+			"name": "Red Stripe",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_29"
+		},
+		{
+			"id": "wall_30",
+			"name": "Mauve Pink",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_30"
+		},
+		{
+			"id": "wall_31",
+			"name": "Salmon Gradient",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_31"
+		},
+		{
+			"id": "wall_32",
+			"name": "Lavender Matte",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_32"
+		},
+		{
+			"id": "wall_33",
+			"name": "Pink Solid",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_33"
+		},
+		{
+			"id": "wall_34",
+			"name": "Blue Matte",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_34"
+		},
+		{
+			"id": "wall_35",
+			"name": "Purple Matte",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_35"
+		},
+		{
+			"id": "wall_36",
+			"name": "Red Coral",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_36"
+		},
+		{
+			"id": "wall_37",
+			"name": "Rust Solid",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_37"
+		},
+		{
+			"id": "wall_38",
+			"name": "Blue Purple",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_38"
+		},
+		{
+			"id": "wall_39",
+			"name": "Light Blue",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_39"
+		},
+		{
+			"id": "wall_40",
+			"name": "Sky Blue",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_40"
+		},
+		{
+			"id": "wall_41",
+			"name": "Cyan Matte",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_41"
+		},
+		{
+			"id": "wall_42",
+			"name": "Teal Solid",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_42"
+		},
+		{
+			"id": "wall_43",
+			"name": "Light Grid",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_43"
+		},
+		{
+			"id": "wall_44",
+			"name": "Pale Blue",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_44"
+		},
+		{
+			"id": "wall_45",
+			"name": "Cream Mint",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_45"
+		},
+		{
+			"id": "wall_46",
+			"name": "Sage Green",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_46"
+		},
+		{
+			"id": "wall_47",
+			"name": "Tan Beige",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_47"
+		},
+		{
+			"id": "wall_48",
+			"name": "Teal Cream",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_48"
+		},
+		{
+			"id": "wall_49",
+			"name": "Mint Grid",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_49"
+		},
+		{
+			"id": "wall_50",
+			"name": "Sky Stripe",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_50"
+		},
+		{
+			"id": "wall_51",
+			"name": "Powder Blue",
+			"surfaceType": "wall",
+			"price": 42,
+			"tier": 1,
+			"sheetAssetKey": "wall_51"
+		}
+	]
+}

@@ -22,7 +22,7 @@ const getModule = () => {
   if (cachedModule) return cachedModule;
 
   try {
-    cachedModule = requireNativeModule('SonaSensors');
+    cachedModule = requireNativeModule('FlickerSensors');
     return cachedModule;
   } catch (error) {
     return null;

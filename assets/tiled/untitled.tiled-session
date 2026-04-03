@@ -1,0 +1,118 @@
+{
+    "Map/SizeTest": {
+        "height": 4300,
+        "width": 2
+    },
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+        "": {
+            "scaleInDock": 0.2139
+        },
+        "#forest": {
+            "scaleInEditor": 1
+        },
+        "flicker-forest-tilemap.json": {
+            "scale": 0.4619,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 388.61225373457455,
+                "y": 687.3782203940248
+            }
+        },
+        "flicker-forest-tilemap.json#flicker-forest": {
+            "scaleInDock": 1
+        },
+        "flicker-forest-tilemap.json#forest": {
+            "scaleInDock": 0.2694
+        },
+        "flicker-forest-tilemap.tmj#flicker-forest": {
+            "scaleInEditor": 1
+        },
+        "tent-interior-main-tilemap.json": {
+            "scale": 2.2511,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 123.050952867487,
+                "y": 40.20256763360132
+            }
+        },
+        "tent-interior-main-tilemap.json#interiors": {
+            "scaleInDock": 4.6924
+        },
+        "tent-interior-main-tilemap.json#raven-cozy-home": {
+            "scaleInDock": 1.1088
+        },
+        "tent-interior-main-tilemap.json#room-builder": {
+            "scaleInDock": 1.5115
+        },
+        "tent-interior-phase-1-tilemap.json": {
+            "scale": 2.1901,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 90.17853066070042,
+                "y": 114.83493904387926
+            }
+        },
+        "tent-interior-phase-1-tilemap.json#fantasy-interior-sprites": {
+            "scaleInDock": 1
+        },
+        "tent-interior-phase-1-tilemap.json#fantasy-interior-tiles-roof": {
+            "scaleInDock": 2.0798
+        },
+        "tent-interior-phase-1-tilemap.json#fantasy_interior_tiles": {
+            "scaleInDock": 1.8751
+        },
+        "tent-interior-phase-1-tilemap.json#interiors": {
+            "scaleInDock": 1.7887
+        },
+        "tent-interior-phase-1-tilemap.json#room-builder": {
+            "scaleInDock": 1.7034
+        },
+        "tent-internal-main-tilemap.json": {
+            "scale": 2.5459,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 42.0283593228328,
+                "y": 56.757924506068576
+            }
+        },
+        "tent-internal-main-tilemap.json#interiors": {
+            "scaleInDock": 1.7284
+        },
+        "tent-internal-main-tilemap.json#room-builder": {
+            "scaleInDock": 1.3861
+        },
+        "zen-garden-tilemap.json": {
+            "scale": 0.4382,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 437.01506161570063,
+                "y": 594.4774075764491
+            }
+        },
+        "zen-garden-tilemap.json#zen-garden": {
+            "scaleInDock": 0.2139
+        }
+    },
+    "last.imagePath": "/Users/thomascadle/Downloads",
+    "map.height": 86,
+    "map.lastUsedFormat": "json",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 48,
+    "openFiles": [
+    ],
+    "project": "untitled.tiled-project",
+    "recentFiles": [
+        "flicker-forest-tilemap.json",
+        "tent-internal-main-tilemap.json",
+        "tent-interior-main-tilemap.json"
+    ],
+    "tileset.embedInMap": true,
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}

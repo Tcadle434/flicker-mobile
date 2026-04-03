@@ -11,6 +11,13 @@ import { mapAdaptiveParameters } from '../services/audio/parameterMapper';
 import { getTimeOfDayInput } from '../services/adaptive/TimeAdapter';
 import { getSeason } from '../services/adaptive/SeasonAdapter';
 import { getModeManifest } from '../services/audio/manifestLoader';
+import {
+  AUDIO_LAYERS,
+  DEFAULT_MIX,
+  buildLayerConfigs,
+  getModeTrackCatalog,
+  getSelectedTracks,
+} from '../services/audio/loopLibrary';
 import { AdaptiveController } from '../integration/AdaptiveController';
 import { logger } from '../lib/logger';
 import type { PlayerState, SoundscapeMode, AudioLayer, PlaybackState } from '../types';
@@ -22,6 +29,7 @@ interface PlayerStore extends PlayerState {
   play: () => Promise<void>;
   pause: () => void;
   stop: () => void;
+  setLayerLoop: (layer: AudioLayer, loopId: string) => Promise<void>;
   setLayerVolume: (layer: AudioLayer, volume: number) => void;
   setMasterVolume: (volume: number) => void;
   setLayerMuted: (layer: AudioLayer, muted: boolean) => void;
@@ -37,6 +45,107 @@ let adaptiveUpdateInFlight = false;
 
 const mapNativeLayerToStore = (layer: string): AudioLayer => {
   return layer === 'binaural' ? 'synthesis' : (layer as AudioLayer);
+};
+
+type LoopSelectionMap = Partial<Record<AudioLayer, string | null>>;
+type VolumeMap = Partial<Record<AudioLayer, number>>;
+
+const KEY_LOCKED_LAYERS: AudioLayer[] = ['ambient', 'melody'];
+
+const getPartnerLayer = (layer: AudioLayer): AudioLayer | null => {
+  if (layer === 'ambient') return 'melody';
+  if (layer === 'melody') return 'ambient';
+  return null;
+};
+
+const areTracksCompatible = (
+  currentKey?: string,
+  partnerKey?: string,
+) => !currentKey || !partnerKey || currentKey === partnerKey;
+
+const getLayerSelections = (layers: PlayerState['layers']): LoopSelectionMap =>
+  Object.fromEntries(
+    AUDIO_LAYERS.map((layer) => [layer, layers[layer].currentLoopId])
+  ) as LoopSelectionMap;
+
+const getLayerVolumes = (layers: PlayerState['layers']): VolumeMap =>
+  Object.fromEntries(
+    AUDIO_LAYERS.map((layer) => [layer, layers[layer].volume])
+  ) as VolumeMap;
+
+const buildModeLayerState = (
+  currentLayers: PlayerState['layers'],
+  mode: SoundscapeMode,
+  loopSelections: LoopSelectionMap = {},
+  volumeOverrides: VolumeMap = {},
+) => {
+  const manifest = getModeManifest(mode);
+  const trackCatalog = getModeTrackCatalog(mode);
+  const selectedTracks = getSelectedTracks(mode, loopSelections);
+  const layerConfigs = buildLayerConfigs(mode, loopSelections, volumeOverrides);
+
+  return {
+    layerConfigs,
+    layers: Object.fromEntries(
+      AUDIO_LAYERS.map((layer) => [
+        layer,
+        {
+          ...currentLayers[layer],
+          currentLoopId: selectedTracks[layer]?.id ?? null,
+          availableTracks: trackCatalog[layer],
+          volume: volumeOverrides[layer] ?? manifest.defaultMix?.[layer] ?? DEFAULT_MIX[layer],
+        },
+      ])
+    ) as PlayerState['layers'],
+  };
+};
+
+const resolveLoopChange = (
+  mode: SoundscapeMode,
+  layers: PlayerState['layers'],
+  layer: AudioLayer,
+  loopId: string,
+): LoopSelectionMap | null => {
+  const catalog = getModeTrackCatalog(mode);
+  const targetTrack = catalog[layer].find((track) => track.id === loopId);
+  if (!targetTrack) {
+    return null;
+  }
+
+  const nextSelections = {
+    ...getLayerSelections(layers),
+    [layer]: targetTrack.id,
+  };
+
+  if (!KEY_LOCKED_LAYERS.includes(layer)) {
+    return nextSelections;
+  }
+
+  const partnerLayer = getPartnerLayer(layer);
+  if (!partnerLayer) {
+    return nextSelections;
+  }
+
+  const partnerTracks = catalog[partnerLayer];
+  const currentPartnerTrack =
+    partnerTracks.find((track) => track.id === nextSelections[partnerLayer]) ??
+    partnerTracks[0] ??
+    null;
+
+  if (!currentPartnerTrack || areTracksCompatible(targetTrack.key, currentPartnerTrack.key)) {
+    return nextSelections;
+  }
+
+  const compatiblePartner = partnerTracks.find((track) =>
+    areTracksCompatible(targetTrack.key, track.key)
+  );
+
+  if (!compatiblePartner) {
+    return null;
+  }
+
+  nextSelections[partnerLayer] = compatiblePartner.id;
+  return nextSelections;
 };
 
 const defaultAdaptiveInputs = {
@@ -79,11 +188,11 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   mode: 'focus',
   playbackState: 'idle',
   layers: {
-    ambient: { id: 'ambient', volume: 0.4, muted: false, currentLoopId: null },
-    nature: { id: 'nature', volume: 0.35, muted: false, currentLoopId: null },
-    melody: { id: 'melody', volume: 0.25, muted: false, currentLoopId: null },
-    rhythm: { id: 'rhythm', volume: 0.0, muted: true, currentLoopId: null },
-    synthesis: { id: 'synthesis', volume: 0.3, muted: false, currentLoopId: null },
+    ambient: { id: 'ambient', volume: 0.4, muted: false, currentLoopId: null, availableTracks: [] },
+    nature: { id: 'nature', volume: 0.35, muted: false, currentLoopId: null, availableTracks: [] },
+    melody: { id: 'melody', volume: 0.25, muted: false, currentLoopId: null, availableTracks: [] },
+    rhythm: { id: 'rhythm', volume: 0.0, muted: true, currentLoopId: null, availableTracks: [] },
+    synthesis: { id: 'synthesis', volume: 0.3, muted: false, currentLoopId: null, availableTracks: [] },
   },
   masterVolume: 0.8,
   adaptiveEnabled: true,
@@ -104,25 +213,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
       // Load default mode (Focus)
       const state = get();
-      const layerConfigs = await audioEngine.loadMode(state.mode, state.adaptiveParameters);
-      set((current) => ({
-        layers: {
-          ...current.layers,
-          ...Object.fromEntries(
-            layerConfigs.map((config) => {
-              const key = mapNativeLayerToStore(config.layer);
-              return [
-                key,
-                {
-                  ...current.layers[key],
-                  currentLoopId: config.loopId ?? config.filename,
-                  volume: config.volume,
-                },
-              ];
-            })
-          ),
-        },
-      }));
+      const nextState = buildModeLayerState(get().layers, state.mode);
+      await audioEngine.loadMode(state.mode, state.adaptiveParameters, nextState.layerConfigs);
+      set({ layers: nextState.layers });
       syncNativeMutes(get().layers);
       await audioEngine.updateAdaptiveParameters(state.adaptiveParameters);
       startAdaptiveLoop(set, get);
@@ -145,25 +238,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       set({ playbackState: 'loading' });
 
       const state = get();
-      const layerConfigs = await audioEngine.loadMode(mode, state.adaptiveParameters);
-      set((current) => ({
-        layers: {
-          ...current.layers,
-          ...Object.fromEntries(
-            layerConfigs.map((config) => {
-              const key = mapNativeLayerToStore(config.layer);
-              return [
-                key,
-                {
-                  ...current.layers[key],
-                  currentLoopId: config.loopId ?? config.filename,
-                  volume: config.volume,
-                },
-              ];
-            })
-          ),
-        },
-      }));
+      const nextState = buildModeLayerState(get().layers, mode);
+      await audioEngine.loadMode(mode, state.adaptiveParameters, nextState.layerConfigs);
+      set({ layers: nextState.layers });
       syncNativeMutes(get().layers);
       await audioEngine.updateAdaptiveParameters(state.adaptiveParameters);
       startAdaptiveLoop(set, get);
@@ -182,34 +259,23 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
    */
   play: async () => {
     try {
-      const state = get();
+      let didInitialize = false;
 
       // Initialize if not ready
       if (!audioEngine.isReady()) {
         await get().initialize();
+        didInitialize = true;
       }
 
-      // If idle, need to load mode first
-      if (state.playbackState === 'idle') {
-        const layerConfigs = await audioEngine.loadMode(state.mode, state.adaptiveParameters);
-        set((current) => ({
-          layers: {
-            ...current.layers,
-            ...Object.fromEntries(
-              layerConfigs.map((config) => {
-                const key = mapNativeLayerToStore(config.layer);
-                return [
-                  key,
-                  {
-                    ...current.layers[key],
-                    currentLoopId: config.loopId ?? config.filename,
-                    volume: config.volume,
-                  },
-                ];
-              })
-            ),
-          },
-        }));
+      const state = get();
+
+      // If idle, need to load mode first using the store's current loop selections and volumes.
+      if (!didInitialize && state.playbackState === 'idle') {
+        const loopSelections = getLayerSelections(state.layers);
+        const volumeOverrides = getLayerVolumes(state.layers);
+        const nextState = buildModeLayerState(state.layers, state.mode, loopSelections, volumeOverrides);
+        await audioEngine.loadMode(state.mode, state.adaptiveParameters, nextState.layerConfigs);
+        set({ layers: nextState.layers });
         syncNativeMutes(get().layers);
         await audioEngine.updateAdaptiveParameters(state.adaptiveParameters);
       }
@@ -249,6 +315,65 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       set({ playbackState: 'idle' });
     } catch (error) {
       logger.error('Failed to stop playback', error);
+    }
+  },
+
+  /**
+   * Swap the current loop for a layer.
+   */
+  setLayerLoop: async (layer: AudioLayer, loopId: string) => {
+    try {
+      const state = get();
+      const nextSelections = resolveLoopChange(state.mode, state.layers, layer, loopId);
+
+      if (!nextSelections) {
+        logger.warn('Rejected incompatible loop change', { layer, loopId });
+        return;
+      }
+
+      const nextSelectedTracks = getSelectedTracks(state.mode, nextSelections);
+      const changedLayers = AUDIO_LAYERS.filter(
+        (candidateLayer) => nextSelections[candidateLayer] !== state.layers[candidateLayer].currentLoopId
+      );
+
+      if (changedLayers.length === 0) {
+        return;
+      }
+
+      await Promise.all(
+        changedLayers.map(async (candidateLayer) => {
+          const track = nextSelectedTracks[candidateLayer];
+          if (!track) {
+            return;
+          }
+
+          await audioEngine.setLayerLoop(
+            candidateLayer,
+            track.id,
+            track.filename,
+            state.layers[candidateLayer].volume,
+          );
+        })
+      );
+
+      set((current) => ({
+        layers: {
+          ...current.layers,
+          ...Object.fromEntries(
+            changedLayers.map((candidateLayer) => [
+              candidateLayer,
+              {
+                ...current.layers[candidateLayer],
+                currentLoopId: nextSelectedTracks[candidateLayer]?.id ?? null,
+              },
+            ])
+          ),
+        },
+      }));
+
+      logger.info('Layer loop updated', { layer, loopId, changedLayers });
+    } catch (error) {
+      logger.error('Failed to set layer loop', { layer, loopId, error });
     }
   },
 

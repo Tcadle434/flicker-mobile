@@ -55,7 +55,11 @@ class NativeAudioBridge {
   /**
    * Load a soundscape mode
    */
-  async loadMode(mode: SoundscapeMode, adaptiveParameters: AdaptiveParameters): Promise<LayerConfig[]> {
+  async loadMode(
+    mode: SoundscapeMode,
+    adaptiveParameters: AdaptiveParameters,
+    layerConfigs?: LayerConfig[],
+  ): Promise<LayerConfig[]> {
     try {
       logger.info(`Loading mode: ${mode}`, { adaptiveParameters });
 
@@ -66,11 +70,11 @@ class NativeAudioBridge {
       // Store current mode
       this.currentMode = mode;
 
-      const layerConfigs = buildLayerConfigs(mode);
-      await NativeAudioEngine.loadMode(mode, layerConfigs);
+      const configs = layerConfigs ?? buildLayerConfigs(mode);
+      await NativeAudioEngine.loadMode(mode, configs);
 
-      logger.info(`✅ Mode loaded: ${mode}`, { layers: layerConfigs.length });
-      return layerConfigs;
+      logger.info(`✅ Mode loaded: ${mode}`, { layers: configs.length });
+      return configs;
     } catch (error) {
       logger.error(`Failed to load mode: ${mode}`, error);
       throw error;
@@ -98,24 +102,22 @@ class NativeAudioBridge {
    * Pause playback
    */
   pause(): void {
-    try {
-      NativeAudioEngine.pause();
-      logger.info('Playback paused');
-    } catch (error) {
-      logger.error('Failed to pause playback', error);
-    }
+    void NativeAudioEngine.pause()
+      .then(() => logger.info('Playback paused'))
+      .catch((error) => {
+        logger.error('Failed to pause playback', error);
+      });
   }
 
   /**
    * Stop playback
    */
   stop(): void {
-    try {
-      NativeAudioEngine.stop();
-      logger.info('Playback stopped');
-    } catch (error) {
-      logger.error('Failed to stop playback', error);
-    }
+    void NativeAudioEngine.stop()
+      .then(() => logger.info('Playback stopped'))
+      .catch((error) => {
+        logger.error('Failed to stop playback', error);
+      });
   }
 
   /**
@@ -125,18 +127,17 @@ class NativeAudioBridge {
    * @param fadeTime Fade duration in seconds
    */
   setLayerVolume(layer: AudioLayer, volume: number, fadeTime: number = 0.1): void {
-    try {
-      // Map 'synthesis' to 'binaural' for native module
-      const nativeLayer = layer === 'synthesis' ? 'binaural' : layer;
+    // Map 'synthesis' to 'binaural' for native module
+    const nativeLayer = layer === 'synthesis' ? 'binaural' : layer;
 
-      // Convert fadeTime from seconds to milliseconds
-      const fadeMs = fadeTime * 1000;
+    // Convert fadeTime from seconds to milliseconds
+    const fadeMs = fadeTime * 1000;
 
-      NativeAudioEngine.setLayerVolume(nativeLayer, volume, fadeMs);
-      logger.debug(`Layer volume set: ${layer} = ${volume}`);
-    } catch (error) {
-      logger.error(`Failed to set layer volume: ${layer}`, error);
-    }
+    void NativeAudioEngine.setLayerVolume(nativeLayer, volume, fadeMs)
+      .then(() => logger.debug(`Layer volume set: ${layer} = ${volume}`))
+      .catch((error) => {
+        logger.error(`Failed to set layer volume: ${layer}`, error);
+      });
   }
 
   /**
@@ -145,15 +146,14 @@ class NativeAudioBridge {
    * @param fadeTime Fade duration in seconds
    */
   setMasterVolume(volume: number, fadeTime: number = 0.1): void {
-    try {
-      // Convert fadeTime from seconds to milliseconds
-      const fadeMs = fadeTime * 1000;
+    // Convert fadeTime from seconds to milliseconds
+    const fadeMs = fadeTime * 1000;
 
-      NativeAudioEngine.setMasterVolume(volume, fadeMs);
-      logger.debug(`Master volume set: ${volume}`);
-    } catch (error) {
-      logger.error('Failed to set master volume', error);
-    }
+    void NativeAudioEngine.setMasterVolume(volume, fadeMs)
+      .then(() => logger.debug(`Master volume set: ${volume}`))
+      .catch((error) => {
+        logger.error('Failed to set master volume', error);
+      });
   }
 
   /**
@@ -163,14 +163,39 @@ class NativeAudioBridge {
    * @param fadeTime Fade duration in seconds (unused for mute, but kept for API compatibility)
    */
   setLayerMuted(layer: AudioLayer, muted: boolean, fadeTime: number = 0.1): void {
-    try {
-      // Map 'synthesis' to 'binaural' for native module
-      const nativeLayer = layer === 'synthesis' ? 'binaural' : layer;
+    // Map 'synthesis' to 'binaural' for native module
+    const nativeLayer = layer === 'synthesis' ? 'binaural' : layer;
 
-      NativeAudioEngine.setLayerMuted(nativeLayer, muted);
-      logger.debug(`Layer mute set: ${layer} = ${muted}`);
+    void NativeAudioEngine.setLayerMuted(nativeLayer, muted)
+      .then(() => logger.debug(`Layer mute set: ${layer} = ${muted}`))
+      .catch((error) => {
+        logger.error(`Failed to set layer mute: ${layer}`, error);
+      });
+  }
+
+  /**
+   * Swap the loop for a single layer without reloading the full mode.
+   */
+  async setLayerLoop(
+    layer: AudioLayer,
+    loopId: string,
+    filename: string,
+    volume: number,
+    fadeTime: number = 1.2,
+  ): Promise<void> {
+    const nativeLayer = layer === 'synthesis' ? 'binaural' : layer;
+    const fadeMs = fadeTime * 1000;
+
+    try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
+      await NativeAudioEngine.setLayerLoop(nativeLayer, loopId, filename, volume, fadeMs);
+      logger.info(`Layer loop set: ${layer} -> ${loopId}`);
     } catch (error) {
-      logger.error(`Failed to set layer mute: ${layer}`, error);
+      logger.error(`Failed to set layer loop: ${layer}`, error);
+      throw error;
     }
   }
 
