@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { fetchBalance, syncCurrencyTransaction } from '../services/api/currencyService';
+import { syncCurrencyTransaction } from '../services/api/currencyService';
+import { supabase } from '../services/api/supabase';
 import { config } from '../constants/config';
 
 type SessionMode = 'reset' | 'focus' | 'move';
@@ -9,9 +10,12 @@ interface CurrencyStore {
   lifetimeEarned: number;
   claimedSessionIds: Record<string, boolean>;
   awardedSessionAmounts: Record<string, number>;
+  hydratedUserId: string | null;
   isHydrated: boolean;
+  isHydrating: boolean;
 
   hydrate: () => Promise<void>;
+  resetForAuthChange: () => void;
   awardSessionCompletion: (input: {
     sessionId: string;
     mode: SessionMode;
@@ -35,6 +39,27 @@ function normalizeMinutes(durationMinutes: number): number {
   return Math.max(1, Math.round(durationMinutes));
 }
 
+async function getUserId(): Promise<string | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function createCurrencyDefaults() {
+  return {
+    balance: 0,
+    lifetimeEarned: 0,
+    claimedSessionIds: {},
+    awardedSessionAmounts: {},
+    hydratedUserId: null,
+    isHydrated: false,
+    isHydrating: false,
+  };
+}
+
 /**
  * Calculate multiplier from streak bonus.
  * Streak: +10% per consecutive day, capped at 7 days = +70%.
@@ -45,28 +70,51 @@ function calculateMultiplier(streakDays: number): number {
 }
 
 export const useCurrencyStore = create<CurrencyStore>((set, get) => ({
-  balance: 0,
-  lifetimeEarned: 0,
-  claimedSessionIds: {},
-  awardedSessionAmounts: {},
-  isHydrated: false,
+  ...createCurrencyDefaults(),
 
   hydrate: async () => {
-    if (get().isHydrated) return;
+    if (get().isHydrating) return;
 
-    // Fetch from Supabase (source of truth)
-    const remote = await fetchBalance();
-    if (remote) {
-      set({
-        balance: remote.lightBalance,
-        lifetimeEarned: remote.lifetimeEarned,
-        isHydrated: true,
-      });
-    } else {
-      // No auth or offline — start at 0, will sync when auth is available
-      set({ isHydrated: true });
+    const userId = await getUserId();
+    if (userId && get().isHydrated && get().hydratedUserId === userId) {
+      return;
+    }
+
+    set({ isHydrating: true });
+
+    try {
+      if (!userId) {
+        get().resetForAuthChange();
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('light_balance, lifetime_earned')
+        .eq('id', userId)
+        .single();
+
+      if (!error && data) {
+        set({
+          balance: data.light_balance ?? 0,
+          lifetimeEarned: data.lifetime_earned ?? 0,
+          hydratedUserId: userId,
+          isHydrated: true,
+        });
+      } else {
+        set({
+          balance: 0,
+          lifetimeEarned: 0,
+        });
+      }
+    } finally {
+      set({ isHydrating: false });
     }
   },
+
+  resetForAuthChange: () => set({
+    ...createCurrencyDefaults(),
+  }),
 
   awardSessionCompletion: async ({ sessionId, mode, durationMinutes }) => {
     if (!sessionId) return { awarded: false, amount: 0 };

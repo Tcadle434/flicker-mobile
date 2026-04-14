@@ -15,6 +15,9 @@ import type { ImageSourcePropType } from 'react-native';
 const items = catalogJson.items as CatalogItem[];
 const catalogMap = new Map<string, CatalogItem>(items.map((i) => [i.id, i]));
 
+export const DEFAULT_ITEM_SCALE = 1;
+export const ITEM_SCALE_STEPS = [0.75, 1, 1.25, 1.5] as const;
+
 // ── Sprite asset map ───────────────────────────────────────────────
 // Non-rotatable items: single sprite
 // Rotatable items: one sprite per direction
@@ -162,9 +165,27 @@ const ROTATABLE_SPRITE_MAP: Record<string, Partial<Record<Direction, ImageSource
     left: require('../../../assets/sprites/interior-decorations/corner_desk/corner_desk_left.png'),
     right: require('../../../assets/sprites/interior-decorations/corner_desk/corner_desk_right.png'),
   },
+  couch_large_01: {
+    down: require('../../../assets/sprites/interior-decorations/couch_large_01/couch_large_01_down.png'),
+    up: require('../../../assets/sprites/interior-decorations/couch_large_01/couch_large_01_up.png'),
+    left: require('../../../assets/sprites/interior-decorations/couch_large_01/couch_large_01_left.png'),
+    right: require('../../../assets/sprites/interior-decorations/couch_large_01/couch_large_01_right.png'),
+  },
+  couch_medium_01: {
+    down: require('../../../assets/sprites/interior-decorations/couch_medium_01/couch_medium_01_down.png'),
+    up: require('../../../assets/sprites/interior-decorations/couch_medium_01/couch_medium_01_up.png'),
+    left: require('../../../assets/sprites/interior-decorations/couch_medium_01/couch_medium_01_left.png'),
+    right: require('../../../assets/sprites/interior-decorations/couch_medium_01/couch_medium_01_right.png'),
+  },
   grand_bed_01: {
     down: require('../../../assets/sprites/interior-decorations/grand_bed/grand_bed_01_south.png'),
     up: require('../../../assets/sprites/interior-decorations/grand_bed/grand_bed_01_north.png'),
+  },
+  love_seat_01: {
+    down: require('../../../assets/sprites/interior-decorations/love_seat_01/love_seat_01_down.png'),
+    up: require('../../../assets/sprites/interior-decorations/love_seat_01/love_seat_01_up.png'),
+    left: require('../../../assets/sprites/interior-decorations/love_seat_01/love_seat_01_left.png'),
+    right: require('../../../assets/sprites/interior-decorations/love_seat_01/love_seat_01_right.png'),
   },
 };
 
@@ -250,6 +271,47 @@ export function getItemDimensions(
   const dims = { w: asset.width, h: asset.height };
   dimensionCache.set(key, dims);
   return dims;
+}
+
+export function normalizeItemScale(itemScale?: number): number {
+  if (typeof itemScale !== 'number' || !Number.isFinite(itemScale)) {
+    return DEFAULT_ITEM_SCALE;
+  }
+
+  let closest: number = ITEM_SCALE_STEPS[0];
+  let smallestDistance = Math.abs(itemScale - closest);
+
+  for (const step of ITEM_SCALE_STEPS) {
+    const distance = Math.abs(itemScale - step);
+    if (distance < smallestDistance) {
+      closest = step;
+      smallestDistance = distance;
+    }
+  }
+
+  return closest;
+}
+
+export function getAdjacentItemScale(itemScale: number, direction: -1 | 1): number {
+  const normalized = normalizeItemScale(itemScale);
+  const currentIndex = ITEM_SCALE_STEPS.indexOf(normalized as (typeof ITEM_SCALE_STEPS)[number]);
+  const nextIndex = Math.max(0, Math.min(ITEM_SCALE_STEPS.length - 1, currentIndex + direction));
+  return ITEM_SCALE_STEPS[nextIndex];
+}
+
+export function getScaledItemDimensions(
+  itemId: string,
+  direction: Direction = 'down',
+  itemScale: number = DEFAULT_ITEM_SCALE,
+): { w: number; h: number } | null {
+  const dims = getItemDimensions(itemId, direction);
+  if (!dims) return null;
+
+  const normalizedScale = normalizeItemScale(itemScale);
+  return {
+    w: Math.max(1, Math.round(dims.w * normalizedScale)),
+    h: Math.max(1, Math.round(dims.h * normalizedScale)),
+  };
 }
 
 /**

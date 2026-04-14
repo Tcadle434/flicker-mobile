@@ -234,23 +234,7 @@ export default function SessionPanel({ visible, onClose }: SessionPanelProps) {
 								</PixelPanel>
 							</TouchableOpacity>
 
-							{__DEV__ && (
-								<TouchableOpacity
-									onPress={handleBeginDevRelax}
-									activeOpacity={0.85}
-									style={styles.devButtonWrap}
-								>
-									<PixelPanel
-										source={HUD_ASSETS.panelSlice2}
-										scale={1}
-										style={styles.devButtonPanel}
-									>
-										<View style={styles.devButtonInner}>
-											<Text style={styles.devButtonText}>5s Relax (Dev)</Text>
-										</View>
-									</PixelPanel>
-								</TouchableOpacity>
-							)}
+							{/* DEV BUTTON TEMPORARILY REMOVED */}
 						</View>
 					</PixelPanel>
 				</Animated.View>

@@ -63,6 +63,7 @@ export default function HudOverlay({ onStartSession, onDecorate, onEnterTent, on
       <Animated.View
         entering={FadeInUp.delay(400).duration(450)}
         style={styles.startBtn}
+        pointerEvents="box-none"
       >
         <StartSessionButton onPress={onStartSession} />
       </Animated.View>

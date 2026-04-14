@@ -215,18 +215,7 @@ class FlickerAudioEngine {
         if useMultiLayerMode {
             // Phase 2: Play all layers in sync
             print("[FlickerAudioEngine] Playing all layers")
-            if let renderTime = engine?.outputNode.lastRenderTime {
-                let sampleRate = renderTime.sampleRate
-                let startSampleTime = renderTime.sampleTime + AVAudioFramePosition(sampleRate * 0.05)
-                let startTime = AVAudioTime(sampleTime: startSampleTime, atRate: sampleRate)
-                for (_, layer) in layers {
-                    layer.play(at: startTime)
-                }
-            } else {
-                for (_, layer) in layers {
-                    layer.play()
-                }
-            }
+            scheduleActiveLayers(currentActiveLayerTypes)
         } else {
             // Phase 1: Use legacy player
             guard let legacyPlayerNode = legacyPlayerNode else {
@@ -331,6 +320,18 @@ class FlickerAudioEngine {
     }
 
     private func scheduleActiveLayers(_ activeLayers: Set<LayerType>) {
+        guard !activeLayers.isEmpty else { return }
+
+        // One-layer modes do not benefit from synchronized future scheduling,
+        // and immediate starts are more reliable for long streamed assets such
+        // as the reset session's standalone 432Hz track.
+        if activeLayers.count == 1 {
+            for layerType in activeLayers {
+                layers[layerType]?.play()
+            }
+            return
+        }
+
         if let renderTime = engine?.outputNode.lastRenderTime {
             let sampleRate = renderTime.sampleRate
             let startSampleTime = renderTime.sampleTime + AVAudioFramePosition(sampleRate * 0.05)

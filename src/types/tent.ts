@@ -59,6 +59,7 @@ export interface TentPlacement {
   x: number;                            // pixel X in tilemap space
   y: number;                            // pixel Y in tilemap space
   direction: Direction;
+  scale: number;                        // discrete local scale preset (e.g. 0.75, 1, 1.25)
   placedAt: number;
 }
 

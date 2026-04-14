@@ -10,7 +10,7 @@ import React, { useCallback, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useDecorateStore } from '../../stores/decorateStore';
 import { useTentStore } from '../../stores/tentStore';
-import { getItemDimensions } from '../../services/tent/tentCatalog';
+import { getScaledItemDimensions } from '../../services/tent/tentCatalog';
 import { compareTentPlacementsForRender } from '../../services/tent/tentRenderOrder';
 
 interface Props {
@@ -21,6 +21,7 @@ interface Props {
 export default function TentTouchLayer({ scale, offsetY }: Props) {
   const isDecorating = useDecorateStore((s) => s.isDecorating);
   const ghostItemId = useDecorateStore((s) => s.ghostItemId);
+  const isPersistingPlacement = useDecorateStore((s) => s.isPersistingPlacement);
   const previewRoomId = useDecorateStore((s) => s.previewRoomId);
   const previewFloorStyleId = useDecorateStore((s) => s.previewFloorStyleId);
   const previewWallStyleId = useDecorateStore((s) => s.previewWallStyleId);
@@ -54,7 +55,7 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
       // Check in reverse render order so top-most visible item wins.
       for (let i = sortedRoomPlacements.length - 1; i >= 0; i--) {
         const p = sortedRoomPlacements[i];
-        const dims = getItemDimensions(p.itemId, p.direction);
+        const dims = getScaledItemDimensions(p.itemId, p.direction, p.scale);
         if (!dims) continue;
         if (px >= p.x && px < p.x + dims.w && py >= p.y && py < p.y + dims.h) {
           return p;
@@ -67,7 +68,7 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
 
   const handleTouchStart = useCallback(
     (e: any) => {
-      if (!isDecorating) return;
+      if (!isDecorating || isPersistingPlacement) return;
       const touch = e.nativeEvent;
       const { px, py } = toPixel(touch.locationX, touch.locationY);
 
@@ -86,19 +87,19 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
         }
       }
     },
-    [isDecorating, ghostItemId, surfacePreviewActive, toPixel, updateGhostPosition, findPlacementAt, startMoving],
+    [isDecorating, isPersistingPlacement, ghostItemId, surfacePreviewActive, toPixel, updateGhostPosition, findPlacementAt, startMoving],
   );
 
   const handleTouchMove = useCallback(
     (e: any) => {
-      if (!isDecorating || !useDecorateStore.getState().ghostItemId) return;
+      if (!isDecorating || isPersistingPlacement || !useDecorateStore.getState().ghostItemId) return;
       const touch = e.nativeEvent.touches?.[0] ?? e.nativeEvent;
       const { px, py } = toPixel(touch.locationX, touch.locationY);
 
       const offset = dragOffsetRef.current ?? { dx: 0, dy: 0 };
       updateGhostPosition(px - offset.dx, py - offset.dy);
     },
-    [isDecorating, toPixel, updateGhostPosition],
+    [isDecorating, isPersistingPlacement, toPixel, updateGhostPosition],
   );
 
   if (!isDecorating) return null;
@@ -109,6 +110,7 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
       onStartShouldSetResponder={(e) => {
         const state = useDecorateStore.getState();
         if (!state.isDecorating) return false;
+        if (state.isPersistingPlacement) return false;
         if (state.ghostItemId) return true;
 
         const previewActive = !!state.previewRoomId
@@ -120,7 +122,7 @@ export default function TentTouchLayer({ scale, offsetY }: Props) {
       }}
       onMoveShouldSetResponder={() => {
         const state = useDecorateStore.getState();
-        return state.isDecorating && !!state.ghostItemId;
+        return state.isDecorating && !state.isPersistingPlacement && !!state.ghostItemId;
       }}
       onResponderGrant={handleTouchStart}
       onResponderMove={handleTouchMove}

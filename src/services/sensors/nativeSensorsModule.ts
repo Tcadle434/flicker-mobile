@@ -7,14 +7,8 @@ export type NativeLocationResult = {
   accuracy?: number;
 } | null;
 
-export type NativeHeartRateResult = {
-  bpm: number;
-  variability: number;
-} | null;
-
 let cachedModule: {
   getCurrentLocation: () => Promise<NativeLocationResult>;
-  getLatestHeartRate: () => Promise<NativeHeartRateResult>;
 } | null = null;
 
 const getModule = () => {
@@ -35,17 +29,6 @@ export async function getCurrentLocation(): Promise<NativeLocationResult> {
 
   try {
     return await module.getCurrentLocation();
-  } catch (error) {
-    return null;
-  }
-}
-
-export async function getLatestHeartRate(): Promise<NativeHeartRateResult> {
-  const module = getModule();
-  if (!module?.getLatestHeartRate) return null;
-
-  try {
-    return await module.getLatestHeartRate();
   } catch (error) {
     return null;
   }

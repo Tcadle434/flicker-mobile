@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.license = { :type => 'MIT' }
   s.author = { 'Flicker' => 'dev@flicker.app' }
   s.homepage = 'https://flicker.app'
-  s.platforms = { :ios => '16.0' }
+  s.platforms = { :ios => '15.1' }
   s.swift_version = '5.9'
   s.source = { :path => '.' }
   s.static_framework = true

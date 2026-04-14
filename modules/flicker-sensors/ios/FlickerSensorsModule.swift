@@ -3,12 +3,11 @@
 //  Flicker
 //
 //  Created by Codex
-//  Expo Module bridge for location + HealthKit signals
+//  Expo Module bridge for location signals
 //
 
 import ExpoModulesCore
 import CoreLocation
-import HealthKit
 
 private final class LocationDelegate: NSObject, CLLocationManagerDelegate {
     var onAuthorizationChanged: ((CLLocationManager) -> Void)?
@@ -32,18 +31,12 @@ public class FlickerSensorsModule: Module {
     private let locationManager = CLLocationManager()
     private let locationDelegate = LocationDelegate()
     private var locationPromise: Promise?
-    private let healthStore = HKHealthStore()
-    private var healthAuthInFlight = false
 
     public func definition() -> ModuleDefinition {
         Name("FlickerSensors")
 
         AsyncFunction("getCurrentLocation") { (promise: Promise) in
             self.requestCurrentLocation(promise: promise)
-        }
-
-        AsyncFunction("getLatestHeartRate") { (promise: Promise) in
-            self.requestLatestHeartRate(promise: promise)
         }
 
         OnCreate {
@@ -127,76 +120,5 @@ public class FlickerSensorsModule: Module {
         locationPromise = nil
         print("[FlickerSensorsModule] Location error: \(error.localizedDescription)")
         promise.resolve(nil)
-    }
-
-    // MARK: - HealthKit
-
-    private func requestLatestHeartRate(promise: Promise) {
-        guard HKHealthStore.isHealthDataAvailable() else {
-            promise.resolve(nil)
-            return
-        }
-
-        guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else {
-            promise.resolve(nil)
-            return
-        }
-
-        let readTypes: Set<HKObjectType> = [heartRateType]
-
-        func executeQuery() {
-            let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
-            let query = HKSampleQuery(sampleType: heartRateType,
-                                      predicate: nil,
-                                      limit: 1,
-                                      sortDescriptors: [sortDescriptor]) { _, samples, error in
-                if let error = error {
-                    print("[FlickerSensorsModule] Heart rate query error: \(error.localizedDescription)")
-                    promise.resolve(nil)
-                    return
-                }
-
-                guard let sample = samples?.first as? HKQuantitySample else {
-                    promise.resolve(nil)
-                    return
-                }
-
-                let bpm = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
-                promise.resolve([
-                    "bpm": bpm,
-                    "variability": 0.0
-                ])
-            }
-            self.healthStore.execute(query)
-        }
-
-        let authStatus = healthStore.authorizationStatus(for: heartRateType)
-        switch authStatus {
-        case .sharingAuthorized:
-            executeQuery()
-        case .notDetermined:
-            if healthAuthInFlight {
-                promise.resolve(nil)
-                return
-            }
-            healthAuthInFlight = true
-            healthStore.requestAuthorization(toShare: nil, read: readTypes) { success, error in
-                self.healthAuthInFlight = false
-                if let error = error {
-                    print("[FlickerSensorsModule] HealthKit auth error: \(error.localizedDescription)")
-                    promise.resolve(nil)
-                    return
-                }
-                if success {
-                    executeQuery()
-                } else {
-                    promise.resolve(nil)
-                }
-            }
-        case .sharingDenied:
-            promise.resolve(nil)
-        @unknown default:
-            promise.resolve(nil)
-        }
     }
 }

@@ -5,11 +5,11 @@
  * Phase state machine with skip-forward support + subtitles.
  *
  * Phases:
- *   0: MODE_SELECT     — session panel auto-selects Relax → Begin
- *   1: SESSION_WARP    — panel flies up, flash, zen garden fades in
+ *   0: MODE_SELECT      — session panel auto-selects Relax → Begin
+ *   1: SESSION_WARP     — panel flies up, white flash, zen garden fades in
  *   2: SESSION_ACTIVE   — zen garden + timer + ambient text
- *   3: SESSION_COMPLETE — "Reset complete." + reward pill
- *   4: SANCTUARY        — shop opens over tent, closes, furniture drops
+ *   3: SESSION_COMPLETE — PixelPanel popup with reward
+ *   4: SANCTUARY        — shop opens, closes, sanctuary_demo.mov plays
  *   5: CTA              — "Build my ritual" button (auto-advances after 6s)
  */
 
@@ -26,11 +26,10 @@ import Animated, {
   Easing,
   SharedValue,
 } from 'react-native-reanimated';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import ZenGardenScene from '../../world/ZenGardenScene';
-import TentInteriorScene from '../../world/TentInteriorScene';
 import DemoSessionPanel from '../demo/DemoSessionPanel';
 import DemoCompleteOverlay from '../demo/DemoCompleteOverlay';
-import DemoFurniturePlacement from '../demo/DemoFurniturePlacement';
 import DemoShopOverlay from '../demo/DemoShopOverlay';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -58,9 +57,17 @@ export default function StepCinematicDemo({ onNext }: Props) {
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const zenReadyRef = useRef(false);
   const zenReadyResolveRef = useRef<(() => void) | null>(null);
-  const [showTent, setShowTent] = useState(false);
   const [phase, setPhase] = useState(-1);
   const [subtitleText, setSubtitleText] = useState('');
+
+  // ── Video player ──
+  const player = useVideoPlayer(
+    require('../../../../assets/onboarding/sanctuary_demo.mov'),
+    (p) => {
+      p.muted = true;
+      p.loop = false;
+    },
+  );
 
   // ── All shared values ──
 
@@ -92,20 +99,12 @@ export default function StepCinematicDemo({ onNext }: Props) {
   const completeRewardOpacity = useSharedValue(0);
   const completeRewardScale = useSharedValue(0.8);
 
-  // Tent (Phase 4)
-  const tentOpacity = useSharedValue(0);
-
   // Shop overlay (Phase 4)
   const shopOpacity = useSharedValue(0);
   const shopTranslateY = useSharedValue(0);
 
-  // Furniture (Phase 4)
-  const item0TranslateY = useSharedValue(-120);
-  const item0Opacity = useSharedValue(0);
-  const item1TranslateY = useSharedValue(-120);
-  const item1Opacity = useSharedValue(0);
-  const item2TranslateY = useSharedValue(-120);
-  const item2Opacity = useSharedValue(0);
+  // Video (Phase 4)
+  const videoOpacity = useSharedValue(0);
 
   // CTA (Phase 5)
   const ctaOpacity = useSharedValue(0);
@@ -160,12 +159,6 @@ export default function StepCinematicDemo({ onNext }: Props) {
     });
   }, []);
 
-  // ── Tent ready ──
-
-  const handleTentReady = useCallback(() => {
-    tentOpacity.value = withTiming(1, { duration: 800 });
-  }, []);
-
   // ── Phase snap functions ──
 
   const snapPhase0 = useCallback(() => {
@@ -211,17 +204,12 @@ export default function StepCinematicDemo({ onNext }: Props) {
 
   const snapPhase4 = useCallback(() => {
     snap(completeOverlayOpacity, 0);
-    snap(tentOpacity, 1);
     snap(shopOpacity, 0);
     snap(shopTranslateY, 100);
-    snap(item0TranslateY, 0);
-    snap(item0Opacity, 1);
-    snap(item1TranslateY, 0);
-    snap(item1Opacity, 1);
-    snap(item2TranslateY, 0);
-    snap(item2Opacity, 1);
+    snap(videoOpacity, 1);
     snap(subtitleOpacity, 0);
-  }, []);
+    player.play();
+  }, [player]);
 
   // ── Phase enter functions ──
 
@@ -230,29 +218,22 @@ export default function StepCinematicDemo({ onNext }: Props) {
     phaseRef.current = 0;
     setPhase(0);
 
-    // Panel fades in
     panelOpacity.value = withTiming(1, { duration: 500 });
-
-    // Subtitle
     showSubtitle(SUBTITLES[0], 300);
 
-    // 0.8s: highlight Relax
     schedule(800, () => {
       relaxHighlight.value = withTiming(1, { duration: 300 });
     });
 
-    // 1.5s: durations + 10 min
     schedule(1500, () => {
       durationsOpacity.value = withTiming(1, { duration: 300 });
       dur10Highlight.value = withTiming(1, { duration: 300 });
     });
 
-    // 2.5s: begin button
     schedule(2500, () => {
       beginOpacity.value = withTiming(1, { duration: 300 });
     });
 
-    // 3.2s: begin press animation
     schedule(3200, () => {
       beginScale.value = withSequence(
         withTiming(0.93, { duration: 120 }),
@@ -261,7 +242,6 @@ export default function StepCinematicDemo({ onNext }: Props) {
       hideSubtitle();
     });
 
-    // 3.5s: auto-advance
     schedule(3500, () => enterPhase1());
   }, []);
 
@@ -273,20 +253,15 @@ export default function StepCinematicDemo({ onNext }: Props) {
     await waitForZenReady();
     if (phaseRef.current !== 1) return;
 
-    // Flash
     flashOpacity.value = withSequence(
       withTiming(0.6, { duration: 200 }),
       withTiming(0, { duration: 200 }),
     );
 
-    // Panel flies up
     panelTranslateY.value = withTiming(-SCREEN_H, { duration: 400, easing: Easing.in(Easing.cubic) });
     panelOpacity.value = withDelay(300, withTiming(0, { duration: 100 }));
-
-    // Zen garden fades in
     zenOpacity.value = withDelay(200, withTiming(1, { duration: 1000 }));
 
-    // Auto-advance
     schedule(1200, () => enterPhase2());
   }, []);
 
@@ -295,25 +270,19 @@ export default function StepCinematicDemo({ onNext }: Props) {
     phaseRef.current = 2;
     setPhase(2);
 
-    // Timer + center text
     timerOpacity.value = withTiming(0.5, { duration: 500 });
     centerTextOpacity.value = withTiming(1, { duration: 500 });
-
-    // Subtitle
     showSubtitle(SUBTITLES[2], 500);
 
-    // 2s: center text fades
     schedule(2000, () => {
       centerTextOpacity.value = withTiming(0, { duration: 400 });
     });
 
-    // 3s: welcome back
     schedule(3000, () => {
       welcomeBackOpacity.value = withTiming(1, { duration: 500 });
       hideSubtitle();
     });
 
-    // 4s: auto-advance
     schedule(4000, () => enterPhase3());
   }, []);
 
@@ -322,27 +291,22 @@ export default function StepCinematicDemo({ onNext }: Props) {
     phaseRef.current = 3;
     setPhase(3);
 
-    // Zen fades out
     zenOpacity.value = withTiming(0, { duration: 800 });
     timerOpacity.value = withTiming(0, { duration: 400 });
     welcomeBackOpacity.value = withTiming(0, { duration: 400 });
 
-    // Complete overlay
     schedule(500, () => {
       completeOverlayOpacity.value = withTiming(1, { duration: 500 });
       completeTitleOpacity.value = withTiming(1, { duration: 500 });
       completeTitleTranslateY.value = withSpring(0, { damping: 20, stiffness: 150 });
     });
 
-    // Subtitle
     showSubtitle(SUBTITLES[3], 800);
 
-    // Message
     schedule(1200, () => {
       completeMessageOpacity.value = withTiming(1, { duration: 500 });
     });
 
-    // Reward pill + pulse
     schedule(1800, () => {
       completeRewardOpacity.value = withTiming(1, { duration: 500 });
       completeRewardScale.value = withSequence(
@@ -352,7 +316,6 @@ export default function StepCinematicDemo({ onNext }: Props) {
       );
     });
 
-    // Auto-advance
     schedule(3500, () => {
       hideSubtitle();
       enterPhase4();
@@ -364,56 +327,39 @@ export default function StepCinematicDemo({ onNext }: Props) {
     phaseRef.current = 4;
     setPhase(4);
 
-    // Complete fades out
+    // Complete popup fades out
     completeOverlayOpacity.value = withTiming(0, { duration: 800 });
 
-    // Mount tent + show shop immediately on top
-    setShowTent(true);
+    // Shop appears on dark background
     shopOpacity.value = withDelay(800, withTiming(1, { duration: 600 }));
-
-    // Subtitle
     showSubtitle(SUBTITLES[4], 1500);
 
-    // 3s: shop slides down + fades out
+    // Shop slides away, video starts
     schedule(3000, () => {
       shopTranslateY.value = withTiming(100, { duration: 600, easing: Easing.in(Easing.cubic) });
       shopOpacity.value = withTiming(0, { duration: 600 });
       hideSubtitle();
+      player.play();
     });
 
-    // 4s: furniture drops (staggered)
-    schedule(4000, () => {
-      item0Opacity.value = withTiming(1, { duration: 200 });
-      item0TranslateY.value = withSpring(0, { damping: 10, stiffness: 140 });
+    // Video fades in
+    schedule(3500, () => {
+      videoOpacity.value = withTiming(1, { duration: 500 });
     });
 
-    schedule(4800, () => {
-      item1Opacity.value = withTiming(1, { duration: 200 });
-      item1TranslateY.value = withSpring(0, { damping: 10, stiffness: 140 });
-    });
-
-    schedule(5600, () => {
-      item2Opacity.value = withTiming(1, { duration: 200 });
-      item2TranslateY.value = withSpring(0, { damping: 10, stiffness: 140 });
-    });
-
-    // Auto-advance
-    schedule(6500, () => enterPhase5());
-  }, []);
+    // Auto-advance after ~5.5s of video
+    schedule(9000, () => enterPhase5());
+  }, [player]);
 
   const enterPhase5 = useCallback(() => {
     clearTimers();
     phaseRef.current = 5;
     setPhase(5);
 
-    // Hide skip arrow
     skipOpacity.value = withTiming(0, { duration: 200 });
-
-    // CTA fades up
     ctaOpacity.value = withTiming(1, { duration: 500 });
     ctaTranslateY.value = withSpring(0, { damping: 16, stiffness: 120 });
 
-    // Auto-advance after 6s if user doesn't tap
     schedule(6000, () => {
       onNext();
     });
@@ -463,13 +409,13 @@ export default function StepCinematicDemo({ onNext }: Props) {
   // ── Animated styles ──
 
   const zenStyle = useAnimatedStyle(() => ({ opacity: zenOpacity.value }));
-  const tentStyle = useAnimatedStyle(() => ({ opacity: tentOpacity.value }));
   const flashStyle = useAnimatedStyle(() => ({ opacity: flashOpacity.value }));
   const timerStyle = useAnimatedStyle(() => ({ opacity: timerOpacity.value }));
   const centerTextStyle = useAnimatedStyle(() => ({ opacity: centerTextOpacity.value }));
   const welcomeBackStyle = useAnimatedStyle(() => ({ opacity: welcomeBackOpacity.value }));
   const subtitleStyle = useAnimatedStyle(() => ({ opacity: subtitleOpacity.value }));
   const skipStyle = useAnimatedStyle(() => ({ opacity: skipOpacity.value }));
+  const videoStyle = useAnimatedStyle(() => ({ opacity: videoOpacity.value }));
 
   const ctaStyle = useAnimatedStyle(() => ({
     opacity: ctaOpacity.value,
@@ -483,12 +429,15 @@ export default function StepCinematicDemo({ onNext }: Props) {
         <ZenGardenScene onReady={handleZenReady} />
       </Animated.View>
 
-      {/* Layer 1: Tent Interior Scene */}
-      {showTent && (
-        <Animated.View style={[StyleSheet.absoluteFill, tentStyle]} pointerEvents="none">
-          <TentInteriorScene onReady={handleTentReady} />
-        </Animated.View>
-      )}
+      {/* Layer 1: Sanctuary video (Phase 4) */}
+      <Animated.View style={[StyleSheet.absoluteFill, videoStyle]} pointerEvents="none">
+        <VideoView
+          player={player}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          nativeControls={false}
+        />
+      </Animated.View>
 
       {/* Layer 2: All RN overlays */}
       <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -532,24 +481,10 @@ export default function StepCinematicDemo({ onNext }: Props) {
         />
 
         {/* Shop overlay (Phase 4) */}
-        {showTent && (
-          <DemoShopOverlay
-            shopOpacity={shopOpacity}
-            shopTranslateY={shopTranslateY}
-          />
-        )}
-
-        {/* Furniture drops (Phase 4) */}
-        {showTent && (
-          <DemoFurniturePlacement
-            item0TranslateY={item0TranslateY}
-            item0Opacity={item0Opacity}
-            item1TranslateY={item1TranslateY}
-            item1Opacity={item1Opacity}
-            item2TranslateY={item2TranslateY}
-            item2Opacity={item2Opacity}
-          />
-        )}
+        <DemoShopOverlay
+          shopOpacity={shopOpacity}
+          shopTranslateY={shopTranslateY}
+        />
 
         {/* Subtitle bar */}
         <Animated.View style={[styles.subtitleWrap, subtitleStyle]} pointerEvents="none">
@@ -647,16 +582,16 @@ const styles = StyleSheet.create({
   ctaButton: {
     width: '100%',
     height: 56,
-    backgroundColor: 'rgba(125,211,252,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
-    borderColor: '#7DD3FC',
+    borderColor: 'rgba(255,255,255,0.25)',
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   ctaText: {
-    color: '#7DD3FC',
+    color: '#FAFAFA',
     fontSize: 16,
     fontWeight: '600',
   },

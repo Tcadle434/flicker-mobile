@@ -28,7 +28,7 @@ interface Props {
 const FEATURES = [
 	{ icon: "🌿", label: "Daily resets for calm" },
 	{ icon: "🛡️", label: "Protected sessions for focus" },
-	{ icon: "🤫", label: "Less noise, more intention" },
+	{ icon: "📱", label: "Screen time control" },
 ];
 
 export default function Step5ProductIntro({ onNext }: Props) {
@@ -84,7 +84,10 @@ export default function Step5ProductIntro({ onNext }: Props) {
 				)}
 			</Animated.View>
 
-			<Animated.Text entering={FadeInDown.delay(1500).duration(600)} style={styles.footer}>
+			<Animated.Text entering={FadeInDown.delay(1500).duration(600)} style={styles.footerScience}>
+				Because stress without recovery compounds — quietly eroding your mood, sleep, and long-term health.
+			</Animated.Text>
+			<Animated.Text entering={FadeInDown.delay(1700).duration(600)} style={styles.footer}>
 				Small protected moments can change the shape of a day.
 			</Animated.Text>
 		</OnboardingContentLayout>
@@ -122,10 +125,19 @@ const styles = StyleSheet.create({
 		fontSize: 18,
 		fontWeight: "500",
 	},
+	footerScience: {
+		color: "rgba(0, 0, 0, 0.55)",
+		fontSize: 17,
+		fontWeight: "400",
+		lineHeight: 26,
+		textAlign: "left",
+		marginBottom: 8,
+	},
 	footer: {
 		color: "#1A1A1A",
-		fontSize: 17,
-		fontWeight: "600",
+		fontSize: 18,
+		fontWeight: "700",
+		lineHeight: 26,
 		textAlign: "left",
 	},
 });

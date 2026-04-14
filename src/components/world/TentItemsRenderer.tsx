@@ -12,7 +12,7 @@ import type { SkImage } from '@shopify/react-native-skia';
 import { useImage } from '@shopify/react-native-skia';
 import { useTentStore } from '../../stores/tentStore';
 import { useDecorateStore } from '../../stores/decorateStore';
-import { getCatalogItem, getItemSprite, getItemDimensions } from '../../services/tent/tentCatalog';
+import { getCatalogItem, getItemSprite, getScaledItemDimensions } from '../../services/tent/tentCatalog';
 import { compareTentPlacementsForRender } from '../../services/tent/tentRenderOrder';
 import type { TentPlacement } from '../../types/tent';
 
@@ -40,7 +40,7 @@ function PlacedItem({
   // Resolve the RN asset to a Skia image
   const skiaImage = useImage(sprite as any);
 
-  const dims = getItemDimensions(placement.itemId, placement.direction);
+  const dims = getScaledItemDimensions(placement.itemId, placement.direction, placement.scale);
 
   if (!item || !skiaImage || !dims) return null;
 

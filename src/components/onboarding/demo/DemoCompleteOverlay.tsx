@@ -2,18 +2,19 @@
  * DemoCompleteOverlay
  *
  * "Reset complete." overlay for the cinematic demo.
- * Visual clone of complete.tsx with hardcoded values (+9 light, total 42).
- * Parent controls opacity via shared value.
+ * Matches the new SessionCompletePopup visual style:
+ * PixelPanel popup, Toriko font for light earned, warm earth tones.
+ * Parent controls all animations via shared values.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  SharedValue,
-} from 'react-native-reanimated';
+import { View, Text, Image, StyleSheet, Dimensions } from 'react-native';
+import Animated, { useAnimatedStyle, SharedValue } from 'react-native-reanimated';
+import PixelPanel from '../../hud/PixelPanel';
+import { HUD_ASSETS } from '../../hud/hudAssets';
 
-const CALM_PRIMARY = '#7DD3FC';
+const { width: SCREEN_W } = Dimensions.get('window');
+const PANEL_W = Math.min(SCREEN_W - 48, 300);
 
 interface Props {
   overlayOpacity: SharedValue<number>;
@@ -32,7 +33,11 @@ export default function DemoCompleteOverlay({
   rewardOpacity,
   rewardScale,
 }: Props) {
-  const containerStyle = useAnimatedStyle(() => ({
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
+  }));
+
+  const popupStyle = useAnimatedStyle(() => ({
     opacity: overlayOpacity.value,
   }));
 
@@ -41,77 +46,118 @@ export default function DemoCompleteOverlay({
     transform: [{ translateY: titleTranslateY.value }],
   }));
 
-  const messageStyle = useAnimatedStyle(() => ({
-    opacity: messageOpacity.value,
-  }));
-
   const rewardStyle = useAnimatedStyle(() => ({
     opacity: rewardOpacity.value,
     transform: [{ scale: rewardScale.value }],
   }));
 
+  const continueStyle = useAnimatedStyle(() => ({
+    opacity: messageOpacity.value,
+  }));
+
   return (
-    <Animated.View style={[styles.container, containerStyle]} pointerEvents="none">
-      <View style={styles.content}>
-        <Animated.Text style={[styles.title, titleStyle]}>
-          Reset complete.
-        </Animated.Text>
+    <Animated.View style={[styles.backdrop, backdropStyle]} pointerEvents="none">
+      <Animated.View style={popupStyle}>
+        <PixelPanel style={styles.panel} inset={10}>
+          <View style={styles.content}>
+            {/* Title */}
+            <Animated.Text style={[styles.title, titleStyle]}>
+              Reset complete.
+            </Animated.Text>
 
-        <Animated.Text style={[styles.message, messageStyle]}>
-          Carry this with you.
-        </Animated.Text>
+            {/* Light earned */}
+            <Animated.View style={[styles.lightRow, rewardStyle]}>
+              <Image
+                source={HUD_ASSETS.lightCrystal}
+                style={styles.lightIcon}
+                resizeMode="contain"
+              />
+              <Text style={styles.earnedText}>+9 light earned</Text>
+            </Animated.View>
+            <Animated.Text style={[styles.totalText, rewardStyle]}>
+              total 42
+            </Animated.Text>
 
-        <Animated.View style={[styles.rewardPill, rewardStyle]}>
-          <Text style={styles.rewardText}>+9 light</Text>
-          <Text style={styles.rewardSubtext}>total 42</Text>
-        </Animated.View>
-      </View>
+            {/* Continue button */}
+            <Animated.View style={[styles.continueWrap, continueStyle]}>
+              <PixelPanel source={HUD_ASSETS.panelSlice2} scale={1} style={styles.continuePanel}>
+                <View style={styles.continueInner}>
+                  <Text style={styles.continueText}>Continue</Text>
+                </View>
+              </PixelPanel>
+            </Animated.View>
+          </View>
+        </PixelPanel>
+      </Animated.View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#0A0A0B',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  panel: {
+    width: PANEL_W,
+    height: 220,
+  },
   content: {
     alignItems: 'center',
-    paddingBottom: 64,
+    paddingTop: 8,
+    paddingBottom: 4,
   },
   title: {
-    color: '#FAFAFA',
-    fontSize: 48,
-    fontWeight: '300',
-    letterSpacing: 1,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  message: {
-    color: '#A1A1AA',
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  rewardPill: {
-    borderRadius: 24,
-    paddingVertical: 8,
-    paddingHorizontal: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(125,211,252,0.4)',
-    backgroundColor: 'rgba(125,211,252,0.12)',
-    alignItems: 'center',
-  },
-  rewardText: {
-    color: CALM_PRIMARY,
+    color: '#3B2A1A',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '500',
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    marginBottom: 16,
+    marginTop: 4,
   },
-  rewardSubtext: {
-    color: '#A1A1AA',
+  lightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  lightIcon: {
+    width: 28,
+    height: 28,
+    marginTop: -2,
+  },
+  earnedText: {
+    color: '#432925',
+    fontFamily: 'Toriko',
+    fontSize: 28,
+    marginTop: 10,
+  },
+  totalText: {
+    color: '#8B7A6A',
     fontSize: 12,
+    fontWeight: '500',
     marginTop: 2,
+    marginBottom: 16,
+  },
+  continueWrap: {
+    width: PANEL_W - 60,
+    height: 48,
+  },
+  continuePanel: {
+    flex: 1,
+  },
+  continueInner: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(139, 100, 50, 0.18)',
+  },
+  continueText: {
+    color: '#2E2014',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });

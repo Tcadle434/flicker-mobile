@@ -4,8 +4,13 @@
  * Handles user authentication operations using Supabase
  */
 
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { supabase } from './supabase';
 import type { User } from '../../types';
+
+const GOOGLE_IOS_CLIENT_ID =
+  '150545303621-5pohfh6miii5ql7istcvr6devga1f9an.apps.googleusercontent.com';
 
 export class AuthService {
   /**
@@ -147,7 +152,9 @@ export class AuthService {
    */
   async resetPassword(email: string): Promise<{ error: Error | null }> {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'flicker://reset-password',
+      });
 
       if (error) {
         return { error: new Error(error.message) };
@@ -175,6 +182,121 @@ export class AuthService {
       return { error: null };
     } catch (error) {
       return { error: error as Error };
+    }
+  }
+
+  /**
+   * Sign in with Apple (native iOS)
+   */
+  async signInWithApple(): Promise<{ user: User | null; error: Error | null }> {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        return { user: null, error: new Error('No identity token from Apple') };
+      }
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+
+      if (error) return { user: null, error: new Error(error.message) };
+      if (!data.user) return { user: null, error: new Error('Sign in failed') };
+
+      // Upsert profile row (no-op if already exists)
+      const { data: profileData } = await supabase
+        .from('users')
+        .upsert(
+          {
+            id: data.user.id,
+            email: data.user.email ?? credential.email ?? '',
+            is_premium: false,
+            subscription_status: 'free',
+          },
+          { onConflict: 'id', ignoreDuplicates: true },
+        )
+        .select()
+        .single();
+
+      return {
+        user: {
+          id: data.user.id,
+          email: data.user.email ?? credential.email ?? '',
+          createdAt: data.user.created_at,
+          isPremium: profileData?.is_premium ?? false,
+          subscriptionStatus: (profileData?.subscription_status as any) ?? 'free',
+        },
+        error: null,
+      };
+    } catch (err: any) {
+      if (err.code === 'ERR_REQUEST_CANCELED') {
+        return { user: null, error: new Error('CANCELED') };
+      }
+      return { user: null, error: err as Error };
+    }
+  }
+
+  /**
+   * Sign in with Google (native iOS)
+   */
+  async signInWithGoogle(): Promise<{ user: User | null; error: Error | null }> {
+    try {
+      GoogleSignin.configure({ iosClientId: GOOGLE_IOS_CLIENT_ID });
+      await GoogleSignin.hasPlayServices();
+
+      const response = await GoogleSignin.signIn();
+      if (response.type === 'cancelled') {
+        return { user: null, error: new Error('CANCELED') };
+      }
+
+      const idToken = response.data?.idToken;
+      if (!idToken) {
+        return { user: null, error: new Error('No ID token from Google') };
+      }
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
+      });
+
+      if (error) return { user: null, error: new Error(error.message) };
+      if (!data.user) return { user: null, error: new Error('Sign in failed') };
+
+      const { data: profileData } = await supabase
+        .from('users')
+        .upsert(
+          {
+            id: data.user.id,
+            email: data.user.email ?? '',
+            is_premium: false,
+            subscription_status: 'free',
+          },
+          { onConflict: 'id', ignoreDuplicates: true },
+        )
+        .select()
+        .single();
+
+      return {
+        user: {
+          id: data.user.id,
+          email: data.user.email ?? '',
+          createdAt: data.user.created_at,
+          isPremium: profileData?.is_premium ?? false,
+          subscriptionStatus: (profileData?.subscription_status as any) ?? 'free',
+        },
+        error: null,
+      };
+    } catch (err: any) {
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        return { user: null, error: new Error('CANCELED') };
+      }
+      return { user: null, error: err as Error };
     }
   }
 

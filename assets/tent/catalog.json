@@ -267,6 +267,24 @@
 			"provideSurface": true
 		},
 		{
+			"id": "couch_large_01",
+			"name": "Large Couch",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 40,
+			"rotatable": true,
+			"tier": 1
+		},
+		{
+			"id": "couch_medium_01",
+			"name": "Medium Couch",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 32,
+			"rotatable": true,
+			"tier": 1
+		},
+		{
 			"id": "desk_01",
 			"name": "Desk",
 			"category": "furniture",
@@ -343,6 +361,15 @@
 			"rotatable": false,
 			"tier": 1,
 			"provideSurface": true
+		},
+		{
+			"id": "love_seat_01",
+			"name": "Love Seat",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 24,
+			"rotatable": true,
+			"tier": 1
 		},
 		{
 			"id": "refrigerator_01",

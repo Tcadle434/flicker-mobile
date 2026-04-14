@@ -73,27 +73,27 @@ const STEPS: React.ComponentType<{ onNext: () => void }>[] = [
 	StepNoisiest, //  8 - Content (noisiest time)
 	StepTransitionToDemo, //  9 - Content (transition to demo)
 	StepCinematicDemo, // 10 - Cinematic auto-playing product demo
-	Step5ScreenTimeQuestion, // 11 - Content (interactive)
-	StepBirthDate, //  9 - Content (birth date picker)
-	StepCalculating, // 10 - Flicker focus + progress bar, auto-advances
-	StepLifetimeCost, // 11 - Big reveal: X.X years on screen
-	StepFlickerCanHelp, // 12 - Dialogue: "I can help you get back X years"
-	Step4FlickerReacts, // 13 - Dialogue
-	Step6TheCost, // 11 - Content (animated counter)
-	Step7ImagineReclaiming, // 12 - Dialogue
-	Step8MeetFlicker, // 13 - Dialogue
-	Step9ResetMode, // 14 - Content
-	Step10FocusMode, // 15 - Content
-	Step11MoveMode, // 16 - Content
-	Step12BestPart, // 17 - Dialogue
-	Step13Rewards, // 18 - Content
-	Step14ScreenTimeExplain, // 19 - Content
-	Step15ScreenTimeAuth, // 20 - System (permission)
-	Step16Notifications, // 21 - System (permission)
+	Step14ScreenTimeExplain, // 11 - Content (screen time explain) — permission prompt before paywall
+	Step15ScreenTimeAuth, // 12 - System (permission) — calls native requestAuthorization
+	Step20Paywall,         // 13 - Paywall (7-day trial, annual pre-selected)
+	Step5ScreenTimeQuestion, // 14 - Content (interactive)
+	StepBirthDate, // 14 - Content (birth date picker)
+	StepCalculating, // 15 - Flicker focus + progress bar, auto-advances
+	StepLifetimeCost, // 16 - Big reveal: X.X years on screen
+	StepFlickerCanHelp, // 17 - Dialogue: "I can help you get back X years"
+	Step4FlickerReacts, // 18 - Dialogue
+	Step6TheCost, // 19 - Content (animated counter)
+	Step7ImagineReclaiming, // 20 - Dialogue
+	Step8MeetFlicker, // 21 - Dialogue
+	Step9ResetMode, // 22 - Content
+	Step10FocusMode, // 23 - Content
+	Step11MoveMode, // 24 - Content
+	Step12BestPart, // 25 - Dialogue
+	Step13Rewards, // 26 - Content
+	Step16Notifications, // 27 - System (permission)
 	Step17Tracking, // 22 - System (permission)
 	Step18JourneyAhead, // 23 - Content
-	Step19FlickerExcited, // 24 - Dialogue
-	Step20Paywall, // 25 - Content (paywall placeholder)
+	Step19FlickerExcited, // 28 - Dialogue
 ];
 
 const TIMING_CONFIG = {

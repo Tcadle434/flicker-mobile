@@ -7,6 +7,12 @@
 
 import { NativeEventEmitter, Platform } from 'react-native';
 import { requireNativeModule } from 'expo-modules-core';
+import type {
+  AudioScene,
+  ResetCustomAudioConfig,
+  SessionAudioConfig,
+  UiSoundName,
+} from '../../types';
 
 // MARK: - Types
 
@@ -21,6 +27,17 @@ export interface AudioState {
   state: 'stopped' | 'playing' | 'paused';
   masterVolume: number;
   isInitialized: boolean;
+}
+
+export interface AudioDebugState {
+  scene: AudioScene;
+  activePreset: string | null;
+  appAmbientState: 'stopped' | 'playing' | 'paused';
+  appAmbientPosition: number;
+  playbackState: 'stopped' | 'playing' | 'paused';
+  masterVolume: number;
+  isMuted: boolean;
+  activeMode: string | null;
 }
 
 export interface PlaybackStateEvent {
@@ -116,8 +133,52 @@ export const NativeAudioEngine = {
     return callNative<{ success: boolean }>('initialize');
   },
 
+  configureShellAssets: async (
+    ambientAsset: string | null,
+    uiSounds: Record<string, string>,
+  ): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('configureShellAssets', [ambientAsset, uiSounds]);
+  },
+
+  prewarmAssets: async (assetIds: string[]): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('prewarmAssets', [assetIds]);
+  },
+
   dispose: async (): Promise<{ success: boolean }> => {
     return callNative<{ success: boolean }>('dispose');
+  },
+
+  enterScene: async (scene: AudioScene): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('enterScene', [scene]);
+  },
+
+  startSession: async (
+    config: SessionAudioConfig,
+    layers: LayerConfig[],
+  ): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('startSession', [config, layers]);
+  },
+
+  switchResetPreset: async (
+    preset: string,
+    layers: LayerConfig[],
+  ): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('switchResetPreset', [preset, layers]);
+  },
+
+  applyResetCustomConfig: async (
+    config: ResetCustomAudioConfig,
+    layers: LayerConfig[],
+  ): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('applyResetCustomConfig', [config, layers]);
+  },
+
+  setSessionPhase: async (phase: string): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('setSessionPhase', [phase]);
+  },
+
+  endSession: async (reason: string): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('endSession', [reason]);
   },
 
   // MARK: - Playback Control
@@ -138,6 +199,10 @@ export const NativeAudioEngine = {
 
   setMasterVolume: async (volume: number, fadeMs: number = 0): Promise<{ success: boolean }> => {
     return callNative<{ success: boolean }>('setMasterVolume', [volume, fadeMs]);
+  },
+
+  setMuted: async (muted: boolean): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('setMuted', [muted]);
   },
 
   setLayerVolume: async (
@@ -168,6 +233,10 @@ export const NativeAudioEngine = {
     return callNative<{ success: boolean }>('loadMode', [mode, layers]);
   },
 
+  playOneShot: async (name: UiSoundName): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('playOneShot', [name]);
+  },
+
   // MARK: - State Query
 
   getState: async (): Promise<AudioState> => {
@@ -175,6 +244,23 @@ export const NativeAudioEngine = {
       return await callNative<AudioState>('getState');
     } catch {
       return { state: 'stopped', masterVolume: 0, isInitialized: false };
+    }
+  },
+
+  getDebugState: async (): Promise<AudioDebugState> => {
+    try {
+      return await callNative<AudioDebugState>('getDebugState');
+    } catch {
+      return {
+        scene: 'backgrounded',
+        activePreset: null,
+        appAmbientState: 'stopped',
+        appAmbientPosition: 0,
+        playbackState: 'stopped',
+        masterVolume: 0,
+        isMuted: false,
+        activeMode: null,
+      };
     }
   },
 

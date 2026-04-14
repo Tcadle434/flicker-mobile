@@ -50,8 +50,7 @@ export default function SettingsButton({ onPress, style }: Props) {
 	const onAnimationDone = useCallback(() => {
 		frameCallback.setActive(false);
 		isPlaying.current = false;
-		onPress();
-	}, [onPress]);
+	}, []);
 
 	const frameCallback = useFrameCallback((info) => {
 		if (!playing.value) return;
@@ -83,7 +82,8 @@ export default function SettingsButton({ onPress, style }: Props) {
 		elapsed.value = 0;
 		playing.value = true;
 		frameCallback.setActive(true);
-	}, [frameCallback, frameIndex, elapsed, playing]);
+		onPress();
+	}, [frameCallback, frameIndex, elapsed, playing, onPress]);
 
 	const tap = Gesture.Tap().onEnd(() => {
 		runOnJS(handlePress)();

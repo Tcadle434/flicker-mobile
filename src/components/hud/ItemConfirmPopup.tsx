@@ -61,11 +61,13 @@ export default function ItemConfirmPopup({ item, onPurchase, onPreview, onCancel
               {/* Thumbnail */}
               <PixelPanel scale={1} style={styles.thumbWrap}>
                 {thumbnail && (
-                  <Image
-                    source={thumbnail}
-                    style={{ width: thumbSize.width, height: thumbSize.height, alignSelf: 'center' }}
-                    resizeMode="contain"
-                  />
+                  <View style={styles.imageCenter}>
+                    <Image
+                      source={thumbnail}
+                      style={{ width: thumbSize.width, height: thumbSize.height }}
+                      resizeMode="contain"
+                    />
+                  </View>
                 )}
               </PixelPanel>
 
@@ -135,11 +137,14 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
   },
+  imageCenter: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   thumbWrap: {
     width: 80,
     height: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 8,
   },
   itemName: {

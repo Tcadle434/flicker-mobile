@@ -10,7 +10,7 @@
 
 import type { TentPlacement, CatalogItem, Direction } from '../../types/tent';
 import { tentMap, getTileType } from '../world/tentMapLoader';
-import { getItemDimensions } from './tentCatalog';
+import { DEFAULT_ITEM_SCALE, getScaledItemDimensions } from './tentCatalog';
 
 interface AABB {
   x: number;
@@ -24,7 +24,7 @@ function aabbOverlap(a: AABB, b: AABB): boolean {
 }
 
 function getPlacementAABB(p: TentPlacement): AABB | null {
-  const dims = getItemDimensions(p.itemId, p.direction);
+  const dims = getScaledItemDimensions(p.itemId, p.direction, p.scale);
   if (!dims) return null;
   return { x: p.x, y: p.y, w: dims.w, h: dims.h };
 }
@@ -81,11 +81,12 @@ export function validatePlacement(
   x: number,
   y: number,
   direction: Direction,
+  itemScale: number = DEFAULT_ITEM_SCALE,
   existingPlacements: TentPlacement[],
   catalog: Map<string, CatalogItem>,
   excludePlacementId?: string,
 ): boolean {
-  const dims = getItemDimensions(item.id, direction);
+  const dims = getScaledItemDimensions(item.id, direction, itemScale);
   if (!dims) return false;
 
   const itemBox: AABB = { x, y, w: dims.w, h: dims.h };

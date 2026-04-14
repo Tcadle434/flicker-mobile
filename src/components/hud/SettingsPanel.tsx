@@ -16,9 +16,11 @@ import {
   Alert,
   Linking,
 } from 'react-native';
+import { router } from 'expo-router';
 import BottomPanel from './BottomPanel';
 import { useAuthStore } from '../../stores/authStore';
 import { useAudioSettingsStore } from '../../stores/audioSettingsStore';
+import { appBlockingBridge } from '../../services/appBlocking/appBlockingBridge';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -87,6 +89,12 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
 
   const [displayName, setDisplayName] = useState('');
 
+  const handleConfirmSignOut = async () => {
+    await signOut();
+    onClose();
+    router.replace('/(auth)/signin');
+  };
+
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
@@ -94,8 +102,7 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
         text: 'Sign Out',
         style: 'destructive',
         onPress: () => {
-          signOut();
-          onClose();
+          void handleConfirmSignOut();
         },
       },
     ]);
@@ -103,6 +110,19 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
 
   const handleRestorePurchases = () => {
     Alert.alert('Restore Purchases', 'Purchases restored successfully.');
+  };
+
+  const handleEditBlockList = async () => {
+    const authorized = await appBlockingBridge.isAuthorized();
+    if (!authorized) {
+      Alert.alert(
+        'Screen Time Required',
+        'Enable Screen Time access in Settings > Screen Time to manage allowed apps.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    await appBlockingBridge.presentAppPicker();
   };
 
   return (
@@ -138,7 +158,7 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
       <View style={styles.sectionCard}>
         <SettingsRow
           label="Edit Allow / Block List"
-          onPress={() => console.log('[Settings] Edit block list')}
+          onPress={() => { void handleEditBlockList(); }}
         />
       </View>
 

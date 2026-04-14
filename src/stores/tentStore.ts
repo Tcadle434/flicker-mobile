@@ -2,8 +2,8 @@
  * Tent Store
  *
  * Persistent state for tent placements, owned items, and room tier.
- * Supabase is source of truth — local state is a fast cache.
- * Follows same optimistic-update pattern as sanctuaryStore.
+ * Supabase is source of truth — local state mirrors confirmed backend writes.
+ * Decoration ghost state still lives separately in decorateStore.
  */
 
 import { create } from 'zustand';
@@ -18,6 +18,7 @@ import {
   isSurfaceStyleDefaultOwned,
   normalizeSurfaceStyleId,
 } from '../services/tent/tentSurfaceCatalog';
+import { DEFAULT_ITEM_SCALE, normalizeItemScale } from '../services/tent/tentCatalog';
 import type {
   TentPlacement,
   Direction,
@@ -84,9 +85,9 @@ interface TentState {
     surfaceType: TentSurfaceType,
     styleId: string,
   ) => Promise<{ ok: boolean; errorCode?: string }>;
-  placeItem: (itemId: string, roomId: string, x: number, y: number, direction: Direction) => void;
-  moveItem: (placementId: string, x: number, y: number, direction: Direction) => void;
-  removeItem: (placementId: string) => void;
+  placeItem: (itemId: string, roomId: string, x: number, y: number, direction: Direction, scale?: number) => Promise<boolean>;
+  moveItem: (placementId: string, x: number, y: number, direction: Direction, scale?: number) => Promise<boolean>;
+  removeItem: (placementId: string) => Promise<boolean>;
   setCurrentRoom: (roomId: string) => void;
   /** Number of unplaced copies of an item the user owns */
   getAvailableCount: (itemId: string) => number;
@@ -158,16 +159,20 @@ export const useTentStore = create<TentState>((set, get) => ({
         return;
       }
 
+      let didHydrate = false;
       let placements: TentPlacement[] = [];
       let ownedItemIds: string[] = [];
       let ownedSurfaceStyleIds = getDefaultOwnedSurfaceStyleIds();
       let roomStyleSelections = createDefaultRoomStyleSelections();
 
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('tent_placements')
-          .select('id, item_id, room_id, tile_x, tile_y, direction, placed_at')
+          .select('id, item_id, room_id, tile_x, tile_y, direction, scale, placed_at')
           .eq('user_id', userId);
+
+        if (error) throw error;
+        didHydrate = true;
 
         if (data) {
           placements = data.map((p) => ({
@@ -177,6 +182,7 @@ export const useTentStore = create<TentState>((set, get) => ({
             x: p.tile_x,
             y: p.tile_y,
             direction: (p.direction as Direction) || 'down',
+            scale: normalizeItemScale(p.scale),
             placedAt: new Date(p.placed_at).getTime(),
           }));
         }
@@ -185,10 +191,13 @@ export const useTentStore = create<TentState>((set, get) => ({
       }
 
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('tent_owned_items')
           .select('item_id')
           .eq('user_id', userId);
+
+        if (error) throw error;
+        didHydrate = true;
 
         if (data) {
           ownedItemIds = data.map((row) => row.item_id);
@@ -198,10 +207,13 @@ export const useTentStore = create<TentState>((set, get) => ({
       }
 
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('tent_owned_surface_styles')
           .select('style_id')
           .eq('user_id', userId);
+
+        if (error) throw error;
+        didHydrate = true;
 
         if (data) {
           ownedSurfaceStyleIds = mergeOwnedSurfaceStyleIds(
@@ -213,10 +225,13 @@ export const useTentStore = create<TentState>((set, get) => ({
       }
 
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('tent_room_styles')
           .select('room_id, floor_style_id, wall_style_id')
           .eq('user_id', userId);
+
+        if (error) throw error;
+        didHydrate = true;
 
         if (data) {
           roomStyleSelections = buildRoomStyleSelections(data);
@@ -230,7 +245,7 @@ export const useTentStore = create<TentState>((set, get) => ({
         ownedItemIds,
         ownedSurfaceStyleIds,
         roomStyleSelections,
-        hydratedUserId: userId,
+        hydratedUserId: didHydrate ? userId : null,
         currentRoomId: roomStyleSelections[state.currentRoomId] ? state.currentRoomId : 'main',
       }));
     } finally {
@@ -327,8 +342,12 @@ export const useTentStore = create<TentState>((set, get) => ({
     }
   },
 
-  placeItem: (itemId, roomId, x, y, direction) => {
+  placeItem: async (itemId, roomId, x, y, direction, scale = DEFAULT_ITEM_SCALE) => {
+    const userId = await getUserId();
+    if (!userId) return false;
+
     const id = generateId();
+    const normalizedScale = normalizeItemScale(scale);
     const placement: TentPlacement = {
       id,
       itemId,
@@ -336,64 +355,87 @@ export const useTentStore = create<TentState>((set, get) => ({
       x,
       y,
       direction,
+      scale: normalizedScale,
       placedAt: Date.now(),
     };
 
-    set((s) => ({ placements: [...s.placements, placement] }));
+    const didPersist = await persistWithRetry('placeItem', () =>
+      supabase.from('tent_placements').insert({
+        id,
+        user_id: userId,
+        item_id: itemId,
+        room_id: roomId,
+        tile_x: x,
+        tile_y: y,
+        direction,
+        scale: normalizedScale,
+      }),
+    );
 
-    // Persist to Supabase with retry
-    getUserId().then((userId) => {
-      if (!userId) return;
-      persistWithRetry('placeItem', () =>
-        supabase.from('tent_placements').insert({
-          id,
-          user_id: userId,
-          item_id: itemId,
-          room_id: roomId,
+    if (!didPersist) return false;
+
+    set((s) => ({ placements: [...s.placements, placement] }));
+    return true;
+  },
+
+  moveItem: async (placementId, x, y, direction, scale) => {
+    const userId = await getUserId();
+    if (!userId) return false;
+
+    const existingPlacement = get().placements.find((placement) => placement.id === placementId);
+    if (!existingPlacement) return false;
+
+    const normalizedScale = normalizeItemScale(scale ?? existingPlacement.scale);
+    const didPersist = await persistWithRetry('moveItem', () =>
+      supabase.from('tent_placements')
+        .update({
           tile_x: x,
           tile_y: y,
           direction,
-        }),
-      );
-    });
-  },
+          scale: normalizedScale,
+        })
+        .eq('id', placementId)
+        .eq('user_id', userId),
+    );
 
-  moveItem: (placementId, x, y, direction) => {
+    if (!didPersist) return false;
+
     set((s) => ({
       placements: s.placements.map((p) =>
         p.id === placementId
-          ? { ...p, x, y, direction }
+          ? {
+              ...p,
+              x,
+              y,
+              direction,
+              scale: normalizedScale,
+            }
           : p,
       ),
     }));
-
-    // Persist to Supabase with retry
-    getUserId().then((userId) => {
-      if (!userId) return;
-      persistWithRetry('moveItem', () =>
-        supabase.from('tent_placements')
-          .update({ tile_x: x, tile_y: y, direction })
-          .eq('id', placementId)
-          .eq('user_id', userId),
-      );
-    });
+    return true;
   },
 
-  removeItem: (placementId) => {
+  removeItem: async (placementId) => {
+    const userId = await getUserId();
+    if (!userId) return false;
+
+    const existingPlacement = get().placements.find((placement) => placement.id === placementId);
+    if (!existingPlacement) return false;
+
+    const didPersist = await persistWithRetry('removeItem', () =>
+      supabase.from('tent_placements')
+        .delete()
+        .eq('id', placementId)
+        .eq('user_id', userId),
+    );
+
+    if (!didPersist) return false;
+
     set((s) => ({
       placements: s.placements.filter((p) => p.id !== placementId),
     }));
-
-    // Persist to Supabase with retry
-    getUserId().then((userId) => {
-      if (!userId) return;
-      persistWithRetry('removeItem', () =>
-        supabase.from('tent_placements')
-          .delete()
-          .eq('id', placementId)
-          .eq('user_id', userId),
-      );
-    });
+    return true;
   },
 
   setCurrentRoom: (roomId) => set({ currentRoomId: roomId }),

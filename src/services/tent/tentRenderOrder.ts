@@ -1,5 +1,5 @@
 import type { CatalogItem, TentPlacement } from '../../types/tent';
-import { getCatalogItem, getItemDimensions } from './tentCatalog';
+import { getCatalogItem, getScaledItemDimensions } from './tentCatalog';
 
 export function getTentRenderPlane(item: CatalogItem): number {
   switch (item.surface) {
@@ -17,7 +17,7 @@ export function getTentRenderPlane(item: CatalogItem): number {
 }
 
 export function getTentDepthY(item: CatalogItem, placement: TentPlacement): number {
-  const dims = getItemDimensions(placement.itemId, placement.direction);
+  const dims = getScaledItemDimensions(placement.itemId, placement.direction, placement.scale);
   return placement.y + (dims?.h ?? 0) + (item.renderDepthBias ?? 0);
 }
 

@@ -92,7 +92,13 @@ final class AppBlockingManager {
         switch mode {
         case "full":
             // Block all applications except those in the user's allowlist
-            store.shield.applicationCategories = .all()
+            if let data = storage.selectedAppsData,
+               let sel = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data),
+               !sel.applicationTokens.isEmpty {
+                store.shield.applicationCategories = .all(except: sel.applicationTokens)
+            } else {
+                store.shield.applicationCategories = .all()
+            }
             store.shield.webDomainCategories = .all()
 
         case "light":

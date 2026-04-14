@@ -9,6 +9,7 @@ import {
 import Slider from '@react-native-community/slider';
 import { usePlayerStore } from '../../stores/playerStore';
 import { theme } from '../../constants/theme';
+import { audioCoordinator } from '../../services/audio/audioCoordinator';
 import type { AudioLayer } from '../../types';
 
 interface Props {
@@ -23,8 +24,6 @@ const LAYERS: { key: AudioLayer; label: string; color: string }[] = [
 
 export default function SessionMixer({ onClose }: Props) {
   const layers = usePlayerStore((s) => s.layers);
-  const setLayerLoop = usePlayerStore((s) => s.setLayerLoop);
-  const setLayerVolume = usePlayerStore((s) => s.setLayerVolume);
 
   const getAdjacentLoopId = (layerKey: AudioLayer, direction: -1 | 1) => {
     const tracks = layers[layerKey].availableTracks;
@@ -75,7 +74,7 @@ export default function SessionMixer({ onClose }: Props) {
                     onPress={() => {
                       const previousLoopId = getAdjacentLoopId(key, -1);
                       if (previousLoopId) {
-                        void setLayerLoop(key, previousLoopId);
+                        void audioCoordinator.setFocusLayerLoop(key, previousLoopId);
                       }
                     }}
                   >
@@ -94,7 +93,7 @@ export default function SessionMixer({ onClose }: Props) {
                     onPress={() => {
                       const nextLoopId = getAdjacentLoopId(key, 1);
                       if (nextLoopId) {
-                        void setLayerLoop(key, nextLoopId);
+                        void audioCoordinator.setFocusLayerLoop(key, nextLoopId);
                       }
                     }}
                   >
@@ -105,7 +104,7 @@ export default function SessionMixer({ onClose }: Props) {
 
               <Slider
                 value={layerState.volume}
-                onValueChange={(v) => setLayerVolume(key, v)}
+                onValueChange={(v) => audioCoordinator.setFocusLayerVolume(key, v)}
                 minimumValue={0}
                 maximumValue={1}
                 step={0.01}

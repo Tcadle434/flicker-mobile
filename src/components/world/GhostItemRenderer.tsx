@@ -10,7 +10,7 @@ import React from 'react';
 import { Group, Image, FilterMode, MipmapMode, ColorMatrix } from '@shopify/react-native-skia';
 import { useImage } from '@shopify/react-native-skia';
 import { useDecorateStore } from '../../stores/decorateStore';
-import { getCatalogItem, getItemSprite, getItemDimensions } from '../../services/tent/tentCatalog';
+import { getCatalogItem, getItemSprite, getScaledItemDimensions } from '../../services/tent/tentCatalog';
 
 interface Props {
   scale: number;
@@ -22,12 +22,13 @@ export default function GhostItemRenderer({ scale, offsetY }: Props) {
   const ghostX = useDecorateStore((s) => s.ghostX);
   const ghostY = useDecorateStore((s) => s.ghostY);
   const ghostDirection = useDecorateStore((s) => s.ghostDirection);
+  const ghostScale = useDecorateStore((s) => s.ghostScale);
   const ghostValid = useDecorateStore((s) => s.ghostValid);
 
   const item = ghostItemId ? getCatalogItem(ghostItemId) : null;
   const sprite = ghostItemId ? getItemSprite(ghostItemId, ghostDirection) : null;
   const skiaImage = useImage(sprite as any);
-  const dims = ghostItemId ? getItemDimensions(ghostItemId, ghostDirection) : null;
+  const dims = ghostItemId ? getScaledItemDimensions(ghostItemId, ghostDirection, ghostScale) : null;
 
   if (!ghostItemId || !item || !skiaImage || !dims) return null;
 

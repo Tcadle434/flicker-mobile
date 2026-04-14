@@ -12,6 +12,35 @@ export type AudioLayer = 'ambient' | 'nature' | 'melody' | 'rhythm' | 'synthesis
 
 export type ResetSessionAudioMode = 'custom' | '432hz' | 'binauralBeats';
 
+export type AudioScene =
+  | 'shell'
+  | 'focusSession'
+  | 'resetSession'
+  | 'moveSession'
+  | 'backgrounded';
+
+export type SessionAudioPreset =
+  | 'focusDefault'
+  | 'reset432hz'
+  | 'resetBinauralBeats'
+  | 'resetCustom'
+  | 'silent'
+  | 'spotify';
+
+export interface SessionAudioConfig {
+  scene: 'focusSession' | 'resetSession' | 'moveSession';
+  preset: SessionAudioPreset;
+  continueInBackground: boolean;
+  modeLabel?: string;
+}
+
+export interface ResetCustomAudioConfig {
+  selections: Partial<Record<AudioLayer, string | null>>;
+  volumes: Partial<Record<AudioLayer, number>>;
+}
+
+export type UiSoundName = 'buttonPress' | 'shopOpen' | 'dialogueContinue';
+
 export interface ManifestLoopTrack {
   filename: string;
   label: string;

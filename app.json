@@ -19,12 +19,23 @@
       "appleTeamId": "4DDM7M9LF2",
       "bundleIdentifier": "com.thomascadle.flicker",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"],
-        "NSHealthShareUsageDescription": "Flicker uses your heart rate to adapt ambient music for better focus and relaxation.",
+        "UIBackgroundModes": [
+          "audio"
+        ],
         "NSLocationWhenInUseUsageDescription": "Flicker uses your location to adapt music based on local weather conditions.",
         "NSUserNotificationsUsageDescription": "Get notified about your daily ambient music sessions.",
         "NSFamilyControlsUsageDescription": "Flicker blocks distracting apps during sessions to help you stay focused.",
-        "LSApplicationQueriesSchemes": ["spotify"]
+        "LSApplicationQueriesSchemes": [
+          "spotify"
+        ],
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "flicker",
+              "com.googleusercontent.apps.150545303621-5pohfh6miii5ql7istcvr6devga1f9an"
+            ]
+          }
+        ]
       }
     },
     "android": {
@@ -41,7 +52,10 @@
     },
     "plugins": [
       "expo-router",
-      "./modules/flicker-app-blocking/build/index"
+      "./modules/flicker-app-blocking/build/index",
+      "@react-native-google-signin/google-signin",
+      "expo-apple-authentication",
+      "expo-video"
     ]
   }
 }

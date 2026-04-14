@@ -13,6 +13,8 @@ interface AuthStore extends AuthState {
   initialize: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithApple: () => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
@@ -109,6 +111,40 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         isLoading: false,
       });
 
+      return { error: null };
+    } catch (error) {
+      const err = error as Error;
+      set({ isLoading: false, error: err.message });
+      return { error: err };
+    }
+  },
+
+  signInWithApple: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      const { user, error } = await authService.signInWithApple();
+      if (error || !user) {
+        set({ isLoading: false, error: error?.message !== 'CANCELED' ? (error?.message ?? null) : null });
+        return { error };
+      }
+      set({ user, isAuthenticated: true, isLoading: false });
+      return { error: null };
+    } catch (error) {
+      const err = error as Error;
+      set({ isLoading: false, error: err.message });
+      return { error: err };
+    }
+  },
+
+  signInWithGoogle: async () => {
+    try {
+      set({ isLoading: true, error: null });
+      const { user, error } = await authService.signInWithGoogle();
+      if (error || !user) {
+        set({ isLoading: false, error: error?.message !== 'CANCELED' ? (error?.message ?? null) : null });
+        return { error };
+      }
+      set({ user, isAuthenticated: true, isLoading: false });
       return { error: null };
     } catch (error) {
       const err = error as Error;

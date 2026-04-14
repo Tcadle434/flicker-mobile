@@ -54,6 +54,8 @@ interface SanctuaryState {
   placements: Placement[];
   unlockedZoneIds: string[];
   activeZoneId: string;
+  hydratedUserId: string | null;
+  isHydrating: boolean;
 
   // Actions
   loadZones: (zones: Zone[]) => void;
@@ -64,6 +66,7 @@ interface SanctuaryState {
   placeItem: (zoneId: string, anchorId: string, itemId: string) => void;
   removeItem: (placementId: string) => void;
   hydrate: () => Promise<void>;
+  resetForAuthChange: () => void;
 }
 
 async function getUserId(): Promise<string | null> {
@@ -75,13 +78,21 @@ async function getUserId(): Promise<string | null> {
   }
 }
 
+function createSanctuaryDefaults() {
+  return {
+    zones: [],
+    catalog: [],
+    ownedItemIds: [],
+    placements: [],
+    unlockedZoneIds: ['hearth'],
+    activeZoneId: 'hearth',
+    hydratedUserId: null,
+    isHydrating: false,
+  };
+}
+
 export const useSanctuaryStore = create<SanctuaryState>((set, get) => ({
-  zones: [],
-  catalog: [],
-  ownedItemIds: [],
-  placements: [],
-  unlockedZoneIds: ['hearth'], // hearth is always unlocked
-  activeZoneId: 'hearth',
+  ...createSanctuaryDefaults(),
 
   loadZones: (zones) => set({ zones }),
 
@@ -175,68 +186,97 @@ export const useSanctuaryStore = create<SanctuaryState>((set, get) => ({
   },
 
   hydrate: async () => {
+    if (get().isHydrating) return;
+
     const userId = await getUserId();
-    if (!userId) return;
-
-    // Fetch unlocked zones
-    try {
-      const { data: unlocks } = await supabase
-        .from('sanctuary_unlocks')
-        .select('zone_id')
-        .eq('user_id', userId);
-
-      if (unlocks) {
-        const zoneIds = unlocks.map((u) => u.zone_id);
-        // Always include hearth
-        if (!zoneIds.includes('hearth')) zoneIds.unshift('hearth');
-        set({ unlockedZoneIds: zoneIds });
-      }
-    } catch {
-      // offline fallback — hearth only
+    if (!userId) {
+      get().resetForAuthChange();
+      return;
     }
+    if (get().hydratedUserId === userId) return;
 
-    // Fetch placements
+    set({ isHydrating: true });
+
     try {
-      const { data: placements } = await supabase
-        .from('sanctuary_placements')
-        .select('id, zone_id, anchor_id, item_id, placed_at')
-        .eq('user_id', userId);
+      let didHydrate = false;
 
-      if (placements) {
-        set({
-          placements: placements.map((p) => ({
-            id: p.id,
-            zoneId: p.zone_id,
-            anchorId: p.anchor_id,
-            itemId: p.item_id,
-            placedAt: new Date(p.placed_at).getTime(),
-          })),
-        });
+      // Fetch unlocked zones
+      try {
+        const { data: unlocks, error } = await supabase
+          .from('sanctuary_unlocks')
+          .select('zone_id')
+          .eq('user_id', userId);
+
+        if (error) throw error;
+        didHydrate = true;
+
+        if (unlocks) {
+          const zoneIds = unlocks.map((u) => u.zone_id);
+          if (!zoneIds.includes('hearth')) zoneIds.unshift('hearth');
+          set({ unlockedZoneIds: zoneIds });
+        }
+      } catch {
+        // offline fallback — hearth only
       }
-    } catch {
-      // offline — empty placements
-    }
 
-    // Derive owned items from currency_transactions (sanctuary_purchase spends)
-    try {
-      const { data: txns } = await supabase
-        .from('currency_transactions')
-        .select('source, id')
-        .eq('user_id', userId)
-        .eq('source', 'sanctuary_purchase');
+      // Fetch placements
+      try {
+        const { data: placements, error } = await supabase
+          .from('sanctuary_placements')
+          .select('id, zone_id, anchor_id, item_id, placed_at')
+          .eq('user_id', userId);
 
-      if (txns) {
-        // Extract item IDs from transaction IDs: tx_spend_{itemId}_{timestamp}
-        const ownedIds = txns
-          .map((tx) => {
-            const match = tx.id.match(/^tx_spend_(.+)_\d+$/);
-            return match ? match[1] : null;
-          })
-          .filter(Boolean) as string[];
-        set({ ownedItemIds: ownedIds });
+        if (error) throw error;
+        didHydrate = true;
+
+        if (placements) {
+          set({
+            placements: placements.map((p) => ({
+              id: p.id,
+              zoneId: p.zone_id,
+              anchorId: p.anchor_id,
+              itemId: p.item_id,
+              placedAt: new Date(p.placed_at).getTime(),
+            })),
+          });
+        }
+      } catch {
+        // offline — empty placements
       }
-    } catch {
-      // offline — empty owned items
+
+      // Derive owned items from currency_transactions (sanctuary_purchase spends)
+      try {
+        const { data: txns, error } = await supabase
+          .from('currency_transactions')
+          .select('source, id')
+          .eq('user_id', userId)
+          .eq('source', 'sanctuary_purchase');
+
+        if (error) throw error;
+        didHydrate = true;
+
+        if (txns) {
+          const ownedIds = txns
+            .map((tx) => {
+              const match = tx.id.match(/^tx_spend_(.+)_\d+$/);
+              return match ? match[1] : null;
+            })
+            .filter(Boolean) as string[];
+          set({ ownedItemIds: ownedIds });
+        }
+      } catch {
+        // offline — empty owned items
+      }
+
+      if (didHydrate) {
+        set({ hydratedUserId: userId });
+      }
+    } finally {
+      set({ isHydrating: false });
     }
   },
+
+  resetForAuthChange: () => set({
+    ...createSanctuaryDefaults(),
+  }),
 }));

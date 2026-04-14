@@ -22,13 +22,16 @@ import { getAllItems, getItemThumbnail, getItemDimensions } from "../../services
 import PixelPanel from "./PixelPanel";
 import type { CatalogItem, ItemCategory } from "../../types/tent";
 
-const THUMB_MAX = 44;
+const THUMB_MAX = 56; // max display size — sprites only scale DOWN, never up
+const CARD_W = 90;
+const CARD_H = 132; // fixed height for every card → uniform grid, no staggering
 
-/** Scale sprite to fit container — 1x for everything, keeps natural size differences */
-function getThumbSize(itemId: string): { width: number; height: number } {
+/** Return display size: natural dims capped at THUMB_MAX, never upscaled. */
+function getThumbDisplaySize(itemId: string): { width: number; height: number } {
 	const dims = getItemDimensions(itemId, "down");
-	if (!dims) return { width: THUMB_MAX, height: THUMB_MAX };
-	return { width: dims.w, height: dims.h };
+	if (!dims) return { width: 40, height: 40 };
+	const scale = Math.min(1, THUMB_MAX / Math.max(dims.w, dims.h));
+	return { width: Math.round(dims.w * scale), height: Math.round(dims.h * scale) };
 }
 
 const CATEGORY_TABS: { key: "all" | ItemCategory; label: string }[] = [
@@ -60,25 +63,31 @@ function ShopItem({
 	onSelect: () => void;
 }) {
 	const thumbnail = getItemThumbnail(item.id);
-	const thumbSize = getThumbSize(item.id);
+	const thumbSize = getThumbDisplaySize(item.id);
 
 	return (
 		<TouchableOpacity onPress={onSelect} activeOpacity={0.7} style={styles.shopItem}>
+			{/* Fixed-size image box — sprite rendered at natural size, capped, never upscaled */}
 			<PixelPanel scale={1} style={styles.itemImageWrap}>
 				{thumbnail && (
-					<Image
-						source={thumbnail}
-						style={{ width: thumbSize.width, height: thumbSize.height, alignSelf: 'center' }}
-						resizeMode="contain"
-					/>
+					<View style={styles.imageCenter}>
+						<Image
+							source={thumbnail}
+							style={{ width: thumbSize.width, height: thumbSize.height }}
+							resizeMode="contain"
+						/>
+					</View>
 				)}
 			</PixelPanel>
-			<Text style={styles.itemName} numberOfLines={2}>
-				{item.name}
-			</Text>
-			{ownedCount > 0 && (
-				<Text style={styles.ownedText}>Owned{ownedCount > 1 ? ` x${ownedCount}` : ""}</Text>
-			)}
+			{/* Fixed-height label area keeps rows aligned */}
+			<View style={styles.itemLabelArea}>
+				<Text style={styles.itemName} numberOfLines={2}>
+					{item.name}
+				</Text>
+				{ownedCount > 0 && (
+					<Text style={styles.ownedText}>Owned{ownedCount > 1 ? ` x${ownedCount}` : ""}</Text>
+				)}
+			</View>
 			<View style={styles.buyBtn}>
 				<Text style={styles.buyText}>{item.price}</Text>
 			</View>
@@ -287,20 +296,33 @@ const styles = StyleSheet.create({
 	grid: {
 		flexDirection: "row",
 		flexWrap: "wrap",
-		gap: 4,
-		paddingBottom: 4,
+		columnGap: 4,
+		rowGap: 12,
+		paddingBottom: 8,
 		justifyContent: "center",
 	},
 	shopItem: {
-		width: 85,
+		width: CARD_W,
+		height: CARD_H,
 		alignItems: "center",
-		gap: 3,
+		justifyContent: "space-between",
+		paddingVertical: 4,
 	},
 	itemImageWrap: {
-		width: 50,
-		height: 50,
+		width: 64,
+		height: 64,
+	},
+	imageCenter: {
+		...StyleSheet.absoluteFillObject,
 		alignItems: "center",
 		justifyContent: "center",
+	},
+	itemLabelArea: {
+		height: 42,
+		width: "100%",
+		alignItems: "center",
+		justifyContent: "center",
+		gap: 1,
 	},
 	itemName: {
 		color: "#3B2A1A",

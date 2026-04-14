@@ -25,7 +25,7 @@ public class FlickerAudioModule: Module {
 
         AsyncFunction("initialize") { (promise: Promise) in
             do {
-                try FlickerAudioEngine.shared.initialize()
+                try FlickerAudioCoordinator.shared.initialize()
                 promise.resolve(["success": true])
             } catch {
                 let errorMessage = "Failed to initialize audio engine: \(error.localizedDescription)"
@@ -39,7 +39,89 @@ public class FlickerAudioModule: Module {
         }
 
         AsyncFunction("dispose") { (promise: Promise) in
-            FlickerAudioEngine.shared.dispose()
+            FlickerAudioCoordinator.shared.dispose()
+            promise.resolve(["success": true])
+        }
+
+        AsyncFunction("prewarmAssets") { (assetIds: [String], promise: Promise) in
+            FlickerAudioCoordinator.shared.prewarmAssets(assetIds)
+            promise.resolve(["success": true])
+        }
+
+        AsyncFunction("configureShellAssets") { (ambientAsset: String?, uiSounds: [String: String], promise: Promise) in
+            FlickerAudioCoordinator.shared.configureShellAssets(ambientAsset: ambientAsset, uiSounds: uiSounds)
+            promise.resolve(["success": true])
+        }
+
+        AsyncFunction("enterScene") { (scene: String, promise: Promise) in
+            do {
+                try FlickerAudioCoordinator.shared.enterScene(scene)
+                promise.resolve(["success": true])
+            } catch {
+                let errorMessage = "Failed to enter scene: \(error.localizedDescription)"
+                print("[FlickerAudioModule] \(errorMessage)")
+                self.sendEvent("error", [
+                    "message": errorMessage,
+                    "code": "SCENE_ERROR"
+                ])
+                promise.reject("SCENE_ERROR", errorMessage)
+            }
+        }
+
+        AsyncFunction("startSession") { (config: [String: Any], layers: [[String: Any]], promise: Promise) in
+            do {
+                try FlickerAudioCoordinator.shared.startSession(config: config, layers: layers)
+                self.sendEvent("playbackStateChanged", ["state": "playing"])
+                promise.resolve(["success": true])
+            } catch {
+                let errorMessage = "Failed to start session: \(error.localizedDescription)"
+                print("[FlickerAudioModule] \(errorMessage)")
+                self.sendEvent("error", [
+                    "message": errorMessage,
+                    "code": "START_SESSION_ERROR"
+                ])
+                promise.reject("START_SESSION_ERROR", errorMessage)
+            }
+        }
+
+        AsyncFunction("switchResetPreset") { (preset: String, layers: [[String: Any]], promise: Promise) in
+            do {
+                try FlickerAudioCoordinator.shared.switchResetPreset(preset, layers: layers)
+                promise.resolve(["success": true])
+            } catch {
+                let errorMessage = "Failed to switch reset preset: \(error.localizedDescription)"
+                print("[FlickerAudioModule] \(errorMessage)")
+                self.sendEvent("error", [
+                    "message": errorMessage,
+                    "code": "SWITCH_RESET_PRESET_ERROR"
+                ])
+                promise.reject("SWITCH_RESET_PRESET_ERROR", errorMessage)
+            }
+        }
+
+        AsyncFunction("applyResetCustomConfig") { (config: [String: Any], layers: [[String: Any]], promise: Promise) in
+            do {
+                try FlickerAudioCoordinator.shared.applyResetCustomConfig(config, layers: layers)
+                promise.resolve(["success": true])
+            } catch {
+                let errorMessage = "Failed to apply reset custom config: \(error.localizedDescription)"
+                print("[FlickerAudioModule] \(errorMessage)")
+                self.sendEvent("error", [
+                    "message": errorMessage,
+                    "code": "RESET_CUSTOM_ERROR"
+                ])
+                promise.reject("RESET_CUSTOM_ERROR", errorMessage)
+            }
+        }
+
+        AsyncFunction("setSessionPhase") { (phase: String, promise: Promise) in
+            FlickerAudioCoordinator.shared.setSessionPhase(phase)
+            promise.resolve(["success": true])
+        }
+
+        AsyncFunction("endSession") { (reason: String, promise: Promise) in
+            FlickerAudioCoordinator.shared.endSession(reason: reason)
+            self.sendEvent("playbackStateChanged", ["state": "stopped"])
             promise.resolve(["success": true])
         }
 
@@ -77,7 +159,12 @@ public class FlickerAudioModule: Module {
 
         AsyncFunction("setMasterVolume") { (volume: Float, fadeMs: Float, promise: Promise) in
             let fadeTime = TimeInterval(fadeMs / 1000.0)
-            FlickerAudioEngine.shared.setMasterVolume(volume, fadeTime: fadeTime)
+            FlickerAudioCoordinator.shared.setMasterVolume(volume, fadeTime: fadeTime)
+            promise.resolve(["success": true])
+        }
+
+        AsyncFunction("setMuted") { (muted: Bool, promise: Promise) in
+            FlickerAudioCoordinator.shared.setMuted(muted)
             promise.resolve(["success": true])
         }
 
@@ -130,6 +217,25 @@ public class FlickerAudioModule: Module {
         AsyncFunction("getState") { (promise: Promise) in
             let state = FlickerAudioEngine.shared.getState()
             promise.resolve(state)
+        }
+
+        AsyncFunction("playOneShot") { (name: String, promise: Promise) in
+            do {
+                try FlickerAudioCoordinator.shared.playOneShot(name)
+                promise.resolve(["success": true])
+            } catch {
+                let errorMessage = "Failed to play one-shot: \(error.localizedDescription)"
+                print("[FlickerAudioModule] \(errorMessage)")
+                self.sendEvent("error", [
+                    "message": errorMessage,
+                    "code": "ONE_SHOT_ERROR"
+                ])
+                promise.reject("ONE_SHOT_ERROR", errorMessage)
+            }
+        }
+
+        AsyncFunction("getDebugState") { (promise: Promise) in
+            promise.resolve(FlickerAudioCoordinator.shared.getDebugState())
         }
 
         // MARK: - Test Tone Generation (Phase 1)

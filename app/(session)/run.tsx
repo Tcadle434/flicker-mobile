@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, BackHandler } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,8 +8,10 @@ import { theme } from '../../src/constants/theme';
 import { useSessionStore } from '../../src/stores/sessionStore';
 import { usePlayerStore } from '../../src/stores/playerStore';
 import { useSpotifyStore } from '../../src/stores/spotifyStore';
+import { audioCoordinator } from '../../src/services/audio/audioCoordinator';
 import ZenGardenScene from '../../src/components/world/ZenGardenScene';
 import StandaloneSessionAudioPanel from '../../src/components/hud/StandaloneSessionAudioPanel';
+import SessionExitConfirmPopup from '../../src/components/hud/SessionExitConfirmPopup';
 import type { SoundscapeMode } from '../../src/types';
 
 type TimerMode = 'focus' | 'move';
@@ -125,12 +127,7 @@ export default function ModeSessionRun() {
   const completeSession = useSessionStore((s) => s.completeSession);
   const abandonSession = useSessionStore((s) => s.abandonSession);
 
-  const setAudioMode = usePlayerStore((s) => s.setMode);
-  const playAudio = usePlayerStore((s) => s.play);
-  const stopAudio = usePlayerStore((s) => s.stop);
   const layers = usePlayerStore((s) => s.layers);
-  const setLayerLoop = usePlayerStore((s) => s.setLayerLoop);
-  const setLayerVolume = usePlayerStore((s) => s.setLayerVolume);
 
   const resumeSpotify = useSpotifyStore((s) => s.resumePlayback);
   const pauseSpotify = useSpotifyStore((s) => s.pausePlayback);
@@ -173,6 +170,9 @@ export default function ModeSessionRun() {
   const [blockIndex, setBlockIndex] = useState(0);
   const [blockElapsed, setBlockElapsed] = useState(0);
   const [focusAudioPanelVisible, setFocusAudioPanelVisible] = useState(false);
+  const [exitConfirmVisible, setExitConfirmVisible] = useState(false);
+  const elapsedRef = useRef(0);
+  const blockElapsedRef = useRef(0);
 
   const currentBlock = pomodoroEnabled ? pomodoroBlocks[blockIndex] : null;
   const isBreak = currentBlock?.type === 'break';
@@ -226,6 +226,14 @@ export default function ModeSessionRun() {
     tick(0);
 
     if (isSpotify) {
+      void audioCoordinator
+        .startFocusSession({
+          scene: isMove ? 'moveSession' : 'focusSession',
+          preset: 'spotify',
+          continueInBackground: true,
+          modeLabel: nativeAudioMode ?? undefined,
+        })
+        .catch(() => undefined);
       void connectSpotify()
         .then((connected) => {
           if (connected) {
@@ -234,18 +242,22 @@ export default function ModeSessionRun() {
           return undefined;
         })
         .catch(() => undefined);
-    } else if (!isSilent && nativeAudioMode) {
-      void setAudioMode(nativeAudioMode)
-        .then(() => playAudio())
+    } else {
+      void audioCoordinator
+        .startFocusSession({
+          scene: isMove ? 'moveSession' : 'focusSession',
+          preset: isSilent ? 'silent' : 'focusDefault',
+          continueInBackground: true,
+          modeLabel: nativeAudioMode ?? undefined,
+        })
         .catch(() => undefined);
     }
 
     return () => {
       if (isSpotify) {
         pauseSpotify().catch(() => undefined);
-      } else {
-        stopAudio();
       }
+      void audioCoordinator.endSession('abandoned').catch(() => undefined);
 
       if (useSessionStore.getState().status === 'active') {
         abandonSession();
@@ -262,9 +274,6 @@ export default function ModeSessionRun() {
     setDuration,
     startSession,
     tick,
-    setAudioMode,
-    playAudio,
-    stopAudio,
     abandonSession,
     connectSpotify,
     resumeSpotify,
@@ -275,33 +284,30 @@ export default function ModeSessionRun() {
     if (sessionStatus !== 'active') return;
 
     const timer = setInterval(() => {
-      setElapsedSeconds((prev) => {
-        const next = prev + 1;
-        tick(next);
+      const next = elapsedRef.current + 1;
+      elapsedRef.current = next;
+      setElapsedSeconds(next);
+      tick(next);
 
-        if (pomodoroEnabled) {
-          setBlockElapsed((previousBlockElapsed) => {
-            const nextBlockElapsed = previousBlockElapsed + 1;
-            const block = pomodoroBlocks[blockIndex];
+      if (pomodoroEnabled) {
+        const nextBlockElapsed = blockElapsedRef.current + 1;
+        blockElapsedRef.current = nextBlockElapsed;
+        setBlockElapsed(nextBlockElapsed);
 
-            if (block && nextBlockElapsed >= block.durationSeconds) {
-              const nextBlockIndex = blockIndex + 1;
-              if (nextBlockIndex >= pomodoroBlocks.length) {
-                completeSession();
-              } else {
-                setBlockIndex(nextBlockIndex);
-                setBlockElapsed(0);
-              }
-            }
-
-            return nextBlockElapsed;
-          });
-        } else if ((!isMove || timerDisplay === 'countdown') && next >= targetSeconds) {
-          completeSession();
+        const block = pomodoroBlocks[blockIndex];
+        if (block && nextBlockElapsed >= block.durationSeconds) {
+          const nextBlockIndex = blockIndex + 1;
+          if (nextBlockIndex >= pomodoroBlocks.length) {
+            completeSession();
+          } else {
+            blockElapsedRef.current = 0;
+            setBlockIndex(nextBlockIndex);
+            setBlockElapsed(0);
+          }
         }
-
-        return next;
-      });
+      } else if ((!isMove || timerDisplay === 'countdown') && next >= targetSeconds) {
+        completeSession();
+      }
     }, 1000);
 
     return () => clearInterval(timer);
@@ -322,9 +328,8 @@ export default function ModeSessionRun() {
 
     if (isSpotify) {
       pauseSpotify().catch(() => undefined);
-    } else {
-      stopAudio();
     }
+    void audioCoordinator.endSession('completed').catch(() => undefined);
 
     let actualDuration = durationMinutes;
     if (pomodoroEnabled) {
@@ -342,7 +347,6 @@ export default function ModeSessionRun() {
     router,
     sessionId,
     durationMinutes,
-    stopAudio,
     isMove,
     elapsedSeconds,
     pomodoroEnabled,
@@ -350,6 +354,14 @@ export default function ModeSessionRun() {
     isSpotify,
     pauseSpotify,
   ]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setExitConfirmVisible(true);
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
 
   const finishMove = useCallback(() => {
     if (!targetMet) return;
@@ -359,13 +371,12 @@ export default function ModeSessionRun() {
   const exitEarly = useCallback(() => {
     if (isSpotify) {
       pauseSpotify().catch(() => undefined);
-    } else {
-      stopAudio();
     }
+    void audioCoordinator.endSession('abandoned').catch(() => undefined);
 
     abandonSession();
     router.replace('/(main)/home');
-  }, [abandonSession, router, stopAudio, isSpotify, pauseSpotify]);
+  }, [abandonSession, router, isSpotify, pauseSpotify]);
 
   const cycleFocusTrack = useCallback(
     (direction: -1 | 1) => {
@@ -383,10 +394,10 @@ export default function ModeSessionRun() {
       const nextTrack = focusLayer.availableTracks[nextIndex];
 
       if (nextTrack) {
-        void setLayerLoop('ambient', nextTrack.id);
+        void audioCoordinator.setFocusLayerLoop('ambient', nextTrack.id);
       }
     },
-    [canCycleFocusTracks, focusLayer.availableTracks, focusLayer.currentLoopId, setLayerLoop],
+    [canCycleFocusTracks, focusLayer.availableTracks, focusLayer.currentLoopId],
   );
 
   if (mode === 'focus') {
@@ -404,44 +415,14 @@ export default function ModeSessionRun() {
             <Animated.View entering={FadeIn.delay(220).duration(500)} style={styles.focusTopRow}>
               <Text style={styles.sessionTimer}>{displayTime}</Text>
 
-              <View style={styles.rightStack}>
+              <View style={styles.topRightStack}>
                 <TouchableOpacity
                   style={styles.exitGlassButton}
-                  onPress={exitEarly}
+                  onPress={() => setExitConfirmVisible(true)}
                   activeOpacity={0.75}
                 >
                   <Text style={styles.exitGlassText}>Exit</Text>
                 </TouchableOpacity>
-
-                {showFocusAudioControls && (
-                  <View style={styles.audioModeRow}>
-                    {canCycleFocusTracks && (
-                      <TouchableOpacity
-                        style={styles.trackArrowButton}
-                        onPress={() => cycleFocusTrack(-1)}
-                        activeOpacity={0.75}
-                      >
-                        <Text style={styles.trackArrowText}>{'<'}</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    <View style={[styles.audioModeBubble, styles.audioModeBubbleActive]}>
-                      <Text style={[styles.audioModeBubbleText, styles.audioModeBubbleTextActive]}>
-                        {currentFocusTrack?.label ?? 'Focus Audio'}
-                      </Text>
-                    </View>
-
-                    {canCycleFocusTracks && (
-                      <TouchableOpacity
-                        style={styles.trackArrowButton}
-                        onPress={() => cycleFocusTrack(1)}
-                        activeOpacity={0.75}
-                      >
-                        <Text style={styles.trackArrowText}>{'>'}</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
 
                 {showFocusAudioControls && (
                   <TouchableOpacity
@@ -489,9 +470,18 @@ export default function ModeSessionRun() {
               trackLabel={currentFocusTrack?.label ?? 'Unavailable'}
               volume={focusLayer.volume}
               sliderColor={details.accent}
-              onVolumeChange={(value) => setLayerVolume('ambient', value)}
+              onVolumeChange={(value) => audioCoordinator.setFocusLayerVolume('ambient', value)}
+              canCycleTracks={canCycleFocusTracks}
+              onCyclePrev={() => cycleFocusTrack(-1)}
+              onCycleNext={() => cycleFocusTrack(1)}
             />
           )}
+
+          <SessionExitConfirmPopup
+            visible={exitConfirmVisible}
+            onConfirm={exitEarly}
+            onCancel={() => setExitConfirmVisible(false)}
+          />
         </View>
       </>
     );
@@ -505,7 +495,7 @@ export default function ModeSessionRun() {
 
         <SafeAreaView style={styles.container}>
           <Animated.View entering={FadeIn.delay(300).duration(500)} style={styles.topRow}>
-            <TouchableOpacity onPress={exitEarly} style={styles.exitButton} activeOpacity={0.75}>
+            <TouchableOpacity onPress={() => setExitConfirmVisible(true)} style={styles.exitButton} activeOpacity={0.75}>
               <Text style={styles.exitText}>Exit</Text>
             </TouchableOpacity>
             <Text style={[styles.modeLabel, { color: `${ringColor}AA` }]}>
@@ -591,6 +581,12 @@ export default function ModeSessionRun() {
             </Animated.View>
           )}
         </SafeAreaView>
+
+        <SessionExitConfirmPopup
+          visible={exitConfirmVisible}
+          onConfirm={exitEarly}
+          onCancel={() => setExitConfirmVisible(false)}
+        />
       </View>
     </>
   );
@@ -617,8 +613,9 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     fontVariant: ['tabular-nums'],
   },
-  rightStack: {
-    alignItems: 'flex-end',
+  topRightStack: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.sm,
   },
   exitGlassButton: {
@@ -636,52 +633,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.xs,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    fontWeight: theme.typography.fontWeight.semibold,
-  },
-  audioModeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  audioModeBubble: {
-    minWidth: 104,
-    minHeight: 42,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  audioModeBubbleActive: {
-    backgroundColor: 'rgba(45, 212, 191, 0.18)',
-    borderColor: 'rgba(94, 234, 212, 0.46)',
-  },
-  audioModeBubbleText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: theme.typography.fontSize.xs,
-    fontWeight: theme.typography.fontWeight.semibold,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  audioModeBubbleTextActive: {
-    color: theme.colors.text,
-  },
-  trackArrowButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  trackArrowText: {
-    color: theme.colors.text,
-    fontSize: 14,
     fontWeight: theme.typography.fontWeight.semibold,
   },
   audioControlButton: {

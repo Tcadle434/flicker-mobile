@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { theme } from '../../constants/theme';
+import { audioCoordinator } from '../../services/audio/audioCoordinator';
 import { usePlayerStore } from '../../stores/playerStore';
 import {
   getResetSessionAudioProfile,
@@ -23,6 +24,9 @@ interface Props {
   volume?: number;
   sliderColor?: string;
   onVolumeChange?: (volume: number) => void;
+  canCycleTracks?: boolean;
+  onCyclePrev?: () => void;
+  onCycleNext?: () => void;
 }
 
 const MODE_COLORS = {
@@ -39,11 +43,13 @@ export default function StandaloneSessionAudioPanel({
   volume,
   sliderColor,
   onVolumeChange,
+  canCycleTracks,
+  onCyclePrev,
+  onCycleNext,
 }: Props) {
   const resetSessionAudioMode = usePlayerStore((s) => s.resetSessionAudioMode);
   const resetSessionSelections = usePlayerStore((s) => s.resetSessionSelections);
   const resetSessionVolumes = usePlayerStore((s) => s.resetSessionVolumes);
-  const setResetSessionStandaloneVolume = usePlayerStore((s) => s.setResetSessionStandaloneVolume);
 
   const isControlled = typeof onVolumeChange === 'function';
   const resolvedSliderColor = sliderColor ?? MODE_COLORS['432hz'];
@@ -67,9 +73,21 @@ export default function StandaloneSessionAudioPanel({
             </TouchableOpacity>
           </View>
 
-          <View style={styles.trackCard}>
-            <Text style={styles.trackLabel}>Current Track</Text>
-            <Text style={styles.trackValue}>{trackLabel ?? 'Unavailable'}</Text>
+          <View style={[styles.trackCard, canCycleTracks && styles.trackCardRow]}>
+            {canCycleTracks && (
+              <TouchableOpacity style={styles.trackArrowButton} onPress={onCyclePrev} activeOpacity={0.75}>
+                <Text style={styles.trackArrowText}>{'<'}</Text>
+              </TouchableOpacity>
+            )}
+            <View style={canCycleTracks ? styles.trackInfo : undefined}>
+              <Text style={styles.trackLabel}>Current Track</Text>
+              <Text style={styles.trackValue}>{trackLabel ?? 'Unavailable'}</Text>
+            </View>
+            {canCycleTracks && (
+              <TouchableOpacity style={styles.trackArrowButton} onPress={onCycleNext} activeOpacity={0.75}>
+                <Text style={styles.trackArrowText}>{'>'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.volumeBlock}>
@@ -144,7 +162,7 @@ export default function StandaloneSessionAudioPanel({
 
           <Slider
             value={resolvedResetVolume}
-            onValueChange={setResetSessionStandaloneVolume}
+            onValueChange={(value) => audioCoordinator.setResetStandaloneVolume(value)}
             minimumValue={0}
             maximumValue={1}
             step={0.01}
@@ -216,6 +234,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 4,
   },
+  trackCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  trackInfo: {
+    flex: 1,
+    gap: 4,
+  },
   trackLabel: {
     color: theme.colors.textTertiary,
     fontSize: theme.typography.fontSize.xs,
@@ -226,6 +253,21 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.medium,
+  },
+  trackArrowButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  trackArrowText: {
+    color: theme.colors.text,
+    fontSize: 14,
+    fontWeight: theme.typography.fontWeight.semibold,
   },
   volumeBlock: {
     gap: 4,

@@ -9,6 +9,7 @@ CREATE TABLE public.tent_placements (
   tile_x INTEGER NOT NULL,
   tile_y INTEGER NOT NULL,
   direction TEXT NOT NULL DEFAULT 'down',
+  scale DOUBLE PRECISION NOT NULL DEFAULT 1,
   placed_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 

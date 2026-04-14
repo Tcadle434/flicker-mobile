@@ -156,17 +156,7 @@ export default function PixelPanel({
           <Picture picture={picture} />
         </Canvas>
       )}
-      <View
-        style={[
-          styles.content,
-          {
-            top: contentInset,
-            bottom: contentInset,
-            left: contentInset,
-            right: contentInset,
-          },
-        ]}
-      >
+      <View style={[styles.content, { padding: contentInset }]}>
         {children}
       </View>
     </View>
@@ -178,6 +168,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   content: {
-    position: 'absolute',
+    flex: 1,
   },
 });

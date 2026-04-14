@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, BackHandler } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
+  FadeInUp,
+  FadeOut,
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -13,9 +15,11 @@ import { theme } from '../../src/constants/theme';
 import { useSessionStore } from '../../src/stores/sessionStore';
 import { usePlayerStore } from '../../src/stores/playerStore';
 import { SessionFlowController } from '../../src/controllers/SessionFlowController';
+import { audioCoordinator } from '../../src/services/audio/audioCoordinator';
 import ZenGardenScene from '../../src/components/world/ZenGardenScene';
 import SessionMixer from '../../src/components/hud/SessionMixer';
 import StandaloneSessionAudioPanel from '../../src/components/hud/StandaloneSessionAudioPanel';
+import SessionExitConfirmPopup from '../../src/components/hud/SessionExitConfirmPopup';
 import {
   getResetSessionAudioProfile,
   getResetSessionStandaloneLayer,
@@ -28,9 +32,9 @@ import {
 } from '../../src/constants/devSession';
 
 const RESET_SESSION_AUDIO_MODES: ResetSessionAudioMode[] = [
-  'custom',
   '432hz',
   'binauralBeats',
+  'custom',
 ];
 
 function formatTime(totalSeconds: number) {
@@ -41,21 +45,19 @@ function formatTime(totalSeconds: number) {
 
 export default function ResetSession() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     duration?: string;
     devSession?: string;
   }>();
-  const { setMode: setPlayerMode } = usePlayerStore();
   const resetSessionAudioMode = usePlayerStore((s) => s.resetSessionAudioMode);
-  const setResetSessionAudioMode = usePlayerStore((s) => s.setResetSessionAudioMode);
-  const cycleResetSessionStandaloneTrack = usePlayerStore((s) => s.cycleResetSessionStandaloneTrack);
-  const resetResetSessionAudioState = usePlayerStore((s) => s.resetResetSessionAudioState);
   const phase = useSessionStore((s) => s.phase);
   const sessionId = useSessionStore((s) => s.sessionId);
   const setSessionMode = useSessionStore((s) => s.setMode);
   const abandonSession = useSessionStore((s) => s.abandonSession);
   const [mixerVisible, setMixerVisible] = useState(false);
   const [standalonePanelVisible, setStandalonePanelVisible] = useState(false);
+  const [exitConfirmVisible, setExitConfirmVisible] = useState(false);
 
   const controllerRef = useRef<SessionFlowController | null>(null);
   const [stillRemaining, setStillRemaining] = useState(0);
@@ -92,13 +94,15 @@ export default function ResetSession() {
     (async () => {
       try {
         setSessionMode('reset');
-        await setPlayerMode('relax');
-        resetResetSessionAudioState();
-        await setResetSessionAudioMode('custom');
+        await audioCoordinator.startResetSession({
+          scene: 'resetSession',
+          preset: 'reset432hz',
+          continueInBackground: true,
+        });
       } catch {
         // ignore, session still renders
       }
-      controller.start();
+      await controller.start();
     })();
 
     const displayInterval = setInterval(() => {
@@ -109,21 +113,14 @@ export default function ResetSession() {
 
     return () => {
       clearInterval(displayInterval);
-      controller.dispose();
-      resetResetSessionAudioState();
+      controller.dispose(
+        useSessionStore.getState().status === 'completed' ? 'completed' : 'abandoned',
+      );
       if (useSessionStore.getState().status === 'active') {
         abandonSession();
       }
     };
-  }, [
-    durationMinutes,
-    abandonSession,
-    isDevSession,
-    resetResetSessionAudioState,
-    setPlayerMode,
-    setResetSessionAudioMode,
-    setSessionMode,
-  ]);
+  }, [durationMinutes, abandonSession, isDevSession, setSessionMode]);
 
   useEffect(() => {
     if (resetSessionAudioMode === 'custom') {
@@ -137,14 +134,13 @@ export default function ResetSession() {
   useEffect(() => {
     switch (phase) {
       case 'fade':
-        visualOpacity.value = withTiming(1, { duration: 3000, easing: Easing.inOut(Easing.ease) });
-        fadeTextOpacity.value = withTiming(0, { duration: 8000 });
-        setTimeout(() => {
-          controlsOpacity.value = withTiming(0.5, { duration: 2000 });
-        }, 5000);
+        visualOpacity.value = withTiming(1, { duration: 900, easing: Easing.inOut(Easing.ease) });
+        fadeTextOpacity.value = withTiming(0, { duration: 4200 });
+        controlsOpacity.value = withTiming(1, { duration: 450 });
         break;
       case 'still':
-        controlsOpacity.value = withTiming(0.5, { duration: 1000 });
+        fadeTextOpacity.value = withTiming(0, { duration: 200 });
+        controlsOpacity.value = withTiming(1, { duration: 300 });
         break;
       case 'return':
         controlsOpacity.value = withTiming(0, { duration: 1000 });
@@ -173,9 +169,16 @@ export default function ResetSession() {
     opacity: visualOpacity.value,
   }));
 
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setExitConfirmVisible(true);
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
+
   const handleExitSession = () => {
-    controllerRef.current?.dispose();
-    resetResetSessionAudioState();
+    controllerRef.current?.dispose('abandoned');
     abandonSession();
     router.replace('/(main)/home');
   };
@@ -185,7 +188,14 @@ export default function ResetSession() {
       return;
     }
 
-    void setResetSessionAudioMode(mode);
+    const preset =
+      mode === 'custom'
+        ? 'resetCustom'
+        : mode === 'binauralBeats'
+          ? 'resetBinauralBeats'
+          : 'reset432hz';
+
+    void audioCoordinator.switchResetPreset(preset);
   };
 
   const handleAudioControlPress = () => {
@@ -209,78 +219,21 @@ export default function ResetSession() {
           <ZenGardenScene onReady={() => {}} />
         </Animated.View>
 
-        <SafeAreaView style={styles.safeArea}>
+        <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
           {(phase === 'fade' || phase === 'still') && (
             <Animated.View style={[styles.topRow, controlsStyle]}>
               <Text style={styles.timer}>
                 {formatTime(stillRemaining)}
               </Text>
 
-              <View style={styles.rightStack}>
+              <View style={styles.topRightStack}>
                 <TouchableOpacity
                   style={styles.exitButton}
-                  onPress={handleExitSession}
+                  onPress={() => setExitConfirmVisible(true)}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.exitButtonText}>Exit</Text>
                 </TouchableOpacity>
-
-                <View style={styles.audioModeRail}>
-                  {RESET_SESSION_AUDIO_MODES.map((mode) => {
-                    const profile = getResetSessionAudioProfile(mode);
-                    const isSelected = mode === resetSessionAudioMode;
-                    const rowStandaloneLayer = getResetSessionStandaloneLayer(mode);
-                    const rowTrackCount = rowStandaloneLayer
-                      ? getResetSessionTrackCatalog(mode)[rowStandaloneLayer].length
-                      : 0;
-                    const showTrackArrows =
-                      isSelected &&
-                      profile.showStandaloneVolumeControl &&
-                      rowTrackCount > 1;
-
-                    return (
-                      <View key={mode} style={styles.audioModeRow}>
-                        {showTrackArrows && (
-                          <TouchableOpacity
-                            style={styles.trackArrowButton}
-                            onPress={() => void cycleResetSessionStandaloneTrack(-1)}
-                            activeOpacity={0.75}
-                          >
-                            <Text style={styles.trackArrowText}>{'<'}</Text>
-                          </TouchableOpacity>
-                        )}
-
-                        <TouchableOpacity
-                          style={[
-                            styles.audioModeBubble,
-                            isSelected && styles.audioModeBubbleActive,
-                          ]}
-                          onPress={() => handleModePress(mode)}
-                          activeOpacity={0.78}
-                        >
-                          <Text
-                            style={[
-                              styles.audioModeBubbleText,
-                              isSelected && styles.audioModeBubbleTextActive,
-                            ]}
-                          >
-                            {profile.label}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {showTrackArrows && (
-                          <TouchableOpacity
-                            style={styles.trackArrowButton}
-                            onPress={() => void cycleResetSessionStandaloneTrack(1)}
-                            activeOpacity={0.75}
-                          >
-                            <Text style={styles.trackArrowText}>{'>'}</Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    );
-                  })}
-                </View>
 
                 <TouchableOpacity
                   style={styles.mixerButton}
@@ -298,14 +251,91 @@ export default function ResetSession() {
           )}
 
           {phase === 'fade' && (
-            <Animated.View style={[styles.centerText, fadeTextStyle]}>
-              <Text style={styles.phaseText}>Entering your mental reset...</Text>
+            <Animated.View style={[styles.centerText, fadeTextStyle]} pointerEvents="none">
+              <Animated.View
+                entering={FadeInUp.delay(180).duration(500)}
+                exiting={FadeOut.duration(250)}
+                style={styles.introCard}
+              >
+                <Text style={styles.introLabel}>Reset</Text>
+                <Text style={styles.introHeadline}>Sink into the zen garden.</Text>
+                <Text style={styles.introSubtitle}>
+                  Let the 432Hz tone land first, then soften into stillness.
+                </Text>
+              </Animated.View>
             </Animated.View>
           )}
 
           {phase === 'return' && (
-            <Animated.View style={[styles.centerText, returnTextStyle]}>
+            <Animated.View style={[styles.centerText, returnTextStyle]} pointerEvents="none">
               <Text style={styles.phaseText}>Welcome back.</Text>
+            </Animated.View>
+          )}
+
+          {(phase === 'fade' || phase === 'still') && (
+            <Animated.View
+              style={[
+                styles.bottomRight,
+                controlsStyle,
+                { bottom: insets.bottom + theme.spacing.xxxl },
+              ]}
+            >
+              <View style={styles.audioModeRail}>
+                {RESET_SESSION_AUDIO_MODES.map((mode) => {
+                  const profile = getResetSessionAudioProfile(mode);
+                  const isSelected = mode === resetSessionAudioMode;
+                  const rowStandaloneLayer = getResetSessionStandaloneLayer(mode);
+                  const rowTrackCount = rowStandaloneLayer
+                    ? getResetSessionTrackCatalog(mode)[rowStandaloneLayer].length
+                    : 0;
+                  const showTrackArrows =
+                    isSelected &&
+                    profile.showStandaloneVolumeControl &&
+                    rowTrackCount > 1;
+
+                  return (
+                    <View key={mode} style={styles.audioModeRow}>
+                      {showTrackArrows && (
+                        <TouchableOpacity
+                          style={styles.trackArrowButton}
+                          onPress={() => void audioCoordinator.cycleResetStandaloneTrack(-1)}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={styles.trackArrowText}>{'<'}</Text>
+                        </TouchableOpacity>
+                      )}
+
+                      <TouchableOpacity
+                        style={[
+                          styles.audioModeBubble,
+                          isSelected && styles.audioModeBubbleActive,
+                        ]}
+                        onPress={() => handleModePress(mode)}
+                        activeOpacity={0.78}
+                      >
+                        <Text
+                          style={[
+                            styles.audioModeBubbleText,
+                            isSelected && styles.audioModeBubbleTextActive,
+                          ]}
+                        >
+                          {profile.label}
+                        </Text>
+                      </TouchableOpacity>
+
+                      {showTrackArrows && (
+                        <TouchableOpacity
+                          style={styles.trackArrowButton}
+                          onPress={() => void audioCoordinator.cycleResetStandaloneTrack(1)}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={styles.trackArrowText}>{'>'}</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
             </Animated.View>
           )}
         </SafeAreaView>
@@ -317,6 +347,12 @@ export default function ResetSession() {
         {standalonePanelVisible && resetSessionAudioMode !== 'custom' && (
           <StandaloneSessionAudioPanel onClose={() => setStandalonePanelVisible(false)} visible />
         )}
+
+        <SessionExitConfirmPopup
+          visible={exitConfirmVisible}
+          onConfirm={handleExitSession}
+          onCancel={() => setExitConfirmVisible(false)}
+        />
       </View>
     </>
   );
@@ -341,10 +377,17 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontSize: theme.typography.fontSize.md,
     letterSpacing: 2,
+    fontVariant: ['tabular-nums'],
   },
-  rightStack: {
-    alignItems: 'flex-end',
+  topRightStack: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.sm,
+  },
+  bottomRight: {
+    position: 'absolute',
+    right: theme.spacing.lg,
+    alignItems: 'flex-start',
   },
   exitButton: {
     height: 40,
@@ -373,7 +416,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   audioModeBubble: {
-    minWidth: 104,
+    width: 144,
     minHeight: 42,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
@@ -447,6 +490,40 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: theme.spacing.xl,
+    paddingBottom: theme.spacing.xxl,
+  },
+  introCard: {
+    width: '100%',
+    maxWidth: 328,
+    borderRadius: 24,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
+    backgroundColor: 'rgba(7, 12, 18, 0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(125, 211, 252, 0.22)',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  introLabel: {
+    color: '#7DD3FC',
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.semibold,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  introHeadline: {
+    color: theme.colors.text,
+    fontSize: 24,
+    fontWeight: theme.typography.fontWeight.semibold,
+    letterSpacing: 0.2,
+    textAlign: 'center',
+  },
+  introSubtitle: {
+    color: 'rgba(255, 255, 255, 0.72)',
+    fontSize: theme.typography.fontSize.sm,
+    textAlign: 'center',
+    lineHeight: 22,
   },
   phaseText: {
     color: theme.colors.text,

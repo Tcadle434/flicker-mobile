@@ -7,6 +7,7 @@
 
 import { supabase } from './supabase';
 import type { TentPlacement, Direction } from '../../types/tent';
+import { DEFAULT_ITEM_SCALE, normalizeItemScale } from '../tent/tentCatalog';
 
 async function getUserId(): Promise<string | null> {
   try {
@@ -23,7 +24,7 @@ export async function fetchTentPlacements(): Promise<TentPlacement[] | null> {
 
   const { data, error } = await supabase
     .from('tent_placements')
-    .select('id, item_id, room_id, tile_x, tile_y, direction, placed_at')
+    .select('id, item_id, room_id, tile_x, tile_y, direction, scale, placed_at')
     .eq('user_id', userId);
 
   if (error || !data) return null;
@@ -35,6 +36,7 @@ export async function fetchTentPlacements(): Promise<TentPlacement[] | null> {
     x: row.tile_x,
     y: row.tile_y,
     direction: (row.direction as Direction) || 'down',
+    scale: normalizeItemScale(row.scale),
     placedAt: new Date(row.placed_at).getTime(),
   }));
 }
@@ -51,6 +53,7 @@ export async function insertTentPlacement(placement: TentPlacement): Promise<boo
     tile_x: placement.x,
     tile_y: placement.y,
     direction: placement.direction,
+    scale: normalizeItemScale(placement.scale ?? DEFAULT_ITEM_SCALE),
   });
 
   return !error;
@@ -58,7 +61,7 @@ export async function insertTentPlacement(placement: TentPlacement): Promise<boo
 
 export async function updateTentPlacement(
   placementId: string,
-  updates: { x?: number; y?: number; direction?: Direction },
+  updates: { x?: number; y?: number; direction?: Direction; scale?: number },
 ): Promise<boolean> {
   const userId = await getUserId();
   if (!userId) return false;
@@ -67,6 +70,7 @@ export async function updateTentPlacement(
   if (updates.x !== undefined) updateData.tile_x = updates.x;
   if (updates.y !== undefined) updateData.tile_y = updates.y;
   if (updates.direction !== undefined) updateData.direction = updates.direction;
+  if (updates.scale !== undefined) updateData.scale = normalizeItemScale(updates.scale);
 
   const { error } = await supabase
     .from('tent_placements')

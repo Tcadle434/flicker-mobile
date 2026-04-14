@@ -41,10 +41,12 @@ class AudioBufferManager {
     private let resourceBundleNames = ["FlickerAudioAssets", "FlickerAudio-FlickerAudioAssets"]
 
     private lazy var searchableBundles: [Bundle] = {
-        let rootBundles: [Bundle] = [Bundle.main, Bundle(for: FlickerAudioModule.self)]
-        var bundles: [Bundle] = rootBundles
+        let moduleBundle = Bundle(for: FlickerAudioModule.self)
+        let rootBundles: [Bundle] = [moduleBundle, Bundle.main]
+        var bundles: [Bundle] = []
 
-        // Include the module bundle so local pod resources are discoverable.
+        // Prefer module resource bundles over the app bundle so native-owned
+        // optimized assets win when filenames overlap.
         for rootBundle in rootBundles {
             if let resourceURL = rootBundle.resourceURL {
                 for bundleName in resourceBundleNames {
@@ -54,7 +56,11 @@ class AudioBufferManager {
                     }
                 }
             }
+        }
 
+        bundles.append(contentsOf: rootBundles)
+
+        for rootBundle in rootBundles {
             if let bundleURLs = rootBundle.urls(forResourcesWithExtension: "bundle", subdirectory: nil) {
                 for url in bundleURLs {
                     if let bundle = Bundle(url: url) {
@@ -208,7 +214,7 @@ class AudioBufferManager {
         }
 
         // Try common subdirectories inside all searchable bundles
-        let subdirectories = ["audio", "sounds", "loops", "assets"]
+        let subdirectories = ["audio", "sounds", "loops", "assets", "ui_sounds", "audio/ui_sounds", "assets/audio", "assets/audio/ui_sounds"]
         for bundle in searchableBundles {
             if let resourcePath = bundle.resourcePath {
                 let resourceURL = URL(fileURLWithPath: resourcePath)
@@ -311,7 +317,7 @@ class AudioBufferManager {
     /// - Returns: Array of audio filenames found in the bundle
     func discoverAudioFiles() -> [String] {
         var audioFiles: [String] = []
-        let subdirectories = ["", "audio", "sounds", "loops", "assets"]
+        let subdirectories = ["", "audio", "sounds", "loops", "assets", "ui_sounds", "audio/ui_sounds", "assets/audio", "assets/audio/ui_sounds"]
 
         for bundle in searchableBundles {
             guard let resourcePath = bundle.resourcePath else {

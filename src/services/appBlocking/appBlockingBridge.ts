@@ -38,6 +38,9 @@ export const appBlockingBridge = {
    */
   requestAuthorization: async (): Promise<boolean> => {
     const result = await NativeAppBlocking.requestAuthorization();
+    if (!result.success) {
+      console.warn('[AppBlockingBridge] requestAuthorization failed:', result.error);
+    }
     return result.success;
   },
 

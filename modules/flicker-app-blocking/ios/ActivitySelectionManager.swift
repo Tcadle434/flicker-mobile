@@ -76,7 +76,7 @@ private struct FamilyActivityPickerView: View {
     var body: some View {
         NavigationView {
             FamilyActivityPicker(selection: $manager.selection)
-                .navigationTitle("Choose Apps to Block")
+                .navigationTitle("Allowed Apps")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {

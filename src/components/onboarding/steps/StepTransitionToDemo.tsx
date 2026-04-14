@@ -6,7 +6,7 @@
  */
 
 import React from "react";
-import { Image, StyleSheet, Dimensions } from "react-native";
+import { Image, Text, StyleSheet, Dimensions } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import OnboardingContentLayout from "../OnboardingContentLayout";
 import { ONBOARDING_ASSETS } from "../onboardingAssets";
@@ -21,8 +21,8 @@ interface Props {
 export default function StepTransitionToDemo({ onNext }: Props) {
 	return (
 		<OnboardingContentLayout
-			title="Recovery works best when it becomes a ritual."
-			subtitle="Flicker turns calm and focus sessions into something visible you can come back to each day."
+			title="Turn recovery into a ritual."
+			subtitle="Flicker lets you set a time each day for your mind to recover."
 			ctaLabel="See how it works"
 			ctaDelay={1800}
 			onNext={onNext}
@@ -37,6 +37,9 @@ export default function StepTransitionToDemo({ onNext }: Props) {
 					resizeMode="contain"
 				/>
 			</Animated.View>
+			<Animated.Text entering={FadeInDown.delay(1400).duration(600)} style={styles.footer}>
+				Ready to feel good about yourself? Let's see how the app works.
+			</Animated.Text>
 		</OnboardingContentLayout>
 	);
 }
@@ -49,5 +52,13 @@ const styles = StyleSheet.create({
 	flickerImage: {
 		width: FLICKER_SIZE,
 		height: FLICKER_SIZE,
+	},
+	footer: {
+		color: "rgba(0, 0, 0, 0.55)",
+		fontSize: 17,
+		fontWeight: "400",
+		lineHeight: 26,
+		textAlign: "left",
+		marginTop: 8,
 	},
 });

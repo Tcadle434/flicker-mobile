@@ -9,10 +9,19 @@
  * - 'edit': Show room finish panel
  */
 
+import { Alert } from 'react-native';
 import { create } from 'zustand';
 import type { Direction, TentSurfaceType } from '../types/tent';
 import { validatePlacement } from '../services/tent/placementValidator';
-import { getCatalogMap, getCatalogItem, getItemDirections } from '../services/tent/tentCatalog';
+import {
+  DEFAULT_ITEM_SCALE,
+  getAdjacentItemScale,
+  getCatalogMap,
+  getCatalogItem,
+  getItemDirections,
+  getScaledItemDimensions,
+  normalizeItemScale,
+} from '../services/tent/tentCatalog';
 import { useTentStore } from './tentStore';
 
 interface DecorateState {
@@ -26,7 +35,9 @@ interface DecorateState {
   ghostX: number;
   ghostY: number;
   ghostDirection: Direction;
+  ghostScale: number;
   ghostValid: boolean;
+  isPersistingPlacement: boolean;
   isPreview: boolean; // true = ghost is preview-only, not confirmable
   previewRoomId: string | null;
   previewFloorStyleId: string | null;
@@ -44,10 +55,12 @@ interface DecorateState {
   startMoving: (placementId: string) => void;
   updateGhostPosition: (x: number, y: number) => void;
   rotateGhost: () => void;
-  confirmPlacement: () => void;
+  decreaseGhostScale: () => void;
+  increaseGhostScale: () => void;
+  confirmPlacement: () => Promise<boolean>;
   cancelPlacement: () => void;
   /** Remove the currently-held ghost item from the room (returns to inventory) */
-  removeGhostItem: () => void;
+  removeGhostItem: () => Promise<boolean>;
   previewSurfaceStyle: (roomId: string, surfaceType: TentSurfaceType, styleId: string) => void;
   clearSurfacePreview: (surfaceType?: TentSurfaceType) => void;
 }
@@ -66,6 +79,7 @@ function revalidateGhost(
   x: number,
   y: number,
   direction: Direction,
+  itemScale: number,
   excludePlacementId?: string,
 ): boolean {
   const item = getCatalogItem(itemId);
@@ -77,10 +91,33 @@ function revalidateGhost(
     x,
     y,
     direction,
+    itemScale,
     placements,
     getCatalogMap(),
     excludePlacementId,
   );
+}
+
+function anchorBottomCenter(
+  itemId: string,
+  currentDirection: Direction,
+  nextDirection: Direction,
+  currentScale: number,
+  nextScale: number,
+  x: number,
+  y: number,
+): { x: number; y: number } {
+  const currentDims = getScaledItemDimensions(itemId, currentDirection, currentScale);
+  const nextDims = getScaledItemDimensions(itemId, nextDirection, nextScale);
+
+  if (!currentDims || !nextDims) {
+    return { x, y };
+  }
+
+  return {
+    x: x - Math.round((nextDims.w - currentDims.w) / 2),
+    y: y - (nextDims.h - currentDims.h),
+  };
 }
 
 export const useDecorateStore = create<DecorateState>((set, get) => ({
@@ -92,7 +129,9 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
   ghostX: 0,
   ghostY: 0,
   ghostDirection: 'down',
+  ghostScale: DEFAULT_ITEM_SCALE,
   ghostValid: false,
+  isPersistingPlacement: false,
   isPreview: false,
   previewRoomId: null,
   previewFloorStyleId: null,
@@ -104,6 +143,8 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
     ghostItemId: null,
     ghostPlacementId: null,
     ghostValid: false,
+    ghostScale: DEFAULT_ITEM_SCALE,
+    isPersistingPlacement: false,
     isPreview: false,
     previewRoomId: null,
     previewFloorStyleId: null,
@@ -116,6 +157,8 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
     ghostItemId: null,
     ghostPlacementId: null,
     ghostValid: false,
+    ghostScale: DEFAULT_ITEM_SCALE,
+    isPersistingPlacement: false,
     isPreview: false,
     previewRoomId: null,
     previewFloorStyleId: null,
@@ -127,6 +170,8 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
     ghostItemId: null,
     ghostPlacementId: null,
     ghostValid: false,
+    ghostScale: DEFAULT_ITEM_SCALE,
+    isPersistingPlacement: false,
     isPreview: false,
     previewRoomId: null,
     previewFloorStyleId: null,
@@ -138,6 +183,8 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
     ghostItemId: null,
     ghostPlacementId: null,
     ghostValid: false,
+    ghostScale: DEFAULT_ITEM_SCALE,
+    isPersistingPlacement: false,
     isPreview: false,
     previewRoomId: null,
     previewFloorStyleId: null,
@@ -153,8 +200,9 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
     const y = 7 * 16;
     const dirs = getItemDirections(itemId);
     const direction: Direction = dirs ? dirs[0] : 'down';
+    const itemScale = DEFAULT_ITEM_SCALE;
 
-    const valid = revalidateGhost(itemId, x, y, direction);
+    const valid = revalidateGhost(itemId, x, y, direction, itemScale);
 
     set({
       ghostItemId: itemId,
@@ -162,7 +210,9 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
       ghostX: x,
       ghostY: y,
       ghostDirection: direction,
+      ghostScale: itemScale,
       ghostValid: valid,
+      isPersistingPlacement: false,
       isPreview: false,
     });
   },
@@ -173,8 +223,9 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
     const y = 7 * 16;
     const dirs = getItemDirections(itemId);
     const direction: Direction = dirs ? dirs[0] : 'down';
+    const itemScale = DEFAULT_ITEM_SCALE;
 
-    const valid = revalidateGhost(itemId, x, y, direction);
+    const valid = revalidateGhost(itemId, x, y, direction, itemScale);
 
     set({
       ghostItemId: itemId,
@@ -182,7 +233,9 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
       ghostX: x,
       ghostY: y,
       ghostDirection: direction,
+      ghostScale: itemScale,
       ghostValid: valid,
+      isPersistingPlacement: false,
       isPreview: true,
     });
   },
@@ -196,6 +249,7 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
       placement.x,
       placement.y,
       placement.direction,
+      placement.scale,
       placementId,
     );
 
@@ -205,17 +259,20 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
       ghostX: placement.x,
       ghostY: placement.y,
       ghostDirection: placement.direction,
+      ghostScale: normalizeItemScale(placement.scale),
       ghostValid: valid,
+      isPersistingPlacement: false,
       isPreview: false,
     });
   },
 
   updateGhostPosition: (x, y) => {
-    const { ghostItemId, ghostDirection, ghostPlacementId } = get();
+    const { ghostItemId, ghostDirection, ghostPlacementId, ghostScale, isPersistingPlacement } = get();
+    if (isPersistingPlacement) return;
     if (!ghostItemId) return;
 
     const valid = revalidateGhost(
-      ghostItemId, x, y, ghostDirection, ghostPlacementId ?? undefined,
+      ghostItemId, x, y, ghostDirection, ghostScale, ghostPlacementId ?? undefined,
     );
 
     set({
@@ -226,62 +283,220 @@ export const useDecorateStore = create<DecorateState>((set, get) => ({
   },
 
   rotateGhost: () => {
-    const { ghostItemId, ghostX, ghostY, ghostDirection, ghostPlacementId } = get();
+    const {
+      ghostItemId,
+      ghostX,
+      ghostY,
+      ghostDirection,
+      ghostScale,
+      ghostPlacementId,
+      isPersistingPlacement,
+    } = get();
+    if (isPersistingPlacement) return;
     if (!ghostItemId) return;
 
     const item = getCatalogItem(ghostItemId);
     if (!item?.rotatable) return;
 
     const newDirection = nextDirection(ghostDirection, getItemDirections(ghostItemId));
+    const nextPosition = anchorBottomCenter(
+      ghostItemId,
+      ghostDirection,
+      newDirection,
+      ghostScale,
+      ghostScale,
+      ghostX,
+      ghostY,
+    );
     const valid = revalidateGhost(
-      ghostItemId, ghostX, ghostY, newDirection, ghostPlacementId ?? undefined,
+      ghostItemId,
+      nextPosition.x,
+      nextPosition.y,
+      newDirection,
+      ghostScale,
+      ghostPlacementId ?? undefined,
     );
 
     set({
+      ghostX: nextPosition.x,
+      ghostY: nextPosition.y,
       ghostDirection: newDirection,
       ghostValid: valid,
     });
   },
 
-  confirmPlacement: () => {
-    const { ghostItemId, ghostPlacementId, ghostX, ghostY, ghostDirection, ghostValid, isPreview } = get();
-    if (!ghostItemId || !ghostValid || isPreview) return;
+  decreaseGhostScale: () => {
+    const {
+      ghostItemId,
+      ghostX,
+      ghostY,
+      ghostDirection,
+      ghostScale,
+      ghostPlacementId,
+      isPersistingPlacement,
+    } = get();
+    if (isPersistingPlacement) return;
+    if (!ghostItemId) return;
 
-    const tentStore = useTentStore.getState();
+    const nextScale = getAdjacentItemScale(ghostScale, -1);
+    if (nextScale === ghostScale) return;
 
-    if (ghostPlacementId) {
-      tentStore.moveItem(ghostPlacementId, ghostX, ghostY, ghostDirection);
-    } else {
-      tentStore.placeItem(ghostItemId, tentStore.currentRoomId, ghostX, ghostY, ghostDirection);
-    }
+    const nextPosition = anchorBottomCenter(
+      ghostItemId,
+      ghostDirection,
+      ghostDirection,
+      ghostScale,
+      nextScale,
+      ghostX,
+      ghostY,
+    );
+    const valid = revalidateGhost(
+      ghostItemId,
+      nextPosition.x,
+      nextPosition.y,
+      ghostDirection,
+      nextScale,
+      ghostPlacementId ?? undefined,
+    );
 
     set({
-      ghostItemId: null,
-      ghostPlacementId: null,
-      ghostValid: false,
+      ghostX: nextPosition.x,
+      ghostY: nextPosition.y,
+      ghostScale: nextScale,
+      ghostValid: valid,
     });
+  },
+
+  increaseGhostScale: () => {
+    const {
+      ghostItemId,
+      ghostX,
+      ghostY,
+      ghostDirection,
+      ghostScale,
+      ghostPlacementId,
+      isPersistingPlacement,
+    } = get();
+    if (isPersistingPlacement) return;
+    if (!ghostItemId) return;
+
+    const nextScale = getAdjacentItemScale(ghostScale, 1);
+    if (nextScale === ghostScale) return;
+
+    const nextPosition = anchorBottomCenter(
+      ghostItemId,
+      ghostDirection,
+      ghostDirection,
+      ghostScale,
+      nextScale,
+      ghostX,
+      ghostY,
+    );
+    const valid = revalidateGhost(
+      ghostItemId,
+      nextPosition.x,
+      nextPosition.y,
+      ghostDirection,
+      nextScale,
+      ghostPlacementId ?? undefined,
+    );
+
+    set({
+      ghostX: nextPosition.x,
+      ghostY: nextPosition.y,
+      ghostScale: nextScale,
+      ghostValid: valid,
+    });
+  },
+
+  confirmPlacement: async () => {
+    const {
+      ghostItemId,
+      ghostPlacementId,
+      ghostX,
+      ghostY,
+      ghostDirection,
+      ghostScale,
+      ghostValid,
+      isPersistingPlacement,
+      isPreview,
+    } = get();
+    if (!ghostItemId || !ghostValid || isPreview || isPersistingPlacement) return false;
+
+    const tentStore = useTentStore.getState();
+    set({ isPersistingPlacement: true });
+
+    try {
+      const didPersist = ghostPlacementId
+        ? await tentStore.moveItem(ghostPlacementId, ghostX, ghostY, ghostDirection, ghostScale)
+        : await tentStore.placeItem(
+          ghostItemId,
+          tentStore.currentRoomId,
+          ghostX,
+          ghostY,
+          ghostDirection,
+          ghostScale,
+        );
+
+      if (!didPersist) {
+        Alert.alert('Could Not Save Item', 'Your room change was not saved. Please try again.');
+        return false;
+      }
+
+      set({
+        ghostItemId: null,
+        ghostPlacementId: null,
+        ghostScale: DEFAULT_ITEM_SCALE,
+        ghostValid: false,
+      });
+
+      return true;
+    } catch {
+      Alert.alert('Could Not Save Item', 'Your room change was not saved. Please try again.');
+      return false;
+    } finally {
+      set({ isPersistingPlacement: false });
+    }
   },
 
   cancelPlacement: () => {
     set({
       ghostItemId: null,
       ghostPlacementId: null,
+      ghostScale: DEFAULT_ITEM_SCALE,
       ghostValid: false,
+      isPersistingPlacement: false,
       isPreview: false,
     });
   },
 
-  removeGhostItem: () => {
-    const { ghostPlacementId } = get();
-    if (!ghostPlacementId) return;
+  removeGhostItem: async () => {
+    const { ghostPlacementId, isPersistingPlacement } = get();
+    if (!ghostPlacementId || isPersistingPlacement) return false;
 
-    useTentStore.getState().removeItem(ghostPlacementId);
+    set({ isPersistingPlacement: true });
 
-    set({
-      ghostItemId: null,
-      ghostPlacementId: null,
-      ghostValid: false,
-    });
+    try {
+      const didPersist = await useTentStore.getState().removeItem(ghostPlacementId);
+      if (!didPersist) {
+        Alert.alert('Could Not Remove Item', 'Your room change was not saved. Please try again.');
+        return false;
+      }
+
+      set({
+        ghostItemId: null,
+        ghostPlacementId: null,
+        ghostScale: DEFAULT_ITEM_SCALE,
+        ghostValid: false,
+      });
+
+      return true;
+    } catch {
+      Alert.alert('Could Not Remove Item', 'Your room change was not saved. Please try again.');
+      return false;
+    } finally {
+      set({ isPersistingPlacement: false });
+    }
   },
 
   previewSurfaceStyle: (roomId, surfaceType, styleId) => set((state) => {

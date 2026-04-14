@@ -64,11 +64,13 @@ export default function DemoShopOverlay({ shopOpacity, shopTranslateY }: Props) 
             {DEMO_ITEMS.map((item) => (
               <View key={item.name} style={styles.shopItem}>
                 <PixelPanel scale={1} style={styles.itemImageWrap}>
-                  <Image
-                    source={item.source}
-                    style={styles.itemThumb}
-                    resizeMode="contain"
-                  />
+                  <View style={styles.imageCenter}>
+                    <Image
+                      source={item.source}
+                      style={styles.itemThumb}
+                      resizeMode="contain"
+                    />
+                  </View>
                 </PixelPanel>
                 <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
                 <View style={styles.buyBtn}>
@@ -145,20 +147,24 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   shopItem: {
-    width: 85,
+    width: 90,
+    height: 120,
     alignItems: 'center',
-    gap: 3,
+    justifyContent: 'space-between',
+    paddingVertical: 4,
   },
   itemImageWrap: {
-    width: 50,
-    height: 50,
+    width: 66,
+    height: 66,
+  },
+  imageCenter: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
   itemThumb: {
-    width: 40,
-    height: 40,
-    alignSelf: 'center',
+    width: 52,
+    height: 52,
   },
   itemName: {
     color: '#3B2A1A',

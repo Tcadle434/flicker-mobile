@@ -18,6 +18,7 @@ export const supabase = createClient(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
+      flowType: 'pkce',
     },
   }
 );
@@ -234,6 +235,7 @@ export interface Database {
           tile_x: number;
           tile_y: number;
           direction: string;
+          scale: number;
           placed_at: string;
         };
         Insert: {
@@ -244,6 +246,7 @@ export interface Database {
           tile_x: number;
           tile_y: number;
           direction?: string;
+          scale?: number;
           placed_at?: string;
         };
         Update: {
@@ -254,6 +257,7 @@ export interface Database {
           tile_x?: number;
           tile_y?: number;
           direction?: string;
+          scale?: number;
           placed_at?: string;
         };
       };

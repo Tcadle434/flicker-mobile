@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.name = 'FlickerSensors'
   s.version = package['version']
   s.summary = 'Flicker sensors native module'
-  s.description = 'Expo module for location and HealthKit sensors.'
+  s.description = 'Expo module for location sensors.'
   s.license = { :type => 'MIT' }
   s.author = { 'Flicker' => 'dev@flicker.app' }
   s.homepage = 'https://flicker.app'
@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.frameworks = 'CoreLocation', 'HealthKit'
+  s.frameworks = 'CoreLocation'
   s.source_files = 'ios/**/*.{h,m,mm,swift}'
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES'
