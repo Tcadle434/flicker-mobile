@@ -1,16 +1,18 @@
 /**
  * Onboarding Store
  *
- * Manages the 26-screen onboarding flow.
- * Supabase is the single source of truth for completion.
- * Step progression + preferences are in-memory only (reset on app restart).
+ * Manages the active onboarding flow.
+ * Supabase is the source of truth for finalized onboarding.
+ * Paywall acceptance is persisted locally until auth is completed.
  */
 
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/api/supabase';
 import type { OnboardingState, OnboardingPreferences } from '../types';
 
-const TOTAL_STEPS = 32;
+const TOTAL_STEPS = 16;
+const STORAGE_KEY = '@flicker:onboarding_gate';
 
 interface OnboardingStore extends OnboardingState {
   totalSteps: number;
@@ -25,7 +27,9 @@ interface OnboardingStore extends OnboardingState {
   setNoisiest: (value: string) => void;
   setDistraction: (value: string) => void;
   setPermission: (key: keyof OnboardingState['permissionsGranted'], granted: boolean) => void;
-  completeOnboarding: () => Promise<void>;
+  markPaywallAccepted: () => Promise<void>;
+  clearPaywallAccepted: () => Promise<void>;
+  finalizeOnboarding: () => Promise<void>;
   resetOnboarding: () => Promise<void>;
 }
 
@@ -38,8 +42,34 @@ const INITIAL_PREFERENCES: OnboardingPreferences = {
   birthDate: '',
 };
 
+async function readPersistedGateState(): Promise<{ paywallAccepted: boolean }> {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!raw) return { paywallAccepted: false };
+
+    const parsed = JSON.parse(raw) as { paywallAccepted?: boolean };
+    return { paywallAccepted: parsed.paywallAccepted === true };
+  } catch {
+    return { paywallAccepted: false };
+  }
+}
+
+async function persistGateState(paywallAccepted: boolean): Promise<void> {
+  try {
+    if (!paywallAccepted) {
+      await AsyncStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ paywallAccepted: true }));
+  } catch {
+    // silent
+  }
+}
+
 export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   completed: false,
+  paywallAccepted: false,
   currentStep: 0,
   totalSteps: TOTAL_STEPS,
   preferences: { ...INITIAL_PREFERENCES },
@@ -50,9 +80,14 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   },
 
   initialize: async () => {
+    const persistedGate = await readPersistedGateState();
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        set({ completed: false, paywallAccepted: persistedGate.paywallAccepted });
+        return;
+      }
 
       const { data } = await supabase
         .from('users')
@@ -60,9 +95,16 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
         .eq('id', user.id)
         .single();
 
-      set({ completed: !!data?.onboarding_completed });
+      const completed = !!data?.onboarding_completed;
+      const paywallAccepted = completed ? false : persistedGate.paywallAccepted;
+
+      set({ completed, paywallAccepted });
+
+      if (completed) {
+        await persistGateState(false);
+      }
     } catch {
-      // offline — default to false
+      set({ completed: false, paywallAccepted: persistedGate.paywallAccepted });
     }
   },
 
@@ -112,17 +154,30 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     }));
   },
 
-  completeOnboarding: async () => {
-    set({ completed: true });
+  markPaywallAccepted: async () => {
+    set({ paywallAccepted: true });
+    await persistGateState(true);
+  },
 
+  clearPaywallAccepted: async () => {
+    set({ paywallAccepted: false });
+    await persistGateState(false);
+  },
+
+  finalizeOnboarding: async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('users')
-          .update({ onboarding_completed: true })
-          .eq('id', user.id);
+      if (!user) {
+        return;
       }
+
+      set({ completed: true, paywallAccepted: false, currentStep: 0 });
+      await persistGateState(false);
+
+      await supabase
+        .from('users')
+        .update({ onboarding_completed: true })
+        .eq('id', user.id);
     } catch {
       // silent — local state is already set
     }
@@ -131,10 +186,13 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   resetOnboarding: async () => {
     set({
       completed: false,
+      paywallAccepted: false,
       currentStep: 0,
       preferences: { ...INITIAL_PREFERENCES },
       permissionsGranted: { notifications: false, screenTime: false, tracking: false },
     });
+
+    await persistGateState(false);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();

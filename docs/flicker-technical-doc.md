@@ -16,7 +16,7 @@ Canonical technical design for building Flicker on the existing React Native/Exp
 | Animation timing | Reanimated | Frame clock + transitions |
 | Audio engine | Existing Swift AVAudioEngine module | Keep as core differentiator |
 | Backend | Supabase | Keep for auth + sync + logs |
-| Billing/paywall | **Superwall** | Replace RevenueCat assumptions |
+| Billing/paywall | **RevenueCat + custom RN paywall** | RevenueCat owns products, purchases, restores, and entitlements |
 | iOS app blocking | FamilyControls + ManagedSettings + DeviceActivity | New, native module + extensions |
 | Android app blocking | Defer to v1.1 | Not launch-critical for iOS-first strategy |
 | Character animation source | AI video -> transparent frames -> spritesheet PNG | Standardized pipeline |
@@ -50,7 +50,7 @@ Flicker App (RN/Expo)
 ├─ Services
 │  ├─ AudioService (existing native bridge)
 │  ├─ AppBlockingService (new iOS bridge)
-│  ├─ BillingService (Superwall)
+│  ├─ BillingService (RevenueCat)
 │  └─ Supabase APIs
 │
 └─ Native iOS Components (Deep Focus)
@@ -323,13 +323,14 @@ interface AppBlockingAPI {
 
 ---
 
-## 8) Superwall Integration (Replacing RevenueCat Assumptions)
+## 8) RevenueCat Integration
 
 ### 8.1 Billing architecture
 
-- Superwall controls paywall presentation and experimentation.
+- RevenueCat controls products, purchases, restores, and entitlement state.
+- The paywall UI lives in React Native and is fully app-owned.
 - Entitlement state drives navigation gates.
-- Product IDs configured in App Store Connect and mapped in Superwall.
+- Product IDs configured in App Store Connect and mapped in RevenueCat.
 
 ### 8.2 Root gating behavior
 
@@ -348,8 +349,8 @@ return <MainStack />;
 
 ### 8.4 Remove legacy assumptions
 
-- No RevenueCat SDK dependency required for v1.
-- All docs, services, and analytics events should reference Superwall naming.
+- RevenueCat SDK is required for v1 billing.
+- All docs, services, and analytics events should reference RevenueCat/custom paywall naming.
 
 ---
 
@@ -415,7 +416,7 @@ Recommended policies:
 
 ### Modules to add/replace
 
-- `src/services/billing/*` -> Superwall-backed billing service
+- `src/services/billing/*` -> RevenueCat-backed billing service
 - `src/services/appBlocking/*` -> iOS blocking bridge
 - `src/stores/currencyStore.ts`
 - `src/stores/sanctuaryStore.ts`

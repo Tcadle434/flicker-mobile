@@ -1,57 +1,102 @@
 /**
  * purchaseService.ts
  *
- * Purchase service for Flicker subscriptions.
- * Currently a mock — replace the purchase() body with Superwall / StoreKit 2
- * calls when the official integration is ready.
- *
- * Product IDs (App Store Connect):
- *   flicker_annual_v1   — $19.99/year  (Apple ID: 6762213563)
- *   flicker_monthly_v1  — $3.99/month  (Apple ID: 6762020606)
+ * Purchase helpers for Flicker's custom React Native paywall.
+ * RevenueCat is the source of truth for products, purchases, and restores.
  */
+
+import Purchases from 'react-native-purchases';
+import {
+  paywallService,
+  type OfferingProduct,
+} from '../subscription/paywallService';
 
 export type ProductID = 'flicker_annual_v1' | 'flicker_monthly_v1';
 
 export interface PurchaseResult {
   success: boolean;
+  cancelled?: boolean;
   productID?: ProductID;
   error?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Mock implementation — simulates a successful purchase after a short delay.
-// Replace with Superwall SDK calls when configured:
-//
-//   import Superwall from '@superwall/react-native-superwall';
-//   await Superwall.shared.register('paywall_onboarding');
-//
-// ---------------------------------------------------------------------------
+export interface PaywallProduct extends OfferingProduct {
+  productID: ProductID;
+  isTrialEligible?: boolean;
+}
+
+function isKnownProductId(productId: string): productId is ProductID {
+  return productId === 'flicker_annual_v1' || productId === 'flicker_monthly_v1';
+}
 
 export const purchaseService = {
-  /**
-   * Attempt to purchase a subscription.
-   * Returns true if the purchase (or trial start) succeeded.
-   */
-  purchase: async (productID: ProductID): Promise<PurchaseResult> => {
-    console.log('[PurchaseService] purchasing:', productID);
+  async getProducts(): Promise<PaywallProduct[]> {
+    const products = await paywallService.getDefaultOfferingProducts();
+    const knownProducts = products.filter((product) => isKnownProductId(product.productId));
+    let trialEligibilityById: Record<string, boolean> = {};
 
-    // TODO: Replace with real StoreKit / Superwall call
-    await new Promise((resolve) => setTimeout(resolve, 900));
+    if (knownProducts.length > 0) {
+      try {
+        const introEligibility = await Purchases.checkTrialOrIntroductoryPriceEligibility(
+          knownProducts.map((product) => product.productId),
+        );
 
-    console.log('[PurchaseService] mock purchase success:', productID);
-    return { success: true, productID };
+        trialEligibilityById = Object.fromEntries(
+          Object.entries(introEligibility).map(([productId, eligibility]) => [
+            productId,
+            eligibility.status ===
+              Purchases.INTRO_ELIGIBILITY_STATUS.INTRO_ELIGIBILITY_STATUS_ELIGIBLE,
+          ]),
+        );
+      } catch (error) {
+        console.warn('[PurchaseService] Failed to check trial eligibility', error);
+      }
+    }
+
+    return knownProducts
+      .map((product) => ({
+        ...product,
+        productID: product.productId as ProductID,
+        isTrialEligible: trialEligibilityById[product.productId],
+      }));
   },
 
-  /**
-   * Restore previous purchases.
-   */
-  restore: async (): Promise<PurchaseResult> => {
-    console.log('[PurchaseService] restoring purchases');
+  async purchase(productID: ProductID): Promise<PurchaseResult> {
+    try {
+      const state = await paywallService.purchaseProduct(productID);
+      return {
+        success: state.isEntitled,
+        productID,
+        error: state.isEntitled ? undefined : 'Purchase completed without unlocking the entitlement.',
+      };
+    } catch (error) {
+      const purchasesError = error as { code?: string; message?: string; userCancelled?: boolean | null };
+      const userCancelled =
+        purchasesError?.code === Purchases.PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR ||
+        purchasesError?.userCancelled === true;
 
-    // TODO: Replace with real restore flow
-    await new Promise((resolve) => setTimeout(resolve, 600));
+      return {
+        success: false,
+        cancelled: userCancelled,
+        error: userCancelled ? undefined : (purchasesError?.message ?? 'Purchase failed.'),
+      };
+    }
+  },
 
-    return { success: false, error: 'No active subscription found' };
+  async restore(): Promise<PurchaseResult> {
+    try {
+      const state = await paywallService.restorePurchases();
+      return {
+        success: state.isEntitled,
+        error: state.isEntitled ? undefined : 'No active subscription found.',
+      };
+    } catch (error) {
+      const purchasesError = error as { message?: string };
+      return {
+        success: false,
+        error: purchasesError?.message ?? 'Failed to restore purchases.',
+      };
+    }
   },
 };
 

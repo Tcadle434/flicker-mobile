@@ -1,14 +1,17 @@
 /**
- * Paywall Service — Superwall
+ * Subscription Service — RevenueCat
  *
- * Flicker uses a hard paywall with 7-day free trial.
- * Superwall handles paywall presentation, purchase flows, and entitlement checks.
- * Development default: entitled = true (override via __DEV__ flag).
- *
- * Trial start timestamp stored in Supabase users.trial_started_at.
+ * Flicker uses a custom React Native paywall backed by RevenueCat for
+ * product metadata, purchases, restores, and entitlement state.
  */
 
-import { supabase } from '../api/supabase';
+import { Platform } from 'react-native';
+import Purchases, {
+  type CustomerInfo,
+  type PurchasesOffering,
+  type PurchasesPackage,
+  type PurchasesStoreProduct,
+} from 'react-native-purchases';
 import { config } from '../../constants/config';
 
 export interface EntitlementState {
@@ -17,193 +20,239 @@ export interface EntitlementState {
   trialDaysRemaining: number;
 }
 
-type SuperwallStatus = { status?: string };
-type SuperwallModule = {
-  configure: (input: { apiKey: string }) => Promise<void>;
-  shared: {
-    getSubscriptionStatus: () => Promise<SuperwallStatus>;
-    register: (input: { placement: string }) => Promise<void>;
-  };
-};
+export interface OfferingProduct {
+  productId: string;
+  title: string;
+  description: string;
+  price: number;
+  priceString: string;
+  subscriptionPeriod: string | null;
+  pricePerWeekString: string | null;
+  pricePerMonthString: string | null;
+  pricePerYearString: string | null;
+  introPrice: {
+    price: number;
+    priceString: string;
+    periodUnit: string;
+    periodNumberOfUnits: number;
+  } | null;
+}
 
-let cachedSuperwall: SuperwallModule | null | undefined;
-let superwallUnavailableWarned = false;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-function getSuperwallModule(): SuperwallModule | null {
-  if (cachedSuperwall !== undefined) return cachedSuperwall;
-
-  try {
-    // Lazy require so missing native linkage doesn't crash the whole app at import time.
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, global-require
-    const imported = require('@superwall/react-native-superwall');
-    cachedSuperwall = (imported?.default ?? imported) as SuperwallModule;
-    return cachedSuperwall;
-  } catch (error) {
-    cachedSuperwall = null;
-    if (!superwallUnavailableWarned) {
-      superwallUnavailableWarned = true;
-      console.warn('[PaywallService] Superwall native module unavailable; using dev fallback');
-    }
-    return null;
+function getRevenueCatApiKey(): string {
+  if (Platform.OS === 'ios') {
+    return config.subscription.revenueCatApiKeyIos;
   }
+
+  if (Platform.OS === 'android') {
+    return config.subscription.revenueCatApiKeyAndroid;
+  }
+
+  return '';
+}
+
+function isSamePackageTarget(aPackage: PurchasesPackage, productId: string): boolean {
+  return aPackage.product.identifier === productId;
+}
+
+function mapStoreProduct(product: PurchasesStoreProduct): OfferingProduct {
+  return {
+    productId: product.identifier,
+    title: product.title,
+    description: product.description,
+    price: product.price,
+    priceString: product.priceString,
+    subscriptionPeriod: product.subscriptionPeriod,
+    pricePerWeekString: product.pricePerWeekString,
+    pricePerMonthString: product.pricePerMonthString,
+    pricePerYearString: product.pricePerYearString,
+    introPrice: product.introPrice
+      ? {
+          price: product.introPrice.price,
+          priceString: product.introPrice.priceString,
+          periodUnit: product.introPrice.periodUnit,
+          periodNumberOfUnits: product.introPrice.periodNumberOfUnits,
+        }
+      : null,
+  };
 }
 
 class PaywallService {
   private initialized = false;
+  private warnedMissingKey = false;
+  private syncedAppUserId: string | null = null;
 
-  /**
-   * Initialize Superwall SDK. Must be called once at app boot.
-   */
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
+    const apiKey = getRevenueCatApiKey();
+    if (!apiKey) {
+      if (!this.warnedMissingKey) {
+        this.warnedMissingKey = true;
+        console.warn('[SubscriptionService] No RevenueCat API key configured.');
+      }
+      return;
+    }
+
+    Purchases.configure({ apiKey });
+    await Purchases.setLogLevel(
+      __DEV__ ? Purchases.LOG_LEVEL.DEBUG : Purchases.LOG_LEVEL.INFO,
+    );
+
+    this.initialized = true;
+  }
+
+  async syncIdentity(appUserId: string | null): Promise<void> {
+    await this.initialize();
+    if (!this.initialized) return;
+
+    if (this.syncedAppUserId === appUserId) {
+      return;
+    }
+
     try {
-      const apiKey = config.subscription.superwallApiKey;
-      if (!apiKey) {
-        console.warn('[PaywallService] No Superwall API key configured — running in dev mode');
+      if (appUserId) {
+        await Purchases.logIn(appUserId);
+        this.syncedAppUserId = appUserId;
         return;
       }
 
-      const superwall = getSuperwallModule();
-      if (!superwall) return;
-
-      await superwall.configure({ apiKey });
-      this.initialized = true;
-    } catch (error) {
-      console.error('[PaywallService] Superwall init error:', error);
-    }
-  }
-
-  /**
-   * Check entitlement state.
-   * Queries Superwall subscription status.
-   * In development (no API key): always entitled.
-   */
-  async getEntitlementState(): Promise<EntitlementState> {
-    if (!this.initialized) {
-      // Dev mode fallback — always entitled
-      return { isEntitled: true, isTrialActive: false, trialDaysRemaining: 0 };
-    }
-
-    try {
-      const superwall = getSuperwallModule();
-      if (!superwall) {
-        return { isEntitled: true, isTrialActive: false, trialDaysRemaining: 0 };
-      }
-
-      const status = await superwall.shared.getSubscriptionStatus();
-      const isActive = status?.status === 'ACTIVE';
-
-      // Calculate trial state from Supabase
-      let isTrialActive = false;
-      let trialDaysRemaining = 0;
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from('users')
-          .select('trial_started_at')
-          .eq('id', user.id)
-          .single();
-
-        if (data?.trial_started_at) {
-          const startMs = new Date(data.trial_started_at).getTime();
-          const elapsed = Date.now() - startMs;
-          const elapsedDays = elapsed / (1000 * 60 * 60 * 24);
-          const trialDays = config.subscription.trialDays;
-
-          if (elapsedDays < trialDays) {
-            isTrialActive = true;
-            trialDaysRemaining = Math.ceil(trialDays - elapsedDays);
-          }
+      try {
+        await Purchases.logOut();
+      } catch (error: unknown) {
+        const purchasesError = error as { code?: string };
+        if (
+          purchasesError?.code !== Purchases.PURCHASES_ERROR_CODE.LOG_OUT_ANONYMOUS_USER_ERROR
+        ) {
+          throw error;
         }
       }
 
-      return {
-        isEntitled: isActive || isTrialActive,
-        isTrialActive,
-        trialDaysRemaining,
-      };
+      this.syncedAppUserId = null;
     } catch (error) {
-      console.error('[PaywallService] getEntitlementState error:', error);
-      // Fail open in case of error to avoid locking users out
-      return { isEntitled: true, isTrialActive: false, trialDaysRemaining: 0 };
+      console.error('[SubscriptionService] Failed to sync RevenueCat identity:', error);
     }
   }
 
-  /**
-   * Present the Superwall paywall for a given placement.
-   * Superwall handles all UI, purchase, and restore logic.
-   */
-  async presentPaywall(placement: string = 'default'): Promise<'purchased' | 'restored' | 'dismissed'> {
+  private getEntitlementStateFromCustomerInfo(customerInfo: CustomerInfo): EntitlementState {
+    const entitlement = customerInfo.entitlements.active[config.subscription.entitlementId];
+    const isEntitled = entitlement?.isActive === true;
+    const isTrialActive = entitlement?.periodType === 'TRIAL';
+
+    let trialDaysRemaining = 0;
+    if (isTrialActive && entitlement.expirationDateMillis != null) {
+      trialDaysRemaining = Math.max(
+        0,
+        Math.ceil((entitlement.expirationDateMillis - Date.now()) / DAY_MS),
+      );
+    }
+
+    return {
+      isEntitled,
+      isTrialActive,
+      trialDaysRemaining,
+    };
+  }
+
+  async getEntitlementState(): Promise<EntitlementState> {
+    await this.initialize();
     if (!this.initialized) {
-      console.warn('[PaywallService] Superwall not initialized — skipping paywall');
-      return 'dismissed';
+      return { isEntitled: false, isTrialActive: false, trialDaysRemaining: 0 };
     }
 
     try {
-      const superwall = getSuperwallModule();
-      if (!superwall) return 'dismissed';
-
-      await superwall.shared.register({ placement });
-
-      // Superwall register resolves when paywall is dismissed
-      // Check subscription status after to determine outcome
-      const status = await superwall.shared.getSubscriptionStatus();
-      if (status?.status === 'ACTIVE') {
-        return 'purchased';
-      }
-      return 'dismissed';
+      const customerInfo = await Purchases.getCustomerInfo();
+      return this.getEntitlementStateFromCustomerInfo(customerInfo);
     } catch (error) {
-      console.error('[PaywallService] presentPaywall error:', error);
-      return 'dismissed';
+      console.error('[SubscriptionService] Failed to get RevenueCat customer info:', error);
+      return { isEntitled: false, isTrialActive: false, trialDaysRemaining: 0 };
     }
   }
 
-  /**
-   * Restore purchases.
-   */
-  async restorePurchases(): Promise<boolean> {
+  async getDefaultOfferingProducts(): Promise<OfferingProduct[]> {
+    await this.initialize();
+    if (!this.initialized) return [];
+
+    try {
+      const offerings = await Purchases.getOfferings();
+      const currentOffering = offerings.current;
+      if (!currentOffering) return [];
+
+      const products = currentOffering.availablePackages.map((aPackage) =>
+        mapStoreProduct(aPackage.product),
+      );
+
+      const uniqueByProductId = new Map<string, OfferingProduct>();
+      for (const product of products) {
+        uniqueByProductId.set(product.productId, product);
+      }
+
+      return [...uniqueByProductId.values()];
+    } catch (error) {
+      console.error('[SubscriptionService] Failed to get RevenueCat offerings:', error);
+      return [];
+    }
+  }
+
+  private async getCurrentOffering(): Promise<PurchasesOffering | null> {
+    await this.initialize();
+    if (!this.initialized) return null;
+
+    const offerings = await Purchases.getOfferings();
+    return offerings.current;
+  }
+
+  async purchaseProduct(productId: string): Promise<EntitlementState> {
+    await this.initialize();
     if (!this.initialized) {
-      console.warn('[PaywallService] Superwall not initialized — cannot restore');
-      return false;
+      throw new Error('RevenueCat is not configured.');
     }
 
-    try {
-      const superwall = getSuperwallModule();
-      if (!superwall) return false;
-      const status = await superwall.shared.getSubscriptionStatus();
-      return status?.status === 'ACTIVE';
-    } catch (error) {
-      console.error('[PaywallService] restorePurchases error:', error);
-      return false;
-    }
+    const currentOffering = await this.getCurrentOffering();
+    const selectedPackage = currentOffering?.availablePackages.find((aPackage) =>
+      isSamePackageTarget(aPackage, productId),
+    );
+
+    const result = selectedPackage
+      ? await Purchases.purchasePackage(selectedPackage)
+      : await this.purchaseFallbackProduct(productId);
+
+    return this.getEntitlementStateFromCustomerInfo(result.customerInfo);
   }
 
-  /**
-   * Start the free trial. Records trial start timestamp in Supabase.
-   */
-  async startTrial(): Promise<void> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  private async purchaseFallbackProduct(
+    productId: string,
+  ): Promise<{ customerInfo: CustomerInfo }> {
+    const products = await Purchases.getProducts(
+      [productId],
+      Purchases.PRODUCT_CATEGORY.SUBSCRIPTION,
+    );
+    const product = products.find((item) => item.identifier === productId);
 
-      const { data } = await supabase
-        .from('users')
-        .select('trial_started_at')
-        .eq('id', user.id)
-        .single();
-
-      // Only set if not already started
-      if (!data?.trial_started_at) {
-        await supabase
-          .from('users')
-          .update({ trial_started_at: new Date().toISOString() })
-          .eq('id', user.id);
-      }
-    } catch (error) {
-      console.error('[PaywallService] startTrial error:', error);
+    if (!product) {
+      throw new Error(`Product ${productId} is not available in RevenueCat.`);
     }
+
+    const result = await Purchases.purchaseStoreProduct(product);
+    return { customerInfo: result.customerInfo };
+  }
+
+  async restorePurchases(): Promise<EntitlementState> {
+    await this.initialize();
+    if (!this.initialized) {
+      return { isEntitled: false, isTrialActive: false, trialDaysRemaining: 0 };
+    }
+
+    const customerInfo = await Purchases.restorePurchases();
+    return this.getEntitlementStateFromCustomerInfo(customerInfo);
+  }
+
+  async presentPaywall(_placement?: string): Promise<'dismissed'> {
+    console.warn(
+      '[SubscriptionService] presentPaywall() is deprecated. Flicker uses a custom React Native paywall.',
+    );
+    return 'dismissed';
   }
 }
 

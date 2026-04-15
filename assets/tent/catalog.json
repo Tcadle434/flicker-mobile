@@ -1,8 +1,55 @@
 {
 	"items": [
 		{
+			"id": "kitchen_counter_01",
+			"name": "Kitchen Counter",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 45,
+			"rotatable": false,
+			"tier": 1,
+			"provideSurface": true
+		},
+		{
+			"id": "couch_large_01",
+			"name": "Large Couch",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 40,
+			"rotatable": true,
+			"tier": 1
+		},
+		{
+			"id": "couch_medium_01",
+			"name": "Medium Couch",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 32,
+			"rotatable": true,
+			"tier": 1
+		},
+		{
+			"id": "love_seat_01",
+			"name": "Love Seat",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 24,
+			"rotatable": true,
+			"tier": 1
+		},
+		{
+			"id": "grand_bed_01",
+			"name": "Grand Bed",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 80,
+			"rotatable": true,
+			"tier": 1,
+			"collisionFootprintHeight": 14
+		},
+		{
 			"id": "bed_large_01",
-			"name": "Large Bed (Blue)",
+			"name": "Bed (Blue & White)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 45,
@@ -12,7 +59,7 @@
 		},
 		{
 			"id": "bed_large_02",
-			"name": "Large Bed (Red)",
+			"name": "Bed (Blue & Gold)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 45,
@@ -22,7 +69,7 @@
 		},
 		{
 			"id": "bed_large_03",
-			"name": "Large Bed (Green)",
+			"name": "Bed (Green & White)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 45,
@@ -32,7 +79,7 @@
 		},
 		{
 			"id": "bed_large_04",
-			"name": "Large Bed (Purple)",
+			"name": "Bed (Green & Yellow)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 45,
@@ -42,7 +89,7 @@
 		},
 		{
 			"id": "bed_large_05",
-			"name": "Large Bed (White)",
+			"name": "Bed (Tan)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 45,
@@ -52,7 +99,7 @@
 		},
 		{
 			"id": "bed_small_01",
-			"name": "Small Bed (Blue)",
+			"name": "Small Bed (Blue & White)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 30,
@@ -62,7 +109,7 @@
 		},
 		{
 			"id": "bed_small_02",
-			"name": "Small Bed (Red)",
+			"name": "Small Bed (Blue & Gold)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 30,
@@ -72,7 +119,7 @@
 		},
 		{
 			"id": "bed_small_03",
-			"name": "Small Bed (Green)",
+			"name": "Small Bed (Green & White)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 30,
@@ -82,7 +129,7 @@
 		},
 		{
 			"id": "bed_small_04",
-			"name": "Small Bed (White)",
+			"name": "Small Bed (Green & Yellow)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 30,
@@ -92,7 +139,7 @@
 		},
 		{
 			"id": "bedside_table_01",
-			"name": "Bedside Table",
+			"name": "Bedside Table (Dark)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 10,
@@ -102,7 +149,7 @@
 		},
 		{
 			"id": "bedside_table_02",
-			"name": "Bedside Table (Dark)",
+			"name": "Bedside Table",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 12,
@@ -112,7 +159,7 @@
 		},
 		{
 			"id": "bedside_table_03",
-			"name": "Bedside Table (White)",
+			"name": "Bedside Table (Light)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 14,
@@ -131,7 +178,7 @@
 		},
 		{
 			"id": "bookshelf_02",
-			"name": "Bookshelf (Full)",
+			"name": "Bookshelf (Light)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 28,
@@ -149,7 +196,7 @@
 		},
 		{
 			"id": "bookshelf_04",
-			"name": "Bookshelf (Tall)",
+			"name": "Tall Bookshelf",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 32,
@@ -158,7 +205,7 @@
 		},
 		{
 			"id": "bookshelf_05",
-			"name": "Bookshelf (Wide)",
+			"name": "Tall Bookshelf (Light)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 35,
@@ -167,7 +214,7 @@
 		},
 		{
 			"id": "bookshelf_06",
-			"name": "Bookshelf (Fancy)",
+			"name": "Tall Bookshelf (Dark)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 38,
@@ -204,6 +251,42 @@
 			"floorCollisionMode": "overlay"
 		},
 		{
+			"id": "grand_piano",
+			"name": "Grand Piano",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 30,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "grand_piano_dark",
+			"name": "Grand Piano (Dark)",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 30,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "grand_piano_light",
+			"name": "Grand Piano (Light)",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 30,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "piano_bench",
+			"name": "Piano Bench",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 20,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
 			"id": "christmas_tree_01",
 			"name": "Christmas Tree",
 			"category": "plants",
@@ -216,7 +299,7 @@
 		},
 		{
 			"id": "christmas_tree_02",
-			"name": "Decorated Tree",
+			"name": "Christmas Tree (Star)",
 			"category": "plants",
 			"surface": "floor",
 			"price": 35,
@@ -227,7 +310,7 @@
 		},
 		{
 			"id": "christmas_tree_03",
-			"name": "Star Tree",
+			"name": "Christmas Tree (Decorated)",
 			"category": "plants",
 			"surface": "floor",
 			"price": 40,
@@ -267,26 +350,8 @@
 			"provideSurface": true
 		},
 		{
-			"id": "couch_large_01",
-			"name": "Large Couch",
-			"category": "furniture",
-			"surface": "floor",
-			"price": 40,
-			"rotatable": true,
-			"tier": 1
-		},
-		{
-			"id": "couch_medium_01",
-			"name": "Medium Couch",
-			"category": "furniture",
-			"surface": "floor",
-			"price": 32,
-			"rotatable": true,
-			"tier": 1
-		},
-		{
 			"id": "desk_01",
-			"name": "Desk",
+			"name": "Small Desk",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 20,
@@ -314,7 +379,7 @@
 		},
 		{
 			"id": "glass_table_01",
-			"name": "Glass Table",
+			"name": "Glass Table (Light)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 25,
@@ -324,7 +389,7 @@
 		},
 		{
 			"id": "glass_table_02",
-			"name": "Round Glass Table",
+			"name": "Glass Table",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 28,
@@ -334,42 +399,13 @@
 		},
 		{
 			"id": "glass_table_03",
-			"name": "Square Glass Table",
+			"name": "Glass Table (Dark)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 30,
 			"rotatable": false,
 			"tier": 1,
 			"provideSurface": true
-		},
-		{
-			"id": "grand_bed_01",
-			"name": "Grand Bed",
-			"category": "furniture",
-			"surface": "floor",
-			"price": 80,
-			"rotatable": true,
-			"tier": 1,
-			"collisionFootprintHeight": 14
-		},
-		{
-			"id": "kitchen_counter_01",
-			"name": "Kitchen Counter",
-			"category": "furniture",
-			"surface": "floor",
-			"price": 45,
-			"rotatable": false,
-			"tier": 1,
-			"provideSurface": true
-		},
-		{
-			"id": "love_seat_01",
-			"name": "Love Seat",
-			"category": "furniture",
-			"surface": "floor",
-			"price": 24,
-			"rotatable": true,
-			"tier": 1
 		},
 		{
 			"id": "refrigerator_01",
@@ -428,7 +464,7 @@
 		},
 		{
 			"id": "toilet_02",
-			"name": "Fancy Toilet",
+			"name": "Toilet (Tan)",
 			"category": "furniture",
 			"surface": "floor",
 			"price": 20,
@@ -466,7 +502,7 @@
 		},
 		{
 			"id": "floor_lamp_02",
-			"name": "Arc Lamp",
+			"name": "Floor Lamp (Dark)",
 			"category": "lighting",
 			"surface": "floor",
 			"price": 20,
@@ -486,7 +522,7 @@
 		},
 		{
 			"id": "table_lamp_02",
-			"name": "Desk Lamp",
+			"name": "Table Lamp (Dark)",
 			"category": "lighting",
 			"surface": "tabletop",
 			"price": 12,
@@ -504,7 +540,7 @@
 		},
 		{
 			"id": "table_lamp_04",
-			"name": "Brass Lamp",
+			"name": "Reading Lamp (Dark)",
 			"category": "lighting",
 			"surface": "tabletop",
 			"price": 16,
@@ -513,7 +549,7 @@
 		},
 		{
 			"id": "table_lamp_05",
-			"name": "Crystal Lamp",
+			"name": "Reading Lamp (Blue)",
 			"category": "lighting",
 			"surface": "tabletop",
 			"price": 18,
@@ -521,17 +557,8 @@
 			"tier": 1
 		},
 		{
-			"id": "table_lamp_06",
-			"name": "Paper Lamp",
-			"category": "lighting",
-			"surface": "tabletop",
-			"price": 20,
-			"rotatable": false,
-			"tier": 1
-		},
-		{
 			"id": "cactus_01",
-			"name": "Cactus",
+			"name": "Cactus 1",
 			"category": "plants",
 			"surface": "floor",
 			"price": 10,
@@ -542,7 +569,7 @@
 		},
 		{
 			"id": "cactus_02",
-			"name": "Round Cactus",
+			"name": "Cactus 2",
 			"category": "plants",
 			"surface": "floor",
 			"price": 12,
@@ -553,7 +580,7 @@
 		},
 		{
 			"id": "cactus_03",
-			"name": "Tall Cactus",
+			"name": "Cactus 3",
 			"category": "plants",
 			"surface": "floor",
 			"price": 14,
@@ -564,7 +591,7 @@
 		},
 		{
 			"id": "flowers_01",
-			"name": "Flower Vase",
+			"name": "Flower Vase (Red)",
 			"category": "plants",
 			"surface": "floor",
 			"price": 8,
@@ -575,7 +602,7 @@
 		},
 		{
 			"id": "flowers_02",
-			"name": "Rose Bouquet",
+			"name": "Flower Vase (Blue)",
 			"category": "plants",
 			"surface": "floor",
 			"price": 10,
@@ -586,7 +613,7 @@
 		},
 		{
 			"id": "flowers_03",
-			"name": "Wildflowers",
+			"name": "Flower Vase (Green)",
 			"category": "plants",
 			"surface": "floor",
 			"price": 8,
@@ -597,7 +624,7 @@
 		},
 		{
 			"id": "flowers_04",
-			"name": "Sunflowers",
+			"name": "Flower Vase (Purple)",
 			"category": "plants",
 			"surface": "floor",
 			"price": 10,
@@ -608,7 +635,7 @@
 		},
 		{
 			"id": "flowers_05",
-			"name": "Tulips",
+			"name": "Flower Vase (Pink)",
 			"category": "plants",
 			"surface": "floor",
 			"price": 8,
@@ -619,7 +646,7 @@
 		},
 		{
 			"id": "flowers_06",
-			"name": "Orchid",
+			"name": "Flower Vase (White)",
 			"category": "plants",
 			"surface": "floor",
 			"price": 12,
@@ -630,7 +657,7 @@
 		},
 		{
 			"id": "flowers_07",
-			"name": "Dried Flowers",
+			"name": "Sunflower Vase",
 			"category": "plants",
 			"surface": "floor",
 			"price": 6,
@@ -663,7 +690,7 @@
 		},
 		{
 			"id": "plant_tall_02",
-			"name": "Palm Plant",
+			"name": "Tall Plant (Light)",
 			"category": "plants",
 			"surface": "floor",
 			"price": 22,
@@ -674,7 +701,7 @@
 		},
 		{
 			"id": "potted_plant_01",
-			"name": "Potted Plant",
+			"name": "Succulent 1",
 			"category": "plants",
 			"surface": "tabletop",
 			"price": 5,
@@ -683,7 +710,7 @@
 		},
 		{
 			"id": "potted_plant_02",
-			"name": "Succulent",
+			"name": "Succulent 2",
 			"category": "plants",
 			"surface": "tabletop",
 			"price": 5,
@@ -692,7 +719,7 @@
 		},
 		{
 			"id": "potted_plant_03",
-			"name": "Mini Fern",
+			"name": "Succulent 3",
 			"category": "plants",
 			"surface": "tabletop",
 			"price": 5,
@@ -739,7 +766,7 @@
 		},
 		{
 			"id": "rug_04",
-			"name": "Purple Rug",
+			"name": "Light Rug",
 			"category": "rugs",
 			"surface": "rug",
 			"price": 15,
@@ -756,8 +783,17 @@
 			"tier": 1
 		},
 		{
+			"id": "tv_ground_1",
+			"name": "Floor TV",
+			"category": "ambient",
+			"surface": "floor",
+			"price": 35,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
 			"id": "painting_01",
-			"name": "Landscape Painting",
+			"name": "Nature Painting",
 			"category": "wall_art",
 			"surface": "wall",
 			"price": 15,
@@ -766,7 +802,7 @@
 		},
 		{
 			"id": "painting_02",
-			"name": "Portrait Painting",
+			"name": "Red Painting",
 			"category": "wall_art",
 			"surface": "wall",
 			"price": 18,
@@ -775,7 +811,7 @@
 		},
 		{
 			"id": "painting_03",
-			"name": "Abstract Painting",
+			"name": "Green Painting",
 			"category": "wall_art",
 			"surface": "wall",
 			"price": 20,
@@ -784,7 +820,7 @@
 		},
 		{
 			"id": "window_01",
-			"name": "Window",
+			"name": "Window (Dark)",
 			"category": "wall_art",
 			"surface": "wall",
 			"price": 20,
@@ -793,7 +829,7 @@
 		},
 		{
 			"id": "window_02",
-			"name": "Round Window",
+			"name": "Window (Light)",
 			"category": "wall_art",
 			"surface": "wall",
 			"price": 22,
@@ -802,7 +838,7 @@
 		},
 		{
 			"id": "window_03",
-			"name": "Arched Window",
+			"name": "Window",
 			"category": "wall_art",
 			"surface": "wall",
 			"price": 25,
@@ -821,15 +857,6 @@
 		{
 			"id": "bottles_01",
 			"name": "Bottles",
-			"category": "ambient",
-			"surface": "tabletop",
-			"price": 5,
-			"rotatable": false,
-			"tier": 1
-		},
-		{
-			"id": "bottles_02",
-			"name": "Potion Bottles",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 5,
@@ -865,7 +892,7 @@
 		},
 		{
 			"id": "computer_01",
-			"name": "Computer",
+			"name": "Computer (on)",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 30,
@@ -874,7 +901,7 @@
 		},
 		{
 			"id": "computer_02",
-			"name": "Laptop",
+			"name": "Computer (off)",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 35,
@@ -892,7 +919,7 @@
 		},
 		{
 			"id": "fruit_basket_01",
-			"name": "Fruit Basket",
+			"name": "Fruit Basket 1",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 8,
@@ -901,7 +928,7 @@
 		},
 		{
 			"id": "fruit_basket_02",
-			"name": "Berry Basket",
+			"name": "Fruit Basket 2",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 8,
@@ -909,8 +936,26 @@
 			"tier": 1
 		},
 		{
+			"id": "basketball",
+			"name": "Basketball",
+			"category": "Decor",
+			"surface": "floor",
+			"price": 16,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "basketball_hoop",
+			"name": "Basketball Hoop",
+			"category": "Wall Art",
+			"surface": "wall",
+			"price": 30,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
 			"id": "globe_01",
-			"name": "Globe",
+			"name": "Globe (Silver)",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 20,
@@ -919,7 +964,7 @@
 		},
 		{
 			"id": "globe_02",
-			"name": "Antique Globe",
+			"name": "Globe (Gold)",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 25,
@@ -939,7 +984,7 @@
 		},
 		{
 			"id": "guitar_02",
-			"name": "Classical Guitar",
+			"name": "Acoustic Guitar (Dark)",
 			"category": "music",
 			"surface": "floor",
 			"price": 25,
@@ -950,7 +995,7 @@
 		},
 		{
 			"id": "guitar_03",
-			"name": "Electric Guitar",
+			"name": "Acoustic Guitar (Light)",
 			"category": "music",
 			"surface": "floor",
 			"price": 30,
@@ -970,7 +1015,7 @@
 		},
 		{
 			"id": "loose_books_1",
-			"name": "Stacked Books",
+			"name": "Books",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 5,
@@ -979,7 +1024,7 @@
 		},
 		{
 			"id": "loose_books_02",
-			"name": "Open Books",
+			"name": "Stacked Books",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 5,
@@ -1006,7 +1051,7 @@
 		},
 		{
 			"id": "plushy_01",
-			"name": "Bear Plushy",
+			"name": "Plushy (Blue)",
 			"category": "ambient",
 			"surface": "floor",
 			"price": 10,
@@ -1017,7 +1062,7 @@
 		},
 		{
 			"id": "plushy_02",
-			"name": "Bunny Plushy",
+			"name": "Plushy (Pink)",
 			"category": "ambient",
 			"surface": "floor",
 			"price": 12,
@@ -1028,7 +1073,7 @@
 		},
 		{
 			"id": "plushy_03",
-			"name": "Cat Plushy",
+			"name": "Plushy (Gold)",
 			"category": "ambient",
 			"surface": "floor",
 			"price": 15,
@@ -1039,7 +1084,7 @@
 		},
 		{
 			"id": "potion_01",
-			"name": "Potion",
+			"name": "Potion (Blue)",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 10,
@@ -1048,7 +1093,7 @@
 		},
 		{
 			"id": "potion_02",
-			"name": "Elixir",
+			"name": "Potion (Red)",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 12,
@@ -1061,15 +1106,6 @@
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 3,
-			"rotatable": false,
-			"tier": 1
-		},
-		{
-			"id": "tv_ground_1",
-			"name": "TV Stand",
-			"category": "ambient",
-			"surface": "floor",
-			"price": 35,
 			"rotatable": false,
 			"tier": 1
 		},

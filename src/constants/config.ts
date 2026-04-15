@@ -56,14 +56,14 @@ export const config = {
     balanceBonusMultiplier: 1.5, // all 3 modes in one day
   },
 
-  // Subscription (hard paywall via Superwall)
+  // Subscription (custom paywall UI backed by RevenueCat)
   subscription: {
-    trialDays: 7,
-    superwallApiKey: process.env.EXPO_PUBLIC_SUPERWALL_API_KEY || '',
+    revenueCatApiKeyIos: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || '',
+    revenueCatApiKeyAndroid: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || '',
+    entitlementId: 'Flicker Pro',
     products: {
-      weekly: 'flicker_weekly_499',
-      annual: 'flicker_annual_3999',
-      lifetime: 'flicker_lifetime_7999',
+      monthly: 'flicker_monthly_v1',
+      annual: 'flicker_annual_v1',
     },
   },
 

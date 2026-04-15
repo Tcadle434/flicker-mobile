@@ -34,6 +34,42 @@ function getPreviewSize(surfaceType: TentSurfaceType): { width: number; height: 
     : { width: 16, height: 48 };
 }
 
+function SurfacePreview({
+  style,
+}: {
+  style: TentSurfaceStyle;
+}) {
+  const preview = getSurfacePreview(style.id);
+  const previewSize = getPreviewSize(style.surfaceType);
+
+  if (!preview) {
+    return null;
+  }
+
+  if (style.surfaceType === 'wall') {
+    return (
+      <View style={styles.wallPreviewRow}>
+        {[0, 1, 2].map((index) => (
+          <Image
+            key={index}
+            source={preview}
+            style={[previewSize, styles.previewImage]}
+            resizeMode="stretch"
+          />
+        ))}
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={preview}
+      style={[previewSize, styles.previewImage]}
+      resizeMode="stretch"
+    />
+  );
+}
+
 function SurfaceCard({
   style,
   isOwned,
@@ -45,9 +81,6 @@ function SurfaceCard({
   isEquipped: boolean;
   onSelect: () => void;
 }) {
-  const preview = getSurfacePreview(style.id);
-  const previewSize = getPreviewSize(style.surfaceType);
-
   return (
     <TouchableOpacity
       onPress={onSelect}
@@ -55,13 +88,7 @@ function SurfaceCard({
       style={[styles.card, isEquipped && styles.cardSelected]}
     >
       <PixelPanel scale={1} style={styles.previewWrap}>
-        {preview && (
-          <Image
-            source={preview}
-            style={[previewSize, { alignSelf: 'center' }]}
-            resizeMode="stretch"
-          />
-        )}
+        <SurfacePreview style={style} />
       </PixelPanel>
 
       <Text style={styles.cardTitle} numberOfLines={2}>{style.name}</Text>
@@ -202,6 +229,14 @@ const styles = StyleSheet.create({
     height: 54,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  wallPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewImage: {
+    alignSelf: 'center',
   },
   cardTitle: {
     color: '#3B2A1A',

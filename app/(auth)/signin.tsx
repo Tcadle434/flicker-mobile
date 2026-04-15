@@ -13,17 +13,22 @@ import {
 	TextInput,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useAuthStore } from "../../src/stores";
 import { theme } from "../../src/constants/theme";
 import OverworldScene from "../../src/components/world/OverworldScene";
 import { hydrateAuthenticatedUserData } from "../../src/services/app/userDataHydration";
+import { resolveAuthEntryMode } from "../../src/services/auth/authEntryMode";
+import { routeAfterAuth } from "../../src/services/auth/postAuthRouting";
 
 export default function SignIn() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const params = useLocalSearchParams<{ mode?: string | string[] }>();
+	const authMode = resolveAuthEntryMode(params.mode);
+	const allowSignup = authMode === "postPaywallRequired";
 
 	const { signIn, signInWithApple, signInWithGoogle, isLoading } = useAuthStore();
 
@@ -63,7 +68,7 @@ export default function SignIn() {
 				console.warn("[auth] Failed to hydrate user data after sign-in", hydrateError);
 			}
 
-			router.replace("/(main)/home");
+			await routeAfterAuth();
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -83,7 +88,7 @@ export default function SignIn() {
 				} catch (hydrateError) {
 					console.warn("[auth] Failed to hydrate after Apple sign-in", hydrateError);
 				}
-				router.replace("/(main)/home");
+				await routeAfterAuth();
 			}
 		} finally {
 			setIsSubmitting(false);
@@ -104,7 +109,7 @@ export default function SignIn() {
 				} catch (hydrateError) {
 					console.warn("[auth] Failed to hydrate after Google sign-in", hydrateError);
 				}
-				router.replace("/(main)/home");
+				await routeAfterAuth();
 			}
 		} finally {
 			setIsSubmitting(false);
@@ -132,8 +137,16 @@ export default function SignIn() {
 					<View style={styles.v2Frame}>
 						<View style={styles.v2Mid}>
 							<View style={styles.v2Content}>
-								<Text style={styles.v2Title}>Welcome back</Text>
-								<Text style={styles.v2Subtitle}>Let the noise fade.</Text>
+								<Text style={styles.v2Title}>
+									{authMode === "postPaywallRequired"
+										? "Create your account"
+										: "Welcome back"}
+								</Text>
+								<Text style={styles.v2Subtitle}>
+									{authMode === "postPaywallRequired"
+										? "Sign in or create an account to start your trial."
+										: "Let the noise fade."}
+								</Text>
 
 								<View style={styles.fields}>
 									<TextInput
@@ -223,17 +236,21 @@ export default function SignIn() {
 									</TouchableOpacity>
 								</View>
 
-								<View style={styles.switchRow}>
-									<Text style={styles.v2SwitchText}>
-										Don't have an account?{" "}
-									</Text>
-									<TouchableOpacity
-										onPress={() => router.push("/(auth)/signup")}
-										activeOpacity={0.7}
-									>
-										<Text style={styles.v2SwitchLink}>Sign Up</Text>
-									</TouchableOpacity>
-								</View>
+								{allowSignup && (
+									<View style={styles.switchRow}>
+										<Text style={styles.v2SwitchText}>
+											Need an account?{" "}
+										</Text>
+										<TouchableOpacity
+											onPress={() =>
+												router.push("/(auth)/signup?mode=postPaywallRequired")
+											}
+											activeOpacity={0.7}
+										>
+											<Text style={styles.v2SwitchLink}>Create one</Text>
+										</TouchableOpacity>
+									</View>
+								)}
 							</View>
 						</View>
 					</View>

@@ -142,15 +142,12 @@ export interface User {
   id: string;
   email: string;
   createdAt: string;
-  isPremium: boolean;
-  subscriptionStatus: SubscriptionStatus;
 }
-
-export type SubscriptionStatus = 'free' | 'trial' | 'active' | 'expired' | 'canceled';
 
 export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  hasAuthenticatedBefore: boolean;
   isLoading: boolean;
   error: string | null;
 }
@@ -237,6 +234,7 @@ export interface OnboardingPreferences {
 
 export interface OnboardingState {
   completed: boolean;
+  paywallAccepted: boolean;
   currentStep: number;
   preferences: OnboardingPreferences;
   permissionsGranted: {
@@ -245,6 +243,8 @@ export interface OnboardingState {
     tracking: boolean;
   };
 }
+
+export type AuthEntryMode = 'default' | 'signinOnly' | 'postPaywallRequired';
 
 export interface AppSettings {
   audioQuality: 'low' | 'medium' | 'high';

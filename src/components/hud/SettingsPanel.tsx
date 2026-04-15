@@ -20,6 +20,7 @@ import { router } from 'expo-router';
 import BottomPanel from './BottomPanel';
 import { useAuthStore } from '../../stores/authStore';
 import { useAudioSettingsStore } from '../../stores/audioSettingsStore';
+import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { appBlockingBridge } from '../../services/appBlocking/appBlockingBridge';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -86,6 +87,7 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
   const signOut = useAuthStore((s) => s.signOut);
   const isMuted = useAudioSettingsStore((s) => s.isMuted);
   const toggleMute = useAudioSettingsStore((s) => s.toggleMute);
+  const restorePurchases = useSubscriptionStore((s) => s.restorePurchases);
 
   const [displayName, setDisplayName] = useState('');
 
@@ -108,8 +110,14 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
     ]);
   };
 
-  const handleRestorePurchases = () => {
-    Alert.alert('Restore Purchases', 'Purchases restored successfully.');
+  const handleRestorePurchases = async () => {
+    const restored = await restorePurchases();
+    Alert.alert(
+      restored ? 'Purchases Restored' : 'Nothing to Restore',
+      restored
+        ? 'Your subscription access has been restored.'
+        : 'No active subscription was found for this App Store account.',
+    );
   };
 
   const handleEditBlockList = async () => {
@@ -166,7 +174,7 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
       <SectionLabel>More</SectionLabel>
       <View style={styles.sectionCard}>
         <View style={styles.linksGrid}>
-          <LinkButton label="Restore Purchases" onPress={handleRestorePurchases} />
+          <LinkButton label="Restore Purchases" onPress={() => { void handleRestorePurchases(); }} />
           <LinkButton
             label="Privacy Policy"
             onPress={() => Linking.openURL('https://example.com/privacy')}

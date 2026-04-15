@@ -1,12 +1,12 @@
 /**
  * Step20Paywall
  *
- * High-converting paywall with 7-day free trial.
+ * High-converting paywall backed by RevenueCat.
  * Light tan design (#F5F0EA) matching the onboarding style.
- * Annual plan pre-selected. Replace purchaseService with Superwall when ready.
+ * Annual plan pre-selected.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -21,17 +21,35 @@ import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOnboardingStore } from '../../../stores/onboardingStore';
-import { purchaseService, type ProductID } from '../../../services/purchases/purchaseService';
+import { useSubscriptionStore } from '../../../stores/subscriptionStore';
+import {
+  purchaseService,
+  type PaywallProduct,
+  type ProductID,
+} from '../../../services/purchases/purchaseService';
 import { ONBOARDING_ASSETS } from '../onboardingAssets';
 import { playSound } from '../../../services/audio/uiSounds';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const FLICKER_SIZE = SCREEN_W * 0.32;
 
-// Annual savings: (3.99*12 - 19.99) / (3.99*12) = 58%
-const PLANS = [
+type PlanViewModel = {
+  id: ProductID;
+  label: string;
+  badge: string | null;
+  price: string;
+  period: string;
+  sub: string | null;
+  billedAs: string;
+  savings: string | null;
+  highlight: boolean;
+  trialLabel: string;
+  isTrialEligible: boolean;
+};
+
+const DEFAULT_PLANS: PlanViewModel[] = [
   {
-    id: 'flicker_annual_v1' as ProductID,
+    id: 'flicker_annual_v1',
     label: 'Annual',
     badge: 'BEST VALUE',
     price: '$19.99',
@@ -40,9 +58,11 @@ const PLANS = [
     billedAs: 'billed $19.99/year after trial',
     savings: 'Save 58%',
     highlight: true,
+    trialLabel: '7-DAY FREE TRIAL',
+    isTrialEligible: false,
   },
   {
-    id: 'flicker_monthly_v1' as ProductID,
+    id: 'flicker_monthly_v1',
     label: 'Monthly',
     badge: null,
     price: '$3.99',
@@ -51,8 +71,10 @@ const PLANS = [
     billedAs: 'billed $3.99/month after trial',
     savings: null,
     highlight: false,
+    trialLabel: '7-DAY FREE TRIAL',
+    isTrialEligible: false,
   },
-] as const;
+];
 
 const FEATURES = [
   { icon: '\uD83D\uDEAB', text: 'App blocking during every session' },
@@ -60,52 +82,150 @@ const FEATURES = [
   { icon: '\u2728', text: 'Earn Light & build your sanctuary' },
 ];
 
-interface Props { onNext: () => void; }
+type PaywallMode = 'onboarding' | 'resume';
 
-export default function Step20Paywall({ onNext }: Props) {
+interface Props {
+  onNext: () => void;
+  mode?: PaywallMode;
+}
+
+function formatTrialLabel(product?: PaywallProduct): string {
+  const introPrice = product?.introPrice;
+  if (!introPrice || introPrice.price !== 0) {
+    return '7-DAY FREE TRIAL';
+  }
+
+  const unit = introPrice.periodUnit.toUpperCase();
+  const amount = introPrice.periodNumberOfUnits;
+
+  if (unit === 'WEEK') {
+    return `${amount * 7}-DAY FREE TRIAL`;
+  }
+
+  return `${amount}-${unit} FREE TRIAL`;
+}
+
+function buildPlan(productId: ProductID, productsById: Map<ProductID, PaywallProduct>): PlanViewModel {
+  const fallback = DEFAULT_PLANS.find((plan) => plan.id === productId)!;
+  const product = productsById.get(productId);
+
+  if (!product) {
+    return fallback;
+  }
+
+  const price = product.priceString || fallback.price;
+  const sub =
+    productId === 'flicker_annual_v1'
+      ? `${product.pricePerWeekString ?? '$1.67'} / week`
+      : null;
+
+  return {
+    ...fallback,
+    price,
+    sub,
+    isTrialEligible: product.isTrialEligible ?? false,
+    billedAs:
+      productId === 'flicker_annual_v1'
+        ? `billed ${price}/year after trial`
+        : `billed ${price}/month after trial`,
+    trialLabel: formatTrialLabel(product),
+  };
+}
+
+export default function Step20Paywall({ onNext, mode = 'onboarding' }: Props) {
   const insets = useSafeAreaInsets();
-  const completeOnboarding = useOnboardingStore((s) => s.completeOnboarding);
+  const markPaywallAccepted = useOnboardingStore((s) => s.markPaywallAccepted);
+  const refreshEntitlement = useSubscriptionStore((s) => s.refreshEntitlement);
 
   const [selectedPlan, setSelectedPlan] = useState<ProductID>('flicker_annual_v1');
+  const [plans, setPlans] = useState<PlanViewModel[]>(DEFAULT_PLANS);
   const [isLoading, setIsLoading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProducts = async () => {
+      const products = await purchaseService.getProducts();
+      if (cancelled || products.length === 0) return;
+
+      const productsById = new Map(products.map((product) => [product.productID, product]));
+      setPlans([
+        buildPlan('flicker_annual_v1', productsById),
+        buildPlan('flicker_monthly_v1', productsById),
+      ]);
+    };
+
+    loadProducts().catch((error) => {
+      console.warn('[Paywall] Failed to load RevenueCat offering products', error);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleSubscribe = useCallback(async () => {
     setIsLoading(true);
     playSound('buttonPress');
 
-    const result = await purchaseService.purchase(selectedPlan);
+    try {
+      const result = await purchaseService.purchase(selectedPlan);
+      if (result.success) {
+        await refreshEntitlement();
+        await markPaywallAccepted();
+        router.replace('/');
+        return;
+      }
 
-    if (result.success) {
-      await completeOnboarding();
-      router.replace('/(main)/home');
-    } else {
+      if (!result.cancelled) {
+        Alert.alert('Purchase Failed', result.error ?? 'Please try again.');
+      }
+    } finally {
       setIsLoading(false);
-      Alert.alert('Purchase Failed', result.error ?? 'Please try again.');
     }
-  }, [selectedPlan, completeOnboarding]);
+  }, [selectedPlan, refreshEntitlement, markPaywallAccepted]);
 
   const handleRestore = useCallback(async () => {
     setIsRestoring(true);
-    const result = await purchaseService.restore();
-    setIsRestoring(false);
+    try {
+      const result = await purchaseService.restore();
+      if (result.success) {
+        await refreshEntitlement();
+        await markPaywallAccepted();
+        router.replace('/');
+        return;
+      }
 
-    if (result.success) {
-      await completeOnboarding();
-      router.replace('/(main)/home');
-    } else {
-      Alert.alert('Nothing to Restore', 'No active subscription found for this Apple ID.');
+      Alert.alert('Nothing to Restore', result.error ?? 'No active subscription found for this Apple ID.');
+    } finally {
+      setIsRestoring(false);
     }
-  }, [completeOnboarding]);
+  }, [refreshEntitlement, markPaywallAccepted]);
 
-  const selectedPlanData = PLANS.find((p) => p.id === selectedPlan)!;
+  const selectedPlanData = plans.find((p) => p.id === selectedPlan) ?? DEFAULT_PLANS[0];
+  const isResumeMode = mode === 'resume';
+  const showTrialMessaging = isResumeMode ? selectedPlanData.isTrialEligible === true : true;
+  const heroBadgeText = showTrialMessaging
+    ? selectedPlanData.trialLabel
+    : 'RESUME FLICKER PRO';
+  const headline = showTrialMessaging ? 'Start Your Free Trial' : 'Resume Flicker Pro';
+  const subheadline = showTrialMessaging
+    ? 'Unlock everything. Cancel anytime.'
+    : 'Pick up where you left off. Unlock everything again anytime.';
+  const ctaText = showTrialMessaging ? 'Start for Free' : 'Resume Subscription';
+  const fineprint = showTrialMessaging
+    ? `${selectedPlanData.billedAs}. Cancel anytime.`
+    : selectedPlanData.id === 'flicker_annual_v1'
+      ? `billed ${selectedPlanData.price}/year. Cancel anytime.`
+      : `billed ${selectedPlanData.price}/month. Cancel anytime.`;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 8 }]}>
+    <View style={[styles.container, { paddingTop: insets.top + 52, paddingBottom: insets.bottom + 8 }]}>
       {/* ── Hero ── */}
       <Animated.View entering={FadeIn.delay(0).duration(500)} style={styles.hero}>
         <View style={styles.trialBadge}>
-          <Text style={styles.trialBadgeText}>7-DAY FREE TRIAL</Text>
+          <Text style={styles.trialBadgeText}>{heroBadgeText}</Text>
         </View>
         <Image
           source={ONBOARDING_ASSETS.flickerCalmBase}
@@ -116,10 +236,8 @@ export default function Step20Paywall({ onNext }: Props) {
 
       {/* ── Headline ── */}
       <Animated.View entering={FadeInDown.delay(150).duration(500)} style={styles.headlineWrap}>
-        <Text style={styles.headline}>Start Your Free Trial</Text>
-        <Text style={styles.subheadline}>
-          Unlock everything. Cancel anytime.
-        </Text>
+        <Text style={styles.headline}>{headline}</Text>
+        <Text style={styles.subheadline}>{subheadline}</Text>
       </Animated.View>
 
       {/* ── Features ── */}
@@ -134,7 +252,7 @@ export default function Step20Paywall({ onNext }: Props) {
 
       {/* ── Plan Cards ── */}
       <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.plans}>
-        {PLANS.map((plan) => {
+        {plans.map((plan) => {
           const selected = selectedPlan === plan.id;
           return (
             <Pressable
@@ -185,11 +303,11 @@ export default function Step20Paywall({ onNext }: Props) {
           disabled={isLoading || isRestoring}
         >
           <Text style={styles.ctaText}>
-            {isLoading ? 'Starting…' : 'Start Free Trial'}
+            {isLoading ? 'Starting…' : ctaText}
           </Text>
         </Pressable>
         <Text style={styles.ctaFineprint}>
-          {selectedPlanData.billedAs}. Cancel anytime.
+          {fineprint}
         </Text>
       </Animated.View>
 

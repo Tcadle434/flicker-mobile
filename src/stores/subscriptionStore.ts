@@ -1,12 +1,12 @@
 /**
  * Subscription Store
  *
- * Manages entitlement state for hard paywall (Superwall).
- * Development default: entitled = true so all features are accessible.
+ * Manages RevenueCat entitlement state for the custom paywall flow.
  */
 
 import { create } from 'zustand';
 import { paywallService, type EntitlementState } from '../services/subscription/paywallService';
+import { useAuthStore } from './authStore';
 
 interface SubscriptionStore {
   isEntitled: boolean;
@@ -21,7 +21,7 @@ interface SubscriptionStore {
 }
 
 export const useSubscriptionStore = create<SubscriptionStore>((set) => ({
-  isEntitled: true, // dev default — Superwall will override in production
+  isEntitled: false,
   isTrialActive: false,
   trialDaysRemaining: 0,
   isLoading: false,
@@ -29,6 +29,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set) => ({
   initialize: async () => {
     set({ isLoading: true });
     try {
+      await paywallService.syncIdentity(useAuthStore.getState().user?.id ?? null);
       const state = await paywallService.getEntitlementState();
       set({
         isEntitled: state.isEntitled,
@@ -43,6 +44,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set) => ({
 
   refreshEntitlement: async () => {
     try {
+      await paywallService.syncIdentity(useAuthStore.getState().user?.id ?? null);
       const state = await paywallService.getEntitlementState();
       set({
         isEntitled: state.isEntitled,
@@ -59,15 +61,13 @@ export const useSubscriptionStore = create<SubscriptionStore>((set) => ({
   },
 
   restorePurchases: async () => {
-    const result = await paywallService.restorePurchases();
-    if (result) {
-      const state = await paywallService.getEntitlementState();
-      set({
-        isEntitled: state.isEntitled,
-        isTrialActive: state.isTrialActive,
-        trialDaysRemaining: state.trialDaysRemaining,
-      });
-    }
-    return result;
+    await paywallService.syncIdentity(useAuthStore.getState().user?.id ?? null);
+    const state = await paywallService.restorePurchases();
+    set({
+      isEntitled: state.isEntitled,
+      isTrialActive: state.isTrialActive,
+      trialDaysRemaining: state.trialDaysRemaining,
+    });
+    return state.isEntitled;
   },
 }));

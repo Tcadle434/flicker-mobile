@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
 	View,
 	Text,
@@ -13,11 +13,13 @@ import {
 	TextInput,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useAuthStore } from "../../src/stores";
 import { theme } from "../../src/constants/theme";
 import OverworldScene from "../../src/components/world/OverworldScene";
 import { hydrateAuthenticatedUserData } from "../../src/services/app/userDataHydration";
+import { resolveAuthEntryMode } from "../../src/services/auth/authEntryMode";
+import { routeAfterAuth } from "../../src/services/auth/postAuthRouting";
 
 export default function SignUp() {
 	const [email, setEmail] = useState("");
@@ -31,8 +33,16 @@ export default function SignUp() {
 
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const { signUp, signInWithApple, signInWithGoogle, isLoading } = useAuthStore();
+	const params = useLocalSearchParams<{ mode?: string | string[] }>();
+	const authMode = resolveAuthEntryMode(params.mode);
 
 	const sceneOpacity = useRef(new Animated.Value(0)).current;
+
+	useEffect(() => {
+		if (authMode !== "postPaywallRequired") {
+			router.replace("/(auth)/signin?mode=default");
+		}
+	}, [authMode]);
 
 	const handleSceneReady = () => {
 		Animated.timing(sceneOpacity, {
@@ -56,11 +66,23 @@ export default function SignUp() {
 
 	const handleSignUp = async () => {
 		if (!validateForm()) return;
-		const { error } = await signUp(email, password);
-		if (error) {
-			Alert.alert("Sign Up Failed", error.message);
-		} else {
-			router.replace("/(main)/home");
+		setIsSubmitting(true);
+		try {
+			const { error } = await signUp(email, password);
+			if (error) {
+				Alert.alert("Sign Up Failed", error.message);
+				return;
+			}
+
+			try {
+				await hydrateAuthenticatedUserData();
+			} catch (hydrateError) {
+				console.warn("[auth] Failed to hydrate after sign-up", hydrateError);
+			}
+
+			await routeAfterAuth();
+		} finally {
+			setIsSubmitting(false);
 		}
 	};
 
@@ -78,7 +100,7 @@ export default function SignUp() {
 				} catch (hydrateError) {
 					console.warn("[auth] Failed to hydrate after Apple sign-in", hydrateError);
 				}
-				router.replace("/(main)/home");
+				await routeAfterAuth();
 			}
 		} finally {
 			setIsSubmitting(false);
@@ -99,12 +121,16 @@ export default function SignUp() {
 				} catch (hydrateError) {
 					console.warn("[auth] Failed to hydrate after Google sign-in", hydrateError);
 				}
-				router.replace("/(main)/home");
+				await routeAfterAuth();
 			}
 		} finally {
 			setIsSubmitting(false);
 		}
 	};
+
+	if (authMode !== "postPaywallRequired") {
+		return null;
+	}
 
 	return (
 		<View style={styles.root}>
@@ -230,7 +256,7 @@ export default function SignUp() {
 										Already have an account?{" "}
 									</Text>
 									<TouchableOpacity
-										onPress={() => router.push("/(auth)/signin")}
+										onPress={() => router.push("/(auth)/signin?mode=postPaywallRequired")}
 										activeOpacity={0.7}
 									>
 										<Text style={styles.v2SwitchLink}>Sign In</Text>

@@ -23,7 +23,7 @@ import type {
 } from '../../types';
 
 const PREWARM_ASSETS = [
-  'focus_1.mp3',
+  'focus_2.mp3',
   '432Hz_1.mp3',
   'binaural_beats_1.mp3',
 ] as const;
@@ -58,6 +58,19 @@ class AudioCoordinator {
   private pendingFadeOut: ReturnType<typeof setTimeout> | null = null;
   private shellAssetsConfigured = false;
   private shellAssetsPromise: Promise<void> | null = null;
+  private shellAudioSuppressions = new Set<string>();
+
+  private getEffectiveScene(scene: AudioScene): AudioScene {
+    if (this.appState !== 'active') {
+      return 'backgrounded';
+    }
+
+    if (scene === 'shell' && this.shellAudioSuppressions.size > 0) {
+      return 'backgrounded';
+    }
+
+    return scene;
+  }
 
   private async ensureInitialized(): Promise<void> {
     if (Platform.OS !== 'ios') {
@@ -95,8 +108,9 @@ class AudioCoordinator {
 
     await this.ensureInitialized();
     await this.ensureShellAssetsConfigured();
-    this.currentScene = scene;
-    await NativeAudioEngine.enterScene(scene);
+    const nextScene = this.getEffectiveScene(scene);
+    this.currentScene = nextScene;
+    await NativeAudioEngine.enterScene(nextScene);
   }
 
   private async ensureShellAssetsConfigured(): Promise<void> {
@@ -235,12 +249,32 @@ class AudioCoordinator {
 
   async enterShell(): Promise<void> {
     this.lastForegroundScene = 'shell';
-    await this.applyScene(this.appState === 'active' ? 'shell' : 'backgrounded');
+    await this.applyScene('shell');
   }
 
   async leaveShell(): Promise<void> {
-    if (this.currentScene === 'shell') {
+    if (this.currentScene === 'shell' || this.lastForegroundScene === 'shell') {
       await this.applyScene('backgrounded');
+    }
+  }
+
+  async suspendShellAudio(reason: 'onboardingDemo'): Promise<void> {
+    this.shellAudioSuppressions.add(reason);
+
+    if (this.lastForegroundScene === 'shell' || this.currentScene === 'shell') {
+      await this.applyScene('shell');
+    }
+  }
+
+  async resumeShellAudio(reason: 'onboardingDemo'): Promise<void> {
+    this.shellAudioSuppressions.delete(reason);
+
+    if (this.shellAudioSuppressions.size > 0) {
+      return;
+    }
+
+    if (this.lastForegroundScene === 'shell' || this.currentScene === 'backgrounded') {
+      await this.applyScene(this.lastForegroundScene);
     }
   }
 
@@ -460,6 +494,10 @@ class AudioCoordinator {
       return;
     }
 
+    if (this.shellAudioSuppressions.size > 0) {
+      return;
+    }
+
     if (this.appState !== 'active' || isSessionScene(this.currentScene)) {
       return;
     }
@@ -483,7 +521,7 @@ class AudioCoordinator {
 
     if (state === 'inactive' || state === 'background') {
       if (this.currentScene !== 'backgrounded') {
-        this.lastForegroundScene = this.currentScene;
+        this.lastForegroundScene = isSessionScene(this.currentScene) ? this.currentScene : this.lastForegroundScene;
       }
       await this.applyScene('backgrounded');
     }

@@ -17,7 +17,7 @@ The project is now aligned to the Flicker docs in `/docs`:
 - Skia + Reanimated for 2D rendering/animation
 - Supabase for auth/data sync
 - Native iOS modules for audio and Screen Time integration
-- Superwall for paywall/subscription orchestration (planned integration)
+- RevenueCat for subscriptions/entitlement tracking with a custom React Native paywall
 
 ## Run
 
@@ -41,6 +41,7 @@ Required today:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_REVENUECAT_API_KEY_IOS`
 
 ## Notes
 

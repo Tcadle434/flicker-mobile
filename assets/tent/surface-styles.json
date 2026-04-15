@@ -35,7 +35,7 @@
 		},
 		{
 			"id": "floor_05",
-			"name": "Crosshatch Tile",
+			"name": "White Crosshatch Tile",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -43,7 +43,7 @@
 		},
 		{
 			"id": "floor_06",
-			"name": "Stone Gray",
+			"name": "Gray Grid",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -51,7 +51,7 @@
 		},
 		{
 			"id": "floor_07",
-			"name": "Light Tiles",
+			"name": "Light Yellow Tile",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -91,7 +91,7 @@
 		},
 		{
 			"id": "floor_12",
-			"name": "Brick Grid",
+			"name": "Tan Grid",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -107,7 +107,7 @@
 		},
 		{
 			"id": "floor_14",
-			"name": "Pink Pine",
+			"name": "Tan & Pink Plank",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -115,7 +115,7 @@
 		},
 		{
 			"id": "floor_15",
-			"name": "Wooden Planks",
+			"name": "Tan Squares",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -139,7 +139,7 @@
 		},
 		{
 			"id": "floor_18",
-			"name": "Gray Brick",
+			"name": "Gray Plank",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -155,7 +155,7 @@
 		},
 		{
 			"id": "floor_20",
-			"name": "Light Stone",
+			"name": "Light Blue Stone",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -163,7 +163,7 @@
 		},
 		{
 			"id": "floor_21",
-			"name": "Cream Tile",
+			"name": "White Square",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -187,7 +187,7 @@
 		},
 		{
 			"id": "floor_24",
-			"name": "Striped Wood",
+			"name": "Carpeted Square",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -195,7 +195,7 @@
 		},
 		{
 			"id": "floor_25",
-			"name": "Sandy Stone",
+			"name": "Carpeted Triangle",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -211,7 +211,7 @@
 		},
 		{
 			"id": "floor_27",
-			"name": "Terracotta Check",
+			"name": "Checkered",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -235,7 +235,7 @@
 		},
 		{
 			"id": "floor_30",
-			"name": "Brown Tile",
+			"name": "Clay Square",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -267,7 +267,7 @@
 		},
 		{
 			"id": "floor_34",
-			"name": "Purple Diamond",
+			"name": "Red & Tan Pattern",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -291,7 +291,7 @@
 		},
 		{
 			"id": "floor_37",
-			"name": "Pink Rings",
+			"name": "Pink Diamonds",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -307,7 +307,7 @@
 		},
 		{
 			"id": "floor_39",
-			"name": "Terracotta Plank",
+			"name": "Brown Plank",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -323,7 +323,7 @@
 		},
 		{
 			"id": "floor_41",
-			"name": "Lavender Stripe",
+			"name": "Gray & Blue Stripe",
 			"surfaceType": "floor",
 			"price": 42,
 			"tier": 1,
@@ -525,7 +525,7 @@
 		},
 		{
 			"id": "wall_04",
-			"name": "Blue Border",
+			"name": "Green & Tan Pattern",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -557,7 +557,7 @@
 		},
 		{
 			"id": "wall_08",
-			"name": "Beige Plain",
+			"name": "Gray Plain",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -565,7 +565,7 @@
 		},
 		{
 			"id": "wall_09",
-			"name": "Tan Smooth",
+			"name": "Tan Base",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -581,7 +581,7 @@
 		},
 		{
 			"id": "wall_11",
-			"name": "Brown Stripe",
+			"name": "Light Brick",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -589,7 +589,7 @@
 		},
 		{
 			"id": "wall_12",
-			"name": "Gold Stripe",
+			"name": "Yellow & Orange Stripe",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -613,7 +613,7 @@
 		},
 		{
 			"id": "wall_15",
-			"name": "Brown Plank",
+			"name": "Brown Pattern",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -661,7 +661,7 @@
 		},
 		{
 			"id": "wall_21",
-			"name": "Red Wood",
+			"name": "Red & Gray Columns",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -669,7 +669,7 @@
 		},
 		{
 			"id": "wall_22",
-			"name": "Red Plank",
+			"name": "Red & Gray Pattern",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -701,7 +701,7 @@
 		},
 		{
 			"id": "wall_26",
-			"name": "Brown Vertical",
+			"name": "Brown Wood Vertical",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -709,7 +709,7 @@
 		},
 		{
 			"id": "wall_27",
-			"name": "Red Orange",
+			"name": "Red Orange Grid",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -717,7 +717,7 @@
 		},
 		{
 			"id": "wall_28",
-			"name": "Rust Brown",
+			"name": "Rust Wood Vertical",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -845,7 +845,7 @@
 		},
 		{
 			"id": "wall_44",
-			"name": "Pale Blue",
+			"name": "Pale Blue Checkered",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,
@@ -869,7 +869,7 @@
 		},
 		{
 			"id": "wall_47",
-			"name": "Tan Beige",
+			"name": "Tan Beige Brick",
 			"surfaceType": "wall",
 			"price": 42,
 			"tier": 1,

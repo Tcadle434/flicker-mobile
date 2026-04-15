@@ -37,8 +37,6 @@ export class AuthService {
         .insert({
           id: data.user.id,
           email: data.user.email!,
-          is_premium: false,
-          subscription_status: 'free',
         });
 
       if (profileError) {
@@ -49,8 +47,6 @@ export class AuthService {
         id: data.user.id,
         email: data.user.email!,
         createdAt: data.user.created_at,
-        isPremium: false,
-        subscriptionStatus: 'free',
       };
 
       return { user, error: null };
@@ -77,19 +73,10 @@ export class AuthService {
         return { user: null, error: new Error('Failed to sign in') };
       }
 
-      // Fetch user profile from database
-      const { data: profileData, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-
       const user: User = {
         id: data.user.id,
         email: data.user.email!,
         createdAt: data.user.created_at,
-        isPremium: profileData?.is_premium ?? false,
-        subscriptionStatus: (profileData?.subscription_status as any) ?? 'free',
       };
 
       return { user, error: null };
@@ -126,19 +113,10 @@ export class AuthService {
         return { user: null, error: error ? new Error(error.message) : null };
       }
 
-      // Fetch user profile
-      const { data: profileData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', data.session.user.id)
-        .single();
-
       const user: User = {
         id: data.session.user.id,
         email: data.session.user.email!,
         createdAt: data.session.user.created_at,
-        isPremium: profileData?.is_premium ?? false,
-        subscriptionStatus: (profileData?.subscription_status as any) ?? 'free',
       };
 
       return { user, error: null };
@@ -210,27 +188,21 @@ export class AuthService {
       if (!data.user) return { user: null, error: new Error('Sign in failed') };
 
       // Upsert profile row (no-op if already exists)
-      const { data: profileData } = await supabase
+      await supabase
         .from('users')
         .upsert(
           {
             id: data.user.id,
             email: data.user.email ?? credential.email ?? '',
-            is_premium: false,
-            subscription_status: 'free',
           },
           { onConflict: 'id', ignoreDuplicates: true },
-        )
-        .select()
-        .single();
+        );
 
       return {
         user: {
           id: data.user.id,
           email: data.user.email ?? credential.email ?? '',
           createdAt: data.user.created_at,
-          isPremium: profileData?.is_premium ?? false,
-          subscriptionStatus: (profileData?.subscription_status as any) ?? 'free',
         },
         error: null,
       };
@@ -268,27 +240,21 @@ export class AuthService {
       if (error) return { user: null, error: new Error(error.message) };
       if (!data.user) return { user: null, error: new Error('Sign in failed') };
 
-      const { data: profileData } = await supabase
+      await supabase
         .from('users')
         .upsert(
           {
             id: data.user.id,
             email: data.user.email ?? '',
-            is_premium: false,
-            subscription_status: 'free',
           },
           { onConflict: 'id', ignoreDuplicates: true },
-        )
-        .select()
-        .single();
+        );
 
       return {
         user: {
           id: data.user.id,
           email: data.user.email ?? '',
           createdAt: data.user.created_at,
-          isPremium: profileData?.is_premium ?? false,
-          subscriptionStatus: (profileData?.subscription_status as any) ?? 'free',
         },
         error: null,
       };
@@ -306,19 +272,10 @@ export class AuthService {
   onAuthStateChange(callback: (user: User | null) => void) {
     return supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        // Fetch user profile
-        const { data: profileData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
         const user: User = {
           id: session.user.id,
           email: session.user.email!,
           createdAt: session.user.created_at,
-          isPremium: profileData?.is_premium ?? false,
-          subscriptionStatus: (profileData?.subscription_status as any) ?? 'free',
         };
 
         callback(user);

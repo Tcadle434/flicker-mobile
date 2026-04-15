@@ -6,7 +6,7 @@ This plan replaces timeline-based estimates with execution tracks, hard technica
 
 ## Product Rules (Non-Negotiable)
 
-1. **Billing stack is Superwall** (not RevenueCat).
+1. **Billing stack is RevenueCat with a custom React Native paywall**.
 2. **Rewards are claimable only on full session completion**.
 3. **Rendering strategy is React Native + Skia sprite pipeline** (single 2D renderer for character + sanctuary).
 4. **iOS Deep Focus must persist even if app is backgrounded or killed**.
@@ -41,7 +41,8 @@ Lock technical decisions before feature building so implementation does not fork
   - Sanctuary rendering: Skia scene composition.
   - Particle overlays: optional and Skia-compatible only (no mixed Skia + Three.js scene for core sanctuary).
 - [ ] Freeze billing decision:
-  - Superwall SDK as paywall orchestration layer.
+  - RevenueCat for product metadata, purchases, restores, and entitlements.
+  - Custom React Native paywall remains app-owned.
   - Product IDs and entitlement names finalized now.
 - [ ] Freeze completion/reward rule:
   - Any ended-early session yields **0 light**.
@@ -52,7 +53,7 @@ Lock technical decisions before feature building so implementation does not fork
 ### Exit Criteria
 
 - A new engineer can read docs and understand exactly which tech is in/out.
-- No references to RevenueCat remain.
+- No references to the old billing vendor remain.
 - No references to partial rewards remain.
 
 ---
@@ -264,7 +265,7 @@ Deep Focus is **not** just a single JS bridge call. It includes:
 
 ---
 
-## Track 7 - Onboarding + Paywall (Superwall)
+## Track 7 - Onboarding + Paywall (RevenueCat + Custom UI)
 
 ### Goal
 Ship conversion-focused onboarding tied to your product’s differentiators.
@@ -276,14 +277,13 @@ Ship conversion-focused onboarding tied to your product’s differentiators.
   - screen-time profile
   - distractions
 - [ ] Implement `onboardingStore` and persist completion state.
-- [ ] Integrate Superwall:
-  - placements
-  - paywall presentation
+- [ ] Integrate RevenueCat:
+  - offerings/products
   - purchase/restore hooks
+  - entitlement sync
 - [ ] Define paywall offerings:
-  - weekly
+  - monthly
   - annual
-  - lifetime
 - [ ] Wire entitlement state to root navigation gate.
 - [ ] Ensure app flow:
   - not onboarded -> onboarding
@@ -293,7 +293,7 @@ Ship conversion-focused onboarding tied to your product’s differentiators.
 ### Exit Criteria
 
 - Purchase and restore flows work in sandbox and production.
-- No RevenueCat code path is required for v1.
+- No legacy billing code path is required for v1.
 
 ---
 
@@ -374,5 +374,5 @@ Flicker v1 is done when all are true:
 - [ ] Completed sessions always produce rewards and log transactions.
 - [ ] Users can spend rewards in sanctuary and see persistent progression.
 - [ ] iOS Deep Focus blocking works under real-world lifecycle conditions.
-- [ ] Superwall paywall + restore + entitlement gating are production-ready.
+- [ ] RevenueCat purchase + restore + entitlement gating are production-ready.
 - [ ] Audio experience is stable and meaningfully differentiating.

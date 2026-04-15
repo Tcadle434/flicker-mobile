@@ -19,6 +19,44 @@ function getPreviewSize(surfaceType: TentSurfaceType): { width: number; height: 
     : { width: 16, height: 48 };
 }
 
+function SurfacePreview({
+  styleItem,
+  surfaceType,
+}: {
+  styleItem: TentSurfaceStyle;
+  surfaceType: TentSurfaceType;
+}) {
+  const preview = getSurfacePreview(styleItem.id);
+  const previewSize = getPreviewSize(surfaceType);
+
+  if (!preview) {
+    return null;
+  }
+
+  if (surfaceType === 'wall') {
+    return (
+      <View style={styles.wallPreviewRow}>
+        {[0, 1, 2].map((index) => (
+          <Image
+            key={index}
+            source={preview}
+            style={[previewSize, styles.previewImage]}
+            resizeMode="stretch"
+          />
+        ))}
+      </View>
+    );
+  }
+
+  return (
+    <Image
+      source={preview}
+      style={[previewSize, styles.previewImage]}
+      resizeMode="stretch"
+    />
+  );
+}
+
 interface Props {
   styleItem: TentSurfaceStyle | null;
   surfaceType: TentSurfaceType | null;
@@ -45,9 +83,6 @@ export default function TentSurfaceConfirmPopup({
   if (!styleItem || !surfaceType) return null;
 
   const canAfford = isOwned || balance >= styleItem.price;
-  const preview = getSurfacePreview(styleItem.id);
-  const previewSize = getPreviewSize(surfaceType);
-
   let primaryLabel = 'Purchase';
   if (isSaving) primaryLabel = 'Saving...';
   else if (isEquipped) primaryLabel = 'Equipped';
@@ -70,13 +105,7 @@ export default function TentSurfaceConfirmPopup({
           <PixelPanel style={styles.panel} inset={8}>
             <View style={styles.content}>
               <PixelPanel scale={1} style={styles.thumbWrap}>
-                {preview && (
-                  <Image
-                    source={preview}
-                    style={[previewSize, { alignSelf: 'center' }]}
-                    resizeMode="stretch"
-                  />
-                )}
+                <SurfacePreview styleItem={styleItem} surfaceType={surfaceType} />
               </PixelPanel>
 
               <Text style={styles.itemName}>{styleItem.name}</Text>
@@ -153,6 +182,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
+  },
+  wallPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewImage: {
+    alignSelf: 'center',
   },
   itemName: {
     color: '#3B2A1A',

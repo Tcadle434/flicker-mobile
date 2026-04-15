@@ -1,7 +1,7 @@
 /**
  * Onboarding Welcome — Step Orchestrator
  *
- * Drives the 26-screen onboarding flow. Renders the current step component
+ * Drives the active onboarding flow. Renders the current step component
  * with horizontal slide + fade transitions. Supports swipe-back gesture.
  */
 
@@ -29,29 +29,13 @@ import {
 	Step5ProductIntro,
 	Step5bFlickerTransition,
 	Step6Personalization,
-	Step4FlickerReacts,
-	Step5ScreenTimeQuestion,
 	StepNoisiest,
 	StepTransitionToDemo,
 	StepCinematicDemo,
-	StepBirthDate,
-	StepCalculating,
-	StepLifetimeCost,
-	StepFlickerCanHelp,
-	Step6TheCost,
-	Step7ImagineReclaiming,
-	Step8MeetFlicker,
-	Step9ResetMode,
-	Step10FocusMode,
-	Step11MoveMode,
-	Step12BestPart,
-	Step13Rewards,
+	StepPostDemoDialogue,
 	Step14ScreenTimeExplain,
 	Step15ScreenTimeAuth,
-	Step16Notifications,
-	Step17Tracking,
-	Step18JourneyAhead,
-	Step19FlickerExcited,
+	Step15PermissionReady,
 	Step20Paywall,
 } from "../../src/components/onboarding/steps";
 import { ONBOARDING_WARMUP_ASSETS, warmDemoAssets } from "../../src/components/onboarding/onboardingAssets";
@@ -73,27 +57,11 @@ const STEPS: React.ComponentType<{ onNext: () => void }>[] = [
 	StepNoisiest, //  8 - Content (noisiest time)
 	StepTransitionToDemo, //  9 - Content (transition to demo)
 	StepCinematicDemo, // 10 - Cinematic auto-playing product demo
-	Step14ScreenTimeExplain, // 11 - Content (screen time explain) — permission prompt before paywall
-	Step15ScreenTimeAuth, // 12 - System (permission) — calls native requestAuthorization
-	Step20Paywall,         // 13 - Paywall (7-day trial, annual pre-selected)
-	Step5ScreenTimeQuestion, // 14 - Content (interactive)
-	StepBirthDate, // 14 - Content (birth date picker)
-	StepCalculating, // 15 - Flicker focus + progress bar, auto-advances
-	StepLifetimeCost, // 16 - Big reveal: X.X years on screen
-	StepFlickerCanHelp, // 17 - Dialogue: "I can help you get back X years"
-	Step4FlickerReacts, // 18 - Dialogue
-	Step6TheCost, // 19 - Content (animated counter)
-	Step7ImagineReclaiming, // 20 - Dialogue
-	Step8MeetFlicker, // 21 - Dialogue
-	Step9ResetMode, // 22 - Content
-	Step10FocusMode, // 23 - Content
-	Step11MoveMode, // 24 - Content
-	Step12BestPart, // 25 - Dialogue
-	Step13Rewards, // 26 - Content
-	Step16Notifications, // 27 - System (permission)
-	Step17Tracking, // 22 - System (permission)
-	Step18JourneyAhead, // 23 - Content
-	Step19FlickerExcited, // 28 - Dialogue
+	StepPostDemoDialogue, // 11 - Dialogue (pretty cool right?)
+	Step14ScreenTimeExplain, // 12 - Content (screen time explain) — permission prompt before paywall
+	Step15ScreenTimeAuth, // 13 - System (permission) — calls native requestAuthorization
+	Step15PermissionReady, // 14 - Content (permission success bridge)
+	Step20Paywall, // 15 - Paywall (7-day trial, annual pre-selected)
 ];
 
 const TIMING_CONFIG = {

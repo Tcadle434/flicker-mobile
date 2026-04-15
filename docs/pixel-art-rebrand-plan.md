@@ -4,7 +4,7 @@
 
 The app currently has 3 clashing art styles (isometric painterly islands, watercolor UI, flat vector character). Instead of patching the mismatches, we're committing to a full pixel art rebrand. The vision: Flicker is a small glowing spirit who lives in a forest clearing with a tent. You enter the tent and it's a Stardew Valley-style interior you decorate with light currency. Flicker walks around like an NPC, talks to you via RPG dialogue boxes, and reacts to your wellness sessions.
 
-**What stays:** All backend architecture (stores, Supabase, auth, session flow, sound engine, Superwall paywall, Expo Router navigation, app blocking). The core product loop (relax/focus/move sessions → earn light → decorate) is unchanged.
+**What stays:** All backend architecture (stores, Supabase, auth, session flow, sound engine, custom React Native paywall, Expo Router navigation, app blocking). The core product loop (relax/focus/move sessions → earn light → decorate) is unchanged.
 
 **What changes:** Every visual asset, the rendering approach, all UI components, and the spatial model (floating islands → forest overworld + tent interior rooms).
 

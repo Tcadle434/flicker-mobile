@@ -6,11 +6,11 @@
 	"loops": {
 		"ambient": [
 			{
-				"filename": "focus_1.mp3",
+				"filename": "focus_2.mp3",
 				"label": "Focus 1"
 			},
 			{
-				"filename": "focus_2.mp3",
+				"filename": "focus_1.mp3",
 				"label": "Focus 2"
 			},
 			{

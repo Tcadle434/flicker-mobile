@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, Pressable, Image, Dimensions } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { router } from "expo-router";
 import ContentScreen from "../ContentScreen";
 import { ONBOARDING_ASSETS } from "../onboardingAssets";
 import { playSound } from "../../../services/audio/uiSounds";
@@ -44,9 +45,18 @@ export default function Step0AppIntro({ onNext }: Props) {
 					>
 						<Text style={styles.ctaText}>Get started</Text>
 					</Pressable>
-					<Text style={styles.signInText}>
-						Already have an account? <Text style={styles.signInStrong}>Sign in</Text>
-					</Text>
+					<View style={styles.signInRow}>
+						<Text style={styles.signInText}>Already have an account? </Text>
+						<Pressable
+							onPress={() => {
+								playSound("buttonPress");
+								router.push("/(auth)/signin?mode=signinOnly");
+							}}
+							hitSlop={8}
+						>
+							<Text style={styles.signInStrong}>Sign in</Text>
+						</Pressable>
+					</View>
 				</View>
 			</Animated.View>
 		</ContentScreen>
@@ -123,8 +133,13 @@ const styles = StyleSheet.create({
 		fontWeight: "600",
 		textAlign: "center",
 	},
-	signInText: {
+	signInRow: {
 		marginTop: 18,
+		flexDirection: "row",
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	signInText: {
 		color: "rgba(0, 0, 0, 0.55)",
 		fontSize: 15,
 		fontWeight: "400",

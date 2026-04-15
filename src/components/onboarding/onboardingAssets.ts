@@ -34,6 +34,9 @@ export const ONBOARDING_ASSETS = {
   // Flicker calm meditate spritesheet (8x8 grid)
   flickerCalmMeditate: require('../../../assets/sprites/flicker_calm_meditate.png'),
 
+  // Recorded onboarding demo video
+  flickerAppDemoVideo: require('../../../assets/onboarding/Flicker_app_demo.mp4'),
+
   // Sanctuary decorations for demo
   pottedPlant: require('../../../assets/sprites/interior-decorations/potted_plant_01.png'),
   floorLamp: require('../../../assets/sprites/interior-decorations/floor_lamp_01.png'),
@@ -60,16 +63,7 @@ export const ONBOARDING_WARMUP_ASSETS = [
 
 /** Heavy assets for the cinematic demo — warm around step 5-6 */
 export const DEMO_HEAVY_ASSETS = [
-  ONBOARDING_ASSETS.zenGardenTileset,
-  ONBOARDING_ASSETS.flickerCalmMeditate,
-  ONBOARDING_ASSETS.interiorsTs,
-  ONBOARDING_ASSETS.roomBuilderTs,
-  ONBOARDING_ASSETS.interiorTilesTs,
-  ONBOARDING_ASSETS.interiorTilesRoofTs,
-  ONBOARDING_ASSETS.interiorSpritesTs,
-  ONBOARDING_ASSETS.pottedPlant,
-  ONBOARDING_ASSETS.floorLamp,
-  ONBOARDING_ASSETS.bookshelf,
+  ONBOARDING_ASSETS.flickerAppDemoVideo,
 ] as const;
 
 let demoWarmupPromise: Promise<unknown> | null = null;

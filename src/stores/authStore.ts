@@ -5,8 +5,29 @@
  */
 
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/api/auth';
 import type { AuthState, User } from '../types';
+
+const AUTH_HISTORY_STORAGE_KEY = '@flicker:auth_history';
+
+let authListenerBound = false;
+
+async function readHasAuthenticatedBefore(): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(AUTH_HISTORY_STORAGE_KEY)) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+async function persistHasAuthenticatedBefore(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(AUTH_HISTORY_STORAGE_KEY, 'true');
+  } catch {
+    // silent
+  }
+}
 
 interface AuthStore extends AuthState {
   // Actions
@@ -26,41 +47,73 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   // Initial state
   user: null,
   isAuthenticated: false,
+  hasAuthenticatedBefore: false,
   isLoading: true,
   error: null,
 
   // Initialize auth state (check for existing session)
   initialize: async () => {
+    let hasAuthenticatedBefore = false;
+
     try {
       set({ isLoading: true, error: null });
+
+      hasAuthenticatedBefore = await readHasAuthenticatedBefore();
+
+      if (!authListenerBound) {
+        authListenerBound = true;
+        authService.onAuthStateChange((authUser) => {
+          if (authUser) {
+            void persistHasAuthenticatedBefore();
+            set({
+              user: authUser,
+              isAuthenticated: true,
+              hasAuthenticatedBefore: true,
+              isLoading: false,
+              error: null,
+            });
+            return;
+          }
+
+          set((state) => ({
+            user: null,
+            isAuthenticated: false,
+            hasAuthenticatedBefore: state.hasAuthenticatedBefore,
+            isLoading: false,
+            error: null,
+          }));
+        });
+      }
 
       // Check for existing session
       const { user, error } = await authService.getSession();
 
       if (error || !user) {
-        set({ user: null, isAuthenticated: false, isLoading: false });
+        set({
+          user: null,
+          isAuthenticated: false,
+          hasAuthenticatedBefore,
+          isLoading: false,
+          error: error?.message ?? null,
+        });
         return;
       }
+
+      await persistHasAuthenticatedBefore();
 
       set({
         user,
         isAuthenticated: true,
+        hasAuthenticatedBefore: true,
         isLoading: false,
-      });
-
-      // Setup auth state change listener
-      authService.onAuthStateChange((authUser) => {
-        if (authUser) {
-          get().setUser(authUser);
-        } else {
-          set({ user: null, isAuthenticated: false });
-        }
+        error: null,
       });
     } catch (error) {
       console.error('Failed to initialize auth:', error);
       set({
         user: null,
         isAuthenticated: false,
+        hasAuthenticatedBefore,
         isLoading: false,
         error: (error as Error).message,
       });
@@ -79,10 +132,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         return { error };
       }
 
+      await persistHasAuthenticatedBefore();
+
       set({
         user,
         isAuthenticated: true,
+        hasAuthenticatedBefore: true,
         isLoading: false,
+        error: null,
       });
 
       return { error: null };
@@ -105,10 +162,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         return { error };
       }
 
+      await persistHasAuthenticatedBefore();
+
       set({
         user,
         isAuthenticated: true,
+        hasAuthenticatedBefore: true,
         isLoading: false,
+        error: null,
       });
 
       return { error: null };
@@ -127,7 +188,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         set({ isLoading: false, error: error?.message !== 'CANCELED' ? (error?.message ?? null) : null });
         return { error };
       }
-      set({ user, isAuthenticated: true, isLoading: false });
+      await persistHasAuthenticatedBefore();
+      set({ user, isAuthenticated: true, hasAuthenticatedBefore: true, isLoading: false, error: null });
       return { error: null };
     } catch (error) {
       const err = error as Error;
@@ -144,7 +206,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         set({ isLoading: false, error: error?.message !== 'CANCELED' ? (error?.message ?? null) : null });
         return { error };
       }
-      set({ user, isAuthenticated: true, isLoading: false });
+      await persistHasAuthenticatedBefore();
+      set({ user, isAuthenticated: true, hasAuthenticatedBefore: true, isLoading: false, error: null });
       return { error: null };
     } catch (error) {
       const err = error as Error;
@@ -160,11 +223,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
       await authService.signOut();
 
-      set({
+      set((state) => ({
         user: null,
         isAuthenticated: false,
+        hasAuthenticatedBefore: state.hasAuthenticatedBefore,
         isLoading: false,
-      });
+        error: null,
+      }));
     } catch (error) {
       console.error('Sign out failed:', error);
       set({ isLoading: false, error: (error as Error).message });
@@ -208,6 +273,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({
       user,
       isAuthenticated: !!user,
+      hasAuthenticatedBefore: user ? true : get().hasAuthenticatedBefore,
     });
   },
 

@@ -22,7 +22,7 @@ export default function StepTransitionToDemo({ onNext }: Props) {
 	return (
 		<OnboardingContentLayout
 			title="Turn recovery into a ritual."
-			subtitle="Flicker lets you set a time each day for your mind to recover."
+			subtitle="Let's take the first step to prioritize recovery and focus for your mind."
 			ctaLabel="See how it works"
 			ctaDelay={1800}
 			onNext={onNext}
