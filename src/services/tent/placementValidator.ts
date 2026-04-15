@@ -47,7 +47,7 @@ function getCollisionFootprintHeight(item: CatalogItem, spriteHeight: number): n
     ?? clamp(Math.round(spriteHeight * 0.35), MIN_FOOTPRINT_H, MAX_FOOTPRINT_H);
 }
 
-function getFloorCollisionFootprint(
+export function getGroundedFloorCollisionFootprint(
   item: CatalogItem,
   x: number,
   y: number,
@@ -148,8 +148,8 @@ export function validatePlacement(
       const placedMode = getFloorCollisionMode(placedItem);
 
       if (itemMode === 'solid' && placedMode === 'solid') {
-        const itemFootprint = getFloorCollisionFootprint(item, x, y, dims.w, dims.h);
-        const placedFootprint = getFloorCollisionFootprint(
+        const itemFootprint = getGroundedFloorCollisionFootprint(item, x, y, dims.w, dims.h);
+        const placedFootprint = getGroundedFloorCollisionFootprint(
           placedItem,
           placedBox.x,
           placedBox.y,
