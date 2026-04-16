@@ -7,7 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 import 'react-native-reanimated';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
-import { useAuthStore } from '../src/stores';
+import { useAuthStore, useStreakStore } from '../src/stores';
 import { useSessionStore } from '../src/stores/sessionStore';
 import { useSubscriptionStore } from '../src/stores/subscriptionStore';
 import { useAudioSettingsStore } from '../src/stores/audioSettingsStore';
@@ -29,6 +29,7 @@ export default function RootLayout() {
   const authLoading = useAuthStore((state) => state.isLoading);
   const hydrateSession = useSessionStore((state) => state.hydrateSession);
   const refreshEntitlement = useSubscriptionStore((state) => state.refreshEntitlement);
+  const fetchStreak = useStreakStore((state) => state.fetchStreak);
   const hydrateAudioSettings = useAudioSettingsStore((state) => state.hydrate);
   const audioHydrated = useAudioSettingsStore((state) => state.isHydrated);
   const isMuted = useAudioSettingsStore((state) => state.isMuted);
@@ -92,12 +93,15 @@ export default function RootLayout() {
     const sub = AppState.addEventListener('change', (nextState) => {
       if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
         refreshEntitlement();
+        if (!authLoading && isAuthenticated) {
+          void fetchStreak({ force: true }).catch(() => undefined);
+        }
       }
       void audioCoordinator.handleAppStateChange(nextState).catch(() => undefined);
       appStateRef.current = nextState;
     });
     return () => sub.remove();
-  }, [refreshEntitlement]);
+  }, [authLoading, fetchStreak, isAuthenticated, refreshEntitlement]);
 
   if (!fontsLoaded) return null;
 

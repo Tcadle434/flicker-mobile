@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, BackHandler, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,10 +8,12 @@ import { theme } from '../../src/constants/theme';
 import { useSessionStore } from '../../src/stores/sessionStore';
 import { usePlayerStore } from '../../src/stores/playerStore';
 import { useSpotifyStore } from '../../src/stores/spotifyStore';
+import { useAudioSettingsStore } from '../../src/stores/audioSettingsStore';
 import { audioCoordinator } from '../../src/services/audio/audioCoordinator';
 import ZenGardenScene from '../../src/components/world/ZenGardenScene';
 import StandaloneSessionAudioPanel from '../../src/components/hud/StandaloneSessionAudioPanel';
 import SessionExitConfirmPopup from '../../src/components/hud/SessionExitConfirmPopup';
+import { HUD_ASSETS } from '../../src/components/hud/hudAssets';
 import type { SoundscapeMode } from '../../src/types';
 
 type TimerMode = 'focus' | 'move';
@@ -128,6 +130,8 @@ export default function ModeSessionRun() {
   const abandonSession = useSessionStore((s) => s.abandonSession);
 
   const layers = usePlayerStore((s) => s.layers);
+  const isMuted = useAudioSettingsStore((s) => s.isMuted);
+  const setMuted = useAudioSettingsStore((s) => s.setMuted);
 
   const resumeSpotify = useSpotifyStore((s) => s.resumePlayback);
   const pauseSpotify = useSpotifyStore((s) => s.pausePlayback);
@@ -400,6 +404,12 @@ export default function ModeSessionRun() {
     [canCycleFocusTracks, focusLayer.availableTracks, focusLayer.currentLoopId],
   );
 
+  const handleToggleMute = useCallback(() => {
+    const nextMuted = !isMuted;
+    setMuted(nextMuted);
+    void audioCoordinator.setMuted(nextMuted).catch(() => undefined);
+  }, [isMuted, setMuted]);
+
   if (mode === 'focus') {
     return (
       <>
@@ -422,6 +432,18 @@ export default function ModeSessionRun() {
                   activeOpacity={0.75}
                 >
                   <Text style={styles.exitGlassText}>Exit</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.audioControlButton}
+                  onPress={handleToggleMute}
+                  activeOpacity={0.75}
+                >
+                  <Image
+                    source={isMuted ? HUD_ASSETS.volumeMuted : HUD_ASSETS.volumeUnmuted}
+                    style={styles.audioIcon}
+                    resizeMode="contain"
+                  />
                 </TouchableOpacity>
 
                 {showFocusAudioControls && (
@@ -495,13 +517,26 @@ export default function ModeSessionRun() {
 
         <SafeAreaView style={styles.container}>
           <Animated.View entering={FadeIn.delay(300).duration(500)} style={styles.topRow}>
-            <TouchableOpacity onPress={() => setExitConfirmVisible(true)} style={styles.exitButton} activeOpacity={0.75}>
-              <Text style={styles.exitText}>Exit</Text>
-            </TouchableOpacity>
             <Text style={[styles.modeLabel, { color: `${ringColor}AA` }]}>
               {isBreak ? 'Break' : details.title}
             </Text>
-            <View style={styles.spacer} />
+            <View style={styles.topRightStack}>
+              <TouchableOpacity onPress={() => setExitConfirmVisible(true)} style={styles.exitButton} activeOpacity={0.75}>
+                <Text style={styles.exitText}>Exit</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.audioControlButton}
+                onPress={handleToggleMute}
+                activeOpacity={0.75}
+              >
+                <Image
+                  source={isMuted ? HUD_ASSETS.volumeMuted : HUD_ASSETS.volumeUnmuted}
+                  style={styles.audioIcon}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            </View>
           </Animated.View>
 
           <View style={styles.center}>
@@ -645,6 +680,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
   },
+  audioIcon: {
+    width: 18,
+    height: 18,
+    tintColor: theme.colors.text,
+  },
   eqBars: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -743,9 +783,6 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.semibold,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
-  },
-  spacer: {
-    width: 60,
   },
   center: {
     flex: 1,

@@ -60,6 +60,18 @@ class AudioCoordinator {
   private shellAssetsPromise: Promise<void> | null = null;
   private shellAudioSuppressions = new Set<string>();
 
+  private getIsMuted(): boolean {
+    return useAudioSettingsStore.getState().isMuted;
+  }
+
+  private getEffectiveMasterVolume(volume: number): number {
+    return this.getIsMuted() ? 0 : volume;
+  }
+
+  private hasActiveSessionAudio(): boolean {
+    return isSessionScene(this.currentScene) || isSessionScene(this.lastForegroundScene);
+  }
+
   private getEffectiveScene(scene: AudioScene): AudioScene {
     if (this.appState !== 'active') {
       return 'backgrounded';
@@ -160,7 +172,10 @@ class AudioCoordinator {
     }
 
     const playerState = usePlayerStore.getState();
-    await NativeAudioEngine.setMasterVolume(playerState.masterVolume, 0);
+    await NativeAudioEngine.setMasterVolume(
+      this.getEffectiveMasterVolume(playerState.masterVolume),
+      0,
+    );
 
     const layerEntries = Object.entries(playerState.layers) as Array<
       [AudioLayer, (typeof playerState.layers)[AudioLayer]]
@@ -431,12 +446,15 @@ class AudioCoordinator {
     }
 
     if (phase === 'still') {
-      await NativeAudioEngine.setMasterVolume(usePlayerStore.getState().masterVolume, 300);
+      await NativeAudioEngine.setMasterVolume(
+        this.getEffectiveMasterVolume(usePlayerStore.getState().masterVolume),
+        300,
+      );
       return;
     }
 
     if (phase === 'return') {
-      await NativeAudioEngine.setMasterVolume(1, 900);
+      await NativeAudioEngine.setMasterVolume(this.getEffectiveMasterVolume(1), 900);
       const fadeDelayMs = Math.max(
         0,
         (RESET_RETURN_SECONDS - RESET_RETURN_FADE_OUT_SECONDS) * 1000,
@@ -476,6 +494,10 @@ class AudioCoordinator {
 
     await this.ensureInitialized();
     await NativeAudioEngine.setMuted(muted);
+
+    if (this.hasActiveSessionAudio()) {
+      await this.applyNativeMixState();
+    }
   }
 
   async setMasterVolume(volume: number): Promise<void> {
@@ -486,7 +508,7 @@ class AudioCoordinator {
     }
 
     await this.ensureInitialized();
-    await NativeAudioEngine.setMasterVolume(volume, 100);
+    await NativeAudioEngine.setMasterVolume(this.getEffectiveMasterVolume(volume), 100);
   }
 
   async playUiSound(name: UiSoundName): Promise<void> {

@@ -235,6 +235,7 @@ export interface OnboardingPreferences {
 export interface OnboardingState {
   completed: boolean;
   paywallAccepted: boolean;
+  reviewPromptAttemptedThisSession: boolean;
   currentStep: number;
   preferences: OnboardingPreferences;
   permissionsGranted: {

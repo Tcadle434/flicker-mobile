@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/api/supabase';
 import type { OnboardingState, OnboardingPreferences } from '../types';
 
-const TOTAL_STEPS = 16;
+const TOTAL_STEPS = 17;
 const STORAGE_KEY = '@flicker:onboarding_gate';
 
 interface OnboardingStore extends OnboardingState {
@@ -27,6 +27,8 @@ interface OnboardingStore extends OnboardingState {
   setNoisiest: (value: string) => void;
   setDistraction: (value: string) => void;
   setPermission: (key: keyof OnboardingState['permissionsGranted'], granted: boolean) => void;
+  markReviewPromptAttempted: () => void;
+  resetReviewPromptAttempted: () => void;
   markPaywallAccepted: () => Promise<void>;
   clearPaywallAccepted: () => Promise<void>;
   finalizeOnboarding: () => Promise<void>;
@@ -70,6 +72,7 @@ async function persistGateState(paywallAccepted: boolean): Promise<void> {
 export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
   completed: false,
   paywallAccepted: false,
+  reviewPromptAttemptedThisSession: false,
   currentStep: 0,
   totalSteps: TOTAL_STEPS,
   preferences: { ...INITIAL_PREFERENCES },
@@ -85,7 +88,11 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        set({ completed: false, paywallAccepted: persistedGate.paywallAccepted });
+        set({
+          completed: false,
+          paywallAccepted: persistedGate.paywallAccepted,
+          reviewPromptAttemptedThisSession: false,
+        });
         return;
       }
 
@@ -98,13 +105,17 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
       const completed = !!data?.onboarding_completed;
       const paywallAccepted = completed ? false : persistedGate.paywallAccepted;
 
-      set({ completed, paywallAccepted });
+      set({ completed, paywallAccepted, reviewPromptAttemptedThisSession: false });
 
       if (completed) {
         await persistGateState(false);
       }
     } catch {
-      set({ completed: false, paywallAccepted: persistedGate.paywallAccepted });
+      set({
+        completed: false,
+        paywallAccepted: persistedGate.paywallAccepted,
+        reviewPromptAttemptedThisSession: false,
+      });
     }
   },
 
@@ -154,6 +165,14 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     }));
   },
 
+  markReviewPromptAttempted: () => {
+    set({ reviewPromptAttemptedThisSession: true });
+  },
+
+  resetReviewPromptAttempted: () => {
+    set({ reviewPromptAttemptedThisSession: false });
+  },
+
   markPaywallAccepted: async () => {
     set({ paywallAccepted: true });
     await persistGateState(true);
@@ -171,7 +190,12 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
         return;
       }
 
-      set({ completed: true, paywallAccepted: false, currentStep: 0 });
+      set({
+        completed: true,
+        paywallAccepted: false,
+        reviewPromptAttemptedThisSession: false,
+        currentStep: 0,
+      });
       await persistGateState(false);
 
       await supabase
@@ -187,6 +211,7 @@ export const useOnboardingStore = create<OnboardingStore>((set, get) => ({
     set({
       completed: false,
       paywallAccepted: false,
+      reviewPromptAttemptedThisSession: false,
       currentStep: 0,
       preferences: { ...INITIAL_PREFERENCES },
       permissionsGranted: { notifications: false, screenTime: false, tracking: false },

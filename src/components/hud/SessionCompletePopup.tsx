@@ -87,7 +87,7 @@ export default function SessionCompletePopup({ onOpenShop }: Props) {
 
 			if (cancelled) return;
 			await refreshMood();
-			fetchStreak();
+			await fetchStreak({ force: true });
 		})();
 
 		cancelStreakReminder();

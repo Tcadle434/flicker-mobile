@@ -18,9 +18,17 @@ interface HudOverlayProps {
   onEnterTent?: () => void;
   onOpenShop?: () => void;
   onOpenSettings?: () => void;
+  onOpenStreaks?: () => void;
 }
 
-export default function HudOverlay({ onStartSession, onDecorate, onEnterTent, onOpenShop, onOpenSettings }: HudOverlayProps) {
+export default function HudOverlay({
+  onStartSession,
+  onDecorate,
+  onEnterTent,
+  onOpenShop,
+  onOpenSettings,
+  onOpenStreaks,
+}: HudOverlayProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -49,7 +57,7 @@ export default function HudOverlay({ onStartSession, onDecorate, onEnterTent, on
         entering={FadeIn.delay(600).duration(350)}
         style={[styles.iconBtn, { bottom: 118, left: 20 }]}
       >
-        <TimerButton onPress={() => console.log('[HUD] calendar')} />
+        <TimerButton onPress={() => onOpenStreaks?.()} />
       </Animated.View>
 
       <Animated.View

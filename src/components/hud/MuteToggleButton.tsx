@@ -7,16 +7,16 @@ import PixelPanel from './PixelPanel';
 
 export default function MuteToggleButton() {
   const isMuted = useAudioSettingsStore((s) => s.isMuted);
-  const toggleMute = useAudioSettingsStore((s) => s.toggleMute);
+  const setMuted = useAudioSettingsStore((s) => s.setMuted);
 
   const handlePress = () => {
     if (!isMuted) {
       // About to mute — play sound first so user hears it
       playSound('buttonPress');
-      toggleMute();
+      setMuted(true);
     } else {
       // About to unmute — toggle first, then play so it's audible
-      toggleMute();
+      setMuted(false);
       playSound('buttonPress');
     }
   };

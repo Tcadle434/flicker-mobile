@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, BackHandler, Image } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,12 +14,14 @@ import Animated, {
 import { theme } from '../../src/constants/theme';
 import { useSessionStore } from '../../src/stores/sessionStore';
 import { usePlayerStore } from '../../src/stores/playerStore';
+import { useAudioSettingsStore } from '../../src/stores/audioSettingsStore';
 import { SessionFlowController } from '../../src/controllers/SessionFlowController';
 import { audioCoordinator } from '../../src/services/audio/audioCoordinator';
 import ZenGardenScene from '../../src/components/world/ZenGardenScene';
 import SessionMixer from '../../src/components/hud/SessionMixer';
 import StandaloneSessionAudioPanel from '../../src/components/hud/StandaloneSessionAudioPanel';
 import SessionExitConfirmPopup from '../../src/components/hud/SessionExitConfirmPopup';
+import { HUD_ASSETS } from '../../src/components/hud/hudAssets';
 import {
   getResetSessionAudioProfile,
   getResetSessionStandaloneLayer,
@@ -51,6 +53,8 @@ export default function ResetSession() {
     devSession?: string;
   }>();
   const resetSessionAudioMode = usePlayerStore((s) => s.resetSessionAudioMode);
+  const isMuted = useAudioSettingsStore((s) => s.isMuted);
+  const setMuted = useAudioSettingsStore((s) => s.setMuted);
   const phase = useSessionStore((s) => s.phase);
   const sessionId = useSessionStore((s) => s.sessionId);
   const setSessionMode = useSessionStore((s) => s.setMode);
@@ -209,6 +213,12 @@ export default function ResetSession() {
     }
   };
 
+  const handleToggleMute = () => {
+    const nextMuted = !isMuted;
+    setMuted(nextMuted);
+    void audioCoordinator.setMuted(nextMuted).catch(() => undefined);
+  };
+
   return (
     <>
       <Stack.Screen options={{ gestureEnabled: false }} />
@@ -233,6 +243,18 @@ export default function ResetSession() {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.exitButtonText}>Exit</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.mixerButton}
+                  onPress={handleToggleMute}
+                  activeOpacity={0.7}
+                >
+                  <Image
+                    source={isMuted ? HUD_ASSETS.volumeMuted : HUD_ASSETS.volumeUnmuted}
+                    style={styles.audioIcon}
+                    resizeMode="contain"
+                  />
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -465,6 +487,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  audioIcon: {
+    width: 18,
+    height: 18,
+    tintColor: theme.colors.text,
   },
   eqBars: {
     flexDirection: 'row',

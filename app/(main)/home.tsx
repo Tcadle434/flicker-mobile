@@ -6,6 +6,7 @@ import Animated, { FadeIn, useSharedValue, withTiming, runOnJS, Easing } from 'r
 import OverworldScene, { AmbientEffect, getTentScreenRect } from '../../src/components/world/OverworldScene';
 import { HudOverlay, SessionPanel, SessionCompletePopup } from '../../src/components/hud';
 import SettingsPanel from '../../src/components/hud/SettingsPanel';
+import StreakPanel from '../../src/components/hud/StreakPanel';
 import { forestMap } from '../../src/services/world/tiledMapLoader';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   const [ambientEffect, setAmbientEffect] = useState<AmbientEffect>('rain');
   const [sessionPanelVisible, setSessionPanelVisible] = useState(false);
   const [settingsPanelVisible, setSettingsPanelVisible] = useState(false);
+  const [streakPanelVisible, setStreakPanelVisible] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
   const handleReady = useCallback(() => setReady(true), []);
 
@@ -188,6 +190,7 @@ export default function HomeScreen() {
           onEnterTent={handleTentTap}
           onOpenShop={handleOpenShop}
           onOpenSettings={() => setSettingsPanelVisible(true)}
+          onOpenStreaks={() => setStreakPanelVisible(true)}
         />
       )}
       {ready && (
@@ -200,6 +203,12 @@ export default function HomeScreen() {
         <SettingsPanel
           visible={settingsPanelVisible}
           onClose={() => setSettingsPanelVisible(false)}
+        />
+      )}
+      {ready && (
+        <StreakPanel
+          visible={streakPanelVisible}
+          onClose={() => setStreakPanelVisible(false)}
         />
       )}
       {ready && <SessionCompletePopup onOpenShop={handleOpenShop} />}

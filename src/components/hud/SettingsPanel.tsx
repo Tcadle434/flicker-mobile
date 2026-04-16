@@ -5,12 +5,11 @@
  * Uses BottomPanel shell for consistent gesture/animation behavior.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  TextInput,
   StyleSheet,
   Dimensions,
   Alert,
@@ -22,6 +21,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useAudioSettingsStore } from '../../stores/audioSettingsStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { appBlockingBridge } from '../../services/appBlocking/appBlockingBridge';
+import { NativeAppBlocking } from '../../services/appBlocking/nativeAppBlockingModule';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -89,8 +89,6 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
   const toggleMute = useAudioSettingsStore((s) => s.toggleMute);
   const restorePurchases = useSubscriptionStore((s) => s.restorePurchases);
 
-  const [displayName, setDisplayName] = useState('');
-
   const handleConfirmSignOut = async () => {
     await signOut();
     onClose();
@@ -121,8 +119,27 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
   };
 
   const handleEditBlockList = async () => {
-    const authorized = await appBlockingBridge.isAuthorized();
-    if (!authorized) {
+    const getAuthorizationStatus = appBlockingBridge.getAuthorizationStatus
+      ?? NativeAppBlocking.getAuthorizationStatus;
+
+    let authorizationStatus = await getAuthorizationStatus();
+
+    if (authorizationStatus === 'approved') {
+      await appBlockingBridge.presentAppPicker();
+      return;
+    }
+
+    if (authorizationStatus === 'notDetermined') {
+      const granted = await appBlockingBridge.requestAuthorization();
+      if (granted) {
+        await appBlockingBridge.presentAppPicker();
+        return;
+      }
+
+      authorizationStatus = await getAuthorizationStatus();
+    }
+
+    if (authorizationStatus === 'denied' || authorizationStatus === 'unavailable') {
       Alert.alert(
         'Screen Time Required',
         'Enable Screen Time access in Settings > Screen Time to manage allowed apps.',
@@ -130,7 +147,12 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
       );
       return;
     }
-    await appBlockingBridge.presentAppPicker();
+
+    Alert.alert(
+      'Screen Time Required',
+      'Screen Time access must be enabled before you can edit your allow / block list.',
+      [{ text: 'OK' }]
+    );
   };
 
   return (
@@ -142,17 +164,6 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
       <View style={styles.sectionCard}>
         <Text style={styles.fieldLabel}>Email</Text>
         <Text style={styles.fieldValue}>{user?.email ?? 'Not signed in'}</Text>
-
-        <Text style={[styles.fieldLabel, { marginTop: 14 }]}>Display Name</Text>
-        <TextInput
-          style={styles.nameInput}
-          value={displayName}
-          onChangeText={setDisplayName}
-          placeholder="Enter a display name"
-          placeholderTextColor="#A89888"
-          autoCapitalize="words"
-          autoCorrect={false}
-        />
       </View>
 
       {/* ── Sound ── */}
@@ -177,15 +188,15 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
           <LinkButton label="Restore Purchases" onPress={() => { void handleRestorePurchases(); }} />
           <LinkButton
             label="Privacy Policy"
-            onPress={() => Linking.openURL('https://example.com/privacy')}
+            onPress={() => Linking.openURL('https://fixed-neon-b69.notion.site/Privacy-Policy-3448d68afd9c8083a172ff882420980a')}
           />
           <LinkButton
             label="Terms of Service"
-            onPress={() => Linking.openURL('https://example.com/terms')}
+            onPress={() => Linking.openURL('https://fixed-neon-b69.notion.site/Terms-of-Service-3448d68afd9c805bbf74c7fe2a01bfb3')}
           />
           <LinkButton
             label="Feedback"
-            onPress={() => Linking.openURL('mailto:support@example.com')}
+            onPress={() => Linking.openURL('mailto:thomas@lastcut.co')}
           />
         </View>
       </View>
@@ -239,14 +250,6 @@ const styles = StyleSheet.create({
     color: '#3B2A1A',
     fontSize: 15,
     fontWeight: '500',
-  },
-  nameInput: {
-    color: '#3B2A1A',
-    fontSize: 15,
-    fontWeight: '500',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(139, 100, 50, 0.25)',
-    paddingVertical: 6,
   },
   row: {
     flexDirection: 'row',

@@ -18,6 +18,7 @@
       "deploymentTarget": "16.0",
       "appleTeamId": "4DDM7M9LF2",
       "bundleIdentifier": "com.thomascadle.flicker",
+      "appStoreUrl": "https://apps.apple.com/app/id6761934566",
       "infoPlist": {
         "UIBackgroundModes": [
           "audio"

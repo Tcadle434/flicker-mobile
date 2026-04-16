@@ -14,8 +14,7 @@ export async function fetchStreakData(userId: string): Promise<WeeklyStreak> {
     .select('created_at')
     .eq('user_id', userId)
     .eq('status', 'completed')
-    .order('created_at', { ascending: false })
-    .limit(200);
+    .order('created_at', { ascending: false });
 
   if (error) {
     logger.error('Failed to fetch session logs for streak', error);
@@ -48,10 +47,16 @@ export async function fetchStreakData(userId: string): Promise<WeeklyStreak> {
     weeklyMarks.push(sessionDates.has(formatLocalDate(d)));
   }
 
-  // Consecutive-day streak walking backwards from today
+  // Consecutive-day streak walking backwards from today, or from yesterday
+  // if the user has not completed a session yet today.
   let overallStreak = 0;
   const cursor = new Date(today);
   cursor.setHours(0, 0, 0, 0);
+
+  if (!sessionDates.has(formatLocalDate(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
   while (sessionDates.has(formatLocalDate(cursor))) {
     overallStreak++;
     cursor.setDate(cursor.getDate() - 1);

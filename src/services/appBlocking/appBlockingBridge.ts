@@ -6,6 +6,7 @@
  */
 
 import { NativeAppBlocking } from './nativeAppBlockingModule';
+import type { AuthorizationStatus } from './nativeAppBlockingModule';
 import type { SessionMode } from '../../stores/sessionStore';
 
 // MARK: - Blocking mode mapping
@@ -32,6 +33,13 @@ function getBlockingMode(sessionMode: SessionMode): 'full' | 'light' {
 // MARK: - Public API
 
 export const appBlockingBridge = {
+  /**
+   * Get raw FamilyControls authorization status.
+   */
+  getAuthorizationStatus: async (): Promise<AuthorizationStatus> => {
+    return NativeAppBlocking.getAuthorizationStatus();
+  },
+
   /**
    * Request FamilyControls authorization.
    * Returns true if authorization was granted.

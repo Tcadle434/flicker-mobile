@@ -9,6 +9,7 @@ export { default as Step6Personalization } from "./Step6Personalization";
 export { default as Step14ScreenTimeExplain } from "./Step14ScreenTimeExplain";
 export { default as Step15ScreenTimeAuth } from "./Step15ScreenTimeAuth";
 export { default as Step15PermissionReady } from "./Step15PermissionReady";
+export { default as Step16ReviewPrompt } from "./Step16ReviewPrompt";
 export { default as Step20Paywall } from "./Step20Paywall";
 export { default as StepNoisiest } from "./StepNoisiest";
 export { default as StepTransitionToDemo } from "./StepTransitionToDemo";

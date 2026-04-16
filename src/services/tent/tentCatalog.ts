@@ -45,6 +45,7 @@ const SPRITE_MAP: Record<string, ImageSourcePropType> = {
 	glass_table_02: require("../../../assets/sprites/interior-decorations/glass_table_02.png"),
 	glass_table_03: require("../../../assets/sprites/interior-decorations/glass_table_03.png"),
 	kitchen_counter_01: require("../../../assets/sprites/interior-decorations/kitchen_counter_01.png"),
+	granite_tabletop: require("../../../assets/sprites/interior-decorations/granite_tabletop.png"),
 
 	// Furniture — storage & bookshelves
 	bookshelf_01: require("../../../assets/sprites/interior-decorations/bookshelf_01.png"),
@@ -53,8 +54,13 @@ const SPRITE_MAP: Record<string, ImageSourcePropType> = {
 	bookshelf_04: require("../../../assets/sprites/interior-decorations/bookshelf_04.png"),
 	bookshelf_05: require("../../../assets/sprites/interior-decorations/bookshelf_05.png"),
 	bookshelf_06: require("../../../assets/sprites/interior-decorations/bookshelf_06.png"),
+	dresser: require("../../../assets/sprites/interior-decorations/dresser.png"),
+	dresser_light: require("../../../assets/sprites/interior-decorations/dresser_light.png"),
+	dresser_dark: require("../../../assets/sprites/interior-decorations/dresser_dark.png"),
 	cabinet_glass: require("../../../assets/sprites/interior-decorations/cabinet_glass.png"),
 	cabinet_no_glass: require("../../../assets/sprites/interior-decorations/cabinet_no_glass.png"),
+	wardrobe: require("../../../assets/sprites/interior-decorations/wardrobe.png"),
+	barrel: require("../../../assets/sprites/interior-decorations/barrel.png"),
 
 	// Furniture — appliances & bathroom
 	fireplace_lit_01: require("../../../assets/sprites/interior-decorations/fireplace_lit_01.png"),
@@ -66,6 +72,8 @@ const SPRITE_MAP: Record<string, ImageSourcePropType> = {
 	sink_01: require("../../../assets/sprites/interior-decorations/sink_01.png"),
 	toilet_01: require("../../../assets/sprites/interior-decorations/toilet_01.png"),
 	toilet_02: require("../../../assets/sprites/interior-decorations/toilet_02.png"),
+	dryer: require("../../../assets/sprites/interior-decorations/dryer.png"),
+	hamper: require("../../../assets/sprites/interior-decorations/hamper.png"),
 
 	// Lighting
 	candle_01: require("../../../assets/sprites/interior-decorations/candle_01.png"),
@@ -112,9 +120,14 @@ const SPRITE_MAP: Record<string, ImageSourcePropType> = {
 	painting_01: require("../../../assets/sprites/interior-decorations/painting_01.png"),
 	painting_02: require("../../../assets/sprites/interior-decorations/painting_02.png"),
 	painting_03: require("../../../assets/sprites/interior-decorations/painting_03.png"),
+	painting_cars: require("../../../assets/sprites/interior-decorations/painting_cars.png"),
 	window_01: require("../../../assets/sprites/interior-decorations/window_01.png"),
 	window_02: require("../../../assets/sprites/interior-decorations/window_02.png"),
 	window_03: require("../../../assets/sprites/interior-decorations/window_03.png"),
+	clock_red: require("../../../assets/sprites/interior-decorations/clock_red.png"),
+	clock_blue: require("../../../assets/sprites/interior-decorations/clock_blue.png"),
+	clock_gold: require("../../../assets/sprites/interior-decorations/clock_gold.png"),
+	clock_green: require("../../../assets/sprites/interior-decorations/clock_green.png"),
 
 	// Ambient — tabletop
 	blender_01: require("../../../assets/sprites/interior-decorations/blender_01.png"),
@@ -135,9 +148,12 @@ const SPRITE_MAP: Record<string, ImageSourcePropType> = {
 	loose_books_02: require("../../../assets/sprites/interior-decorations/loose_books_02.png"),
 	microwave_01: require("../../../assets/sprites/interior-decorations/microwave_01.png"),
 	plates_drying_rack: require("../../../assets/sprites/interior-decorations/plates_drying_rack.png"),
+	plates: require("../../../assets/sprites/interior-decorations/plates.png"),
 	potion_01: require("../../../assets/sprites/interior-decorations/potion_01.png"),
 	potion_02: require("../../../assets/sprites/interior-decorations/potion_02.png"),
 	tomatoes_01: require("../../../assets/sprites/interior-decorations/tomatoes_01.png"),
+	telephone: require("../../../assets/sprites/interior-decorations/telephone.png"),
+	kettle: require("../../../assets/sprites/interior-decorations/kettle.png"),
 
 	// Ambient — floor
 	plushy_01: require("../../../assets/sprites/interior-decorations/plushy_01.png"),
@@ -145,6 +161,10 @@ const SPRITE_MAP: Record<string, ImageSourcePropType> = {
 	plushy_03: require("../../../assets/sprites/interior-decorations/plushy_03.png"),
 	tv_ground_1: require("../../../assets/sprites/interior-decorations/tv_ground_1.png"),
 	wood_pile_01: require("../../../assets/sprites/interior-decorations/wood_pile_01.png"),
+	floor_mirror: require("../../../assets/sprites/interior-decorations/floor_mirror.png"),
+	floor_mirror_light: require("../../../assets/sprites/interior-decorations/floor_mirror_light.png"),
+	floor_mirror_dark: require("../../../assets/sprites/interior-decorations/floor_mirror_dark.png"),
+	chest: require("../../../assets/sprites/interior-decorations/chest.png"),
 
 	// Music
 	guitar_01: require("../../../assets/sprites/interior-decorations/guitar_01.png"),

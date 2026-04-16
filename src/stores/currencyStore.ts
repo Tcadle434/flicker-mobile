@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { syncCurrencyTransaction } from '../services/api/currencyService';
 import { supabase } from '../services/api/supabase';
-import { config } from '../constants/config';
+import { buildStreakRewardSummary } from '../services/rewards/rewardMath';
 
 type SessionMode = 'reset' | 'focus' | 'move';
 
@@ -23,12 +23,6 @@ interface CurrencyStore {
   }) => Promise<{ awarded: boolean; amount: number }>;
   spend: (amount: number, itemId: string, source?: string) => Promise<boolean>;
 }
-
-const REWARD_PER_MINUTE: Record<SessionMode, number> = {
-  reset: config.rewards.ratesPerMinute.reset,
-  focus: config.rewards.ratesPerMinute.focus,
-  move: config.rewards.ratesPerMinute.move,
-};
 
 function buildTxId(sessionId: string): string {
   return `tx_${sessionId}_${Date.now()}`;
@@ -58,15 +52,6 @@ function createCurrencyDefaults() {
     isHydrated: false,
     isHydrating: false,
   };
-}
-
-/**
- * Calculate multiplier from streak bonus.
- * Streak: +10% per consecutive day, capped at 7 days = +70%.
- */
-function calculateMultiplier(streakDays: number): number {
-  const cappedStreak = Math.min(streakDays, config.rewards.streakBonusCap);
-  return 1.0 + cappedStreak * config.rewards.streakBonusPerDay;
 }
 
 export const useCurrencyStore = create<CurrencyStore>((set, get) => ({
@@ -128,19 +113,22 @@ export const useCurrencyStore = create<CurrencyStore>((set, get) => ({
     }
 
     const minutes = normalizeMinutes(durationMinutes);
-    const baseAmount = REWARD_PER_MINUTE[mode] * minutes;
 
     // Get streak from streakStore (avoid circular import via getState)
     let streakDays = 0;
     try {
       const { useStreakStore } = await import('./streakStore');
+      const streakStore = useStreakStore.getState();
+      if (!streakStore.hasLoaded) {
+        await streakStore.fetchStreak();
+      }
       streakDays = useStreakStore.getState().overallStreak;
     } catch {
       // fallback: no streak bonus
     }
 
-    const multiplier = calculateMultiplier(streakDays);
-    const amount = Math.round(baseAmount * multiplier);
+    const rewardSummary = buildStreakRewardSummary(streakDays);
+    const amount = Math.round(rewardSummary.effectiveRatesPerMinute[mode] * minutes);
 
     const txId = buildTxId(sessionId);
 

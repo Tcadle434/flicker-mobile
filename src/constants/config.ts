@@ -48,7 +48,7 @@ export const config = {
   rewards: {
     ratesPerMinute: {
       reset: 3,
-      focus: 2,
+      focus: 3,
       move: 1,
     },
     streakBonusPerDay: 0.1,    // +10% per consecutive day

@@ -30,6 +30,7 @@ import {
 import type { LayerConfig } from '../services/audio/nativeAudioModule';
 import { AdaptiveController } from '../integration/AdaptiveController';
 import { logger } from '../lib/logger';
+import { useAudioSettingsStore } from './audioSettingsStore';
 import type {
   AudioLayer,
   PlayerState,
@@ -265,7 +266,7 @@ const syncNativeMutes = (layers: PlayerState['layers']) => {
 };
 
 const syncNativeMasterVolume = (masterVolume: number) => {
-  audioEngine.setMasterVolume(masterVolume, 0);
+  audioEngine.setMasterVolume(useAudioSettingsStore.getState().isMuted ? 0 : masterVolume, 0);
 };
 
 const startAdaptiveLoop = (set: (partial: Partial<PlayerState>) => void, get: () => PlayerStore) => {
@@ -614,7 +615,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
   setMasterVolume: (volume: number) => {
     try {
-      audioEngine.setMasterVolume(volume, 0.1);
+      audioEngine.setMasterVolume(
+        useAudioSettingsStore.getState().isMuted ? 0 : volume,
+        0.1,
+      );
       set({ masterVolume: volume });
       logger.debug('Master volume updated', { volume });
     } catch (error) {

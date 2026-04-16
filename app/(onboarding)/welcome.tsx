@@ -36,6 +36,7 @@ import {
 	Step14ScreenTimeExplain,
 	Step15ScreenTimeAuth,
 	Step15PermissionReady,
+	Step16ReviewPrompt,
 	Step20Paywall,
 } from "../../src/components/onboarding/steps";
 import { ONBOARDING_WARMUP_ASSETS, warmDemoAssets } from "../../src/components/onboarding/onboardingAssets";
@@ -61,7 +62,8 @@ const STEPS: React.ComponentType<{ onNext: () => void }>[] = [
 	Step14ScreenTimeExplain, // 12 - Content (screen time explain) — permission prompt before paywall
 	Step15ScreenTimeAuth, // 13 - System (permission) — calls native requestAuthorization
 	Step15PermissionReady, // 14 - Content (permission success bridge)
-	Step20Paywall, // 15 - Paywall (7-day trial, annual pre-selected)
+	Step16ReviewPrompt, // 15 - Content (native App Store review request)
+	Step20Paywall, // 16 - Paywall (7-day trial, annual pre-selected)
 ];
 
 const TIMING_CONFIG = {

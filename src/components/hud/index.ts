@@ -6,6 +6,7 @@ export { default as PixelButton } from './PixelButton';
 export { default as StartSessionButton } from './StartSessionButton';
 export { default as HudIconButton } from './HudIconButton';
 export { default as LightBalanceDisplay } from './LightBalanceDisplay';
+export { default as StreakPanel } from './StreakPanel';
 export { default as TentSurfaceConfirmPopup } from './TentSurfaceConfirmPopup';
 export { default as SessionCompletePopup } from './SessionCompletePopup';
 export { HUD_ASSETS } from './hudAssets';

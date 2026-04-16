@@ -11,6 +11,16 @@
 			"provideSurface": true
 		},
 		{
+			"id": "granite_tabletop",
+			"name": "Granite Tabletop",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 45,
+			"rotatable": false,
+			"tier": 1,
+			"provideSurface": true
+		},
+		{
 			"id": "couch_large_01",
 			"name": "Large Couch",
 			"category": "furniture",
@@ -222,6 +232,42 @@
 			"tier": 1
 		},
 		{
+			"id": "dresser",
+			"name": "Dresser",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 45,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "dresser_light",
+			"name": "Dresser (Light)",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 45,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "dresser_dark",
+			"name": "Dresser (Dark)",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 45,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "wardrobe",
+			"name": "Wardrobe",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 45,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
 			"id": "cabinet_glass",
 			"name": "Glass Cabinet",
 			"category": "furniture",
@@ -318,6 +364,15 @@
 			"tier": 1,
 			"renderLayer": 1,
 			"floorCollisionMode": "overlay"
+		},
+		{
+			"id": "chest",
+			"name": "Chest",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 20,
+			"rotatable": false,
+			"tier": 1
 		},
 		{
 			"id": "coffee_table_books",
@@ -450,6 +505,24 @@
 			"category": "furniture",
 			"surface": "tabletop",
 			"price": 25,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "dryer",
+			"name": "dryer",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 40,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "hamper",
+			"name": "hamper",
+			"category": "furniture",
+			"surface": "floor",
+			"price": 20,
 			"rotatable": false,
 			"tier": 1
 		},
@@ -774,6 +847,33 @@
 			"tier": 1
 		},
 		{
+			"id": "floor_mirror",
+			"name": "Floor Mirror",
+			"category": "decor",
+			"surface": "floor",
+			"price": 15,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "floor_mirror_light",
+			"name": "Floor Mirror (Light)",
+			"category": "decor",
+			"surface": "floor",
+			"price": 15,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "floor_mirror_dark",
+			"name": "Floor Mirror (Dark)",
+			"category": "decor",
+			"surface": "floor",
+			"price": 15,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
 			"id": "mounted_tv",
 			"name": "Wall TV",
 			"category": "wall_art",
@@ -819,6 +919,15 @@
 			"tier": 1
 		},
 		{
+			"id": "painting_cars",
+			"name": "Cars Painting",
+			"category": "wall_art",
+			"surface": "wall",
+			"price": 20,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
 			"id": "window_01",
 			"name": "Window (Dark)",
 			"category": "wall_art",
@@ -839,6 +948,42 @@
 		{
 			"id": "window_03",
 			"name": "Window",
+			"category": "wall_art",
+			"surface": "wall",
+			"price": 25,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "clock_red",
+			"name": "Clock (Red)",
+			"category": "wall_art",
+			"surface": "wall",
+			"price": 25,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "clock_blue",
+			"name": "Clock (Blue)",
+			"category": "wall_art",
+			"surface": "wall",
+			"price": 25,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "clock_gold",
+			"name": "Clock (Gold)",
+			"category": "wall_art",
+			"surface": "wall",
+			"price": 25,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "clock_green",
+			"name": "Clock (Green)",
 			"category": "wall_art",
 			"surface": "wall",
 			"price": 25,
@@ -1005,6 +1150,17 @@
 			"floorCollisionMode": "overlay"
 		},
 		{
+			"id": "barrel",
+			"name": "Barrel",
+			"category": "ambient",
+			"surface": "floor",
+			"price": 20,
+			"rotatable": false,
+			"tier": 1,
+			"renderLayer": 1,
+			"floorCollisionMode": "overlay"
+		},
+		{
 			"id": "kitchen_knife_01",
 			"name": "Kitchen Knife",
 			"category": "ambient",
@@ -1043,6 +1199,33 @@
 		{
 			"id": "plates_drying_rack",
 			"name": "Plate Rack",
+			"category": "ambient",
+			"surface": "tabletop",
+			"price": 10,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "plates",
+			"name": "Plates",
+			"category": "ambient",
+			"surface": "tabletop",
+			"price": 10,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "kettle",
+			"name": "Kettle",
+			"category": "ambient",
+			"surface": "tabletop",
+			"price": 10,
+			"rotatable": false,
+			"tier": 1
+		},
+		{
+			"id": "telephone",
+			"name": "Telephone",
 			"category": "ambient",
 			"surface": "tabletop",
 			"price": 10,

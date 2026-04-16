@@ -7,6 +7,7 @@ interface AudioSettingsStore {
   isMuted: boolean;
   isHydrated: boolean;
   hydrate: () => Promise<void>;
+  setMuted: (muted: boolean) => void;
   toggleMute: () => void;
 }
 
@@ -29,9 +30,13 @@ export const useAudioSettingsStore = create<AudioSettingsStore>((set, get) => ({
     }
   },
 
+  setMuted: (muted) => {
+    set({ isMuted: muted });
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ isMuted: muted })).catch(() => undefined);
+  },
+
   toggleMute: () => {
     const next = !get().isMuted;
-    set({ isMuted: next });
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ isMuted: next })).catch(() => undefined);
+    get().setMuted(next);
   },
 }));
