@@ -39,3 +39,7 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Large audio files
+assets/audio/432Hz_1.mp3
+modules/flicker-audio/resources/audio/432Hz_1.mp3
