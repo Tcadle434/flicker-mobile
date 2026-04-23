@@ -15,6 +15,7 @@ final class AppGroupStorage {
         static let blockingMode = "flicker_blocking_mode"
         static let selectedApps = "flicker_selected_apps"
         static let sessionMode = "flicker_session_mode"
+        static let blockingExpiresAt = "flicker_blocking_expires_at"
     }
 
     private init() {
@@ -40,6 +41,12 @@ final class AppGroupStorage {
         set { defaults.set(newValue, forKey: Keys.sessionMode) }
     }
 
+    /// Epoch milliseconds when active blocking should be cleared.
+    var blockingExpiresAt: Double {
+        get { defaults.double(forKey: Keys.blockingExpiresAt) }
+        set { defaults.set(newValue, forKey: Keys.blockingExpiresAt) }
+    }
+
     // MARK: - Selected Apps (serialized FamilyActivitySelection tokens)
 
     var selectedAppsData: Data? {
@@ -53,5 +60,6 @@ final class AppGroupStorage {
         isBlocking = false
         blockingMode = "full"
         sessionMode = "focus"
+        blockingExpiresAt = 0
     }
 }

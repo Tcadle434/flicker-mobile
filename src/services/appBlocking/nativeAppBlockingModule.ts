@@ -26,6 +26,7 @@ export interface BlockingState {
   isBlocking: boolean;
   mode: string;
   sessionMode: string;
+  expiresAt: number;
 }
 
 // MARK: - Native Module
@@ -86,12 +87,17 @@ export const NativeAppBlocking = {
    * Start blocking apps.
    * @param mode "full" or "light"
    * @param sessionMode "reset", "focus", or "move"
+   * @param expiresAt epoch milliseconds when native cleanup should clear shields
    */
-  startBlocking: async (mode: string, sessionMode: string): Promise<BlockingResult> => {
+  startBlocking: async (
+    mode: string,
+    sessionMode: string,
+    expiresAt: number,
+  ): Promise<BlockingResult> => {
     const FlickerAppBlocking = getNativeModule();
     if (!FlickerAppBlocking) return { success: false, error: 'iOS only' };
     try {
-      return await FlickerAppBlocking.startBlocking(mode, sessionMode);
+      return await FlickerAppBlocking.startBlocking(mode, sessionMode, expiresAt);
     } catch (error) {
       console.error('[NativeAppBlocking] startBlocking error:', error);
       return { success: false, error: String(error) };
@@ -109,6 +115,20 @@ export const NativeAppBlocking = {
     } catch (error) {
       console.error('[NativeAppBlocking] stopBlocking error:', error);
       return { success: false, error: String(error) };
+    }
+  },
+
+  /**
+   * Clear blocking only if the native expiry timestamp has already passed.
+   */
+  clearExpiredBlockingIfNeeded: async (): Promise<BlockingResult & { cleared?: boolean }> => {
+    const FlickerAppBlocking = getNativeModule();
+    if (!FlickerAppBlocking) return { success: false, cleared: false, error: 'iOS only' };
+    try {
+      return await FlickerAppBlocking.clearExpiredBlockingIfNeeded();
+    } catch (error) {
+      console.error('[NativeAppBlocking] clearExpiredBlockingIfNeeded error:', error);
+      return { success: false, cleared: false, error: String(error) };
     }
   },
 
@@ -131,12 +151,14 @@ export const NativeAppBlocking = {
    */
   getBlockingState: async (): Promise<BlockingState> => {
     const FlickerAppBlocking = getNativeModule();
-    if (!FlickerAppBlocking) return { isBlocking: false, mode: 'none', sessionMode: 'focus' };
+    if (!FlickerAppBlocking) {
+      return { isBlocking: false, mode: 'none', sessionMode: 'focus', expiresAt: 0 };
+    }
     try {
       return await FlickerAppBlocking.getBlockingState();
     } catch (error) {
       console.error('[NativeAppBlocking] getBlockingState error:', error);
-      return { isBlocking: false, mode: 'none', sessionMode: 'focus' };
+      return { isBlocking: false, mode: 'none', sessionMode: 'focus', expiresAt: 0 };
     }
   },
 };

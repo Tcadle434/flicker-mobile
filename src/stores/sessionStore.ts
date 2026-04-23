@@ -129,6 +129,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         : durationMinutes * 60);
 
     const now = Date.now();
+    const expiresAt = now + totalSeconds * 1000;
     set({
       mode: nextMode,
       sessionId: createSessionId(),
@@ -153,7 +154,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     });
 
     // Start app blocking (fire-and-forget)
-    appBlockingBridge.startBlocking(nextMode).catch(() => undefined);
+    appBlockingBridge.startBlocking(nextMode, expiresAt).catch(() => undefined);
   },
 
   tick: (elapsed: number) => {
@@ -227,6 +228,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   hydrateSession: async () => {
     try {
+      await appBlockingBridge.clearExpiredBlockingIfNeeded().catch(() => undefined);
+
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const data: PersistedSession = JSON.parse(raw);
@@ -236,10 +239,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       const now = Date.now();
       const realElapsed = Math.floor((now - data.startedAt) / 1000);
       const elapsed = Math.max(data.elapsed, realElapsed);
+      const expiresAt = data.startedAt + data.targetSeconds * 1000;
 
-      // If time has already exceeded target (non-move mode), mark as abandoned
-      if (data.mode !== 'move' && elapsed >= data.targetSeconds) {
+      // If time already exceeded the target while the app was killed, unlock.
+      if (elapsed >= data.targetSeconds) {
         await AsyncStorage.removeItem(STORAGE_KEY);
+        await appBlockingBridge.stopBlocking().catch(() => undefined);
         return;
       }
 
@@ -254,8 +259,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         totalRemaining: Math.max(0, data.targetSeconds - elapsed),
         startedAt: data.startedAt,
       });
+
+      appBlockingBridge.startBlocking(data.mode, expiresAt).catch(() => undefined);
     } catch {
       await AsyncStorage.removeItem(STORAGE_KEY).catch(() => undefined);
+      await appBlockingBridge.clearExpiredBlockingIfNeeded().catch(() => undefined);
     }
   },
 }));

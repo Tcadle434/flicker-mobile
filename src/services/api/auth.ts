@@ -11,6 +11,7 @@ import type { User } from '../../types';
 
 const GOOGLE_IOS_CLIENT_ID =
   '150545303621-5pohfh6miii5ql7istcvr6devga1f9an.apps.googleusercontent.com';
+const INITIAL_LIGHT_BALANCE = 50;
 
 export class AuthService {
   /**
@@ -37,6 +38,8 @@ export class AuthService {
         .insert({
           id: data.user.id,
           email: data.user.email!,
+          light_balance: INITIAL_LIGHT_BALANCE,
+          lifetime_earned: INITIAL_LIGHT_BALANCE,
         });
 
       if (profileError) {
@@ -194,6 +197,8 @@ export class AuthService {
           {
             id: data.user.id,
             email: data.user.email ?? credential.email ?? '',
+            light_balance: INITIAL_LIGHT_BALANCE,
+            lifetime_earned: INITIAL_LIGHT_BALANCE,
           },
           { onConflict: 'id', ignoreDuplicates: true },
         );
@@ -246,6 +251,8 @@ export class AuthService {
           {
             id: data.user.id,
             email: data.user.email ?? '',
+            light_balance: INITIAL_LIGHT_BALANCE,
+            lifetime_earned: INITIAL_LIGHT_BALANCE,
           },
           { onConflict: 'id', ignoreDuplicates: true },
         );

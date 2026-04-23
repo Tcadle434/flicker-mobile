@@ -33,22 +33,29 @@ final class AppBlockingManager {
     /// - Parameters:
     ///   - mode: "full" blocks all apps, "light" blocks only social/entertainment
     ///   - sessionMode: "reset", "focus", or "move" — stored for shield UI customization
-    func startBlocking(mode: String, sessionMode: String) throws {
+    ///   - expiresAt: epoch milliseconds when shields should be cleared if the main app is killed
+    func startBlocking(mode: String, sessionMode: String, expiresAt: Double) throws {
         guard center.authorizationStatus == .approved else {
             throw AppBlockingError.notAuthorized
+        }
+
+        guard expiresAt > currentTimeMs else {
+            stopBlocking()
+            return
         }
 
         storage.isBlocking = true
         storage.blockingMode = mode
         storage.sessionMode = sessionMode
+        storage.blockingExpiresAt = expiresAt
 
         applyShield(mode: mode)
-        scheduleDeviceActivity()
+        scheduleDeviceActivity(expiresAt: expiresAt)
     }
 
     /// Stop all blocking and remove shields.
     func stopBlocking() {
-        storage.isBlocking = false
+        storage.clear()
 
         clearShields()
 
@@ -58,7 +65,19 @@ final class AppBlockingManager {
     /// Re-apply shields (called by DeviceActivityMonitor extension on interval start).
     func reapplyShields() {
         guard storage.isBlocking else { return }
+        if clearExpiredBlockingIfNeeded() {
+            return
+        }
         applyShield(mode: storage.blockingMode)
+    }
+
+    /// Clear stale shields whose owning session has already reached its expected end.
+    @discardableResult
+    func clearExpiredBlockingIfNeeded() -> Bool {
+        guard storage.isBlocking else { return false }
+        guard isBlockingExpired else { return false }
+        stopBlocking()
+        return true
     }
 
     // MARK: - App Selection
@@ -125,13 +144,36 @@ final class AppBlockingManager {
         store.shield.webDomainCategories = nil
     }
 
-    private func scheduleDeviceActivity() {
-        // Schedule a DeviceActivity monitoring interval.
-        // The extension will re-apply shields if the app is killed.
+    private var currentTimeMs: Double {
+        Date().timeIntervalSince1970 * 1000
+    }
+
+    private var isBlockingExpired: Bool {
+        // Treat legacy or malformed blocking state as expired so shields cannot
+        // become permanent after an app update or interrupted write.
+        storage.blockingExpiresAt <= 0 || currentTimeMs >= storage.blockingExpiresAt
+    }
+
+    private func scheduleDeviceActivity(expiresAt: Double) {
+        // The extension owns cleanup if the main app is killed before stopBlocking runs.
+        let calendar = Calendar.current
+        let now = Date()
+        let endDate = Date(timeIntervalSince1970: expiresAt / 1000)
+        guard endDate > now else {
+            stopBlocking()
+            return
+        }
+
         let schedule = DeviceActivitySchedule(
-            intervalStart: DateComponents(hour: 0, minute: 0),
-            intervalEnd: DateComponents(hour: 23, minute: 59),
-            repeats: true
+            intervalStart: calendar.dateComponents(
+                [.year, .month, .day, .hour, .minute, .second],
+                from: now
+            ),
+            intervalEnd: calendar.dateComponents(
+                [.year, .month, .day, .hour, .minute, .second],
+                from: endDate
+            ),
+            repeats: false
         )
 
         do {

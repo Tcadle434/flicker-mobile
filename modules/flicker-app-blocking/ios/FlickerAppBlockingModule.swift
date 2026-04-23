@@ -40,12 +40,16 @@ public class FlickerAppBlockingModule: Module {
 
         // MARK: - Blocking Control
 
-        AsyncFunction("startBlocking") { (mode: String, sessionMode: String) -> [String: Any] in
+        AsyncFunction("startBlocking") { (mode: String, sessionMode: String, expiresAt: Double) -> [String: Any] in
             guard #available(iOS 16.0, *) else {
                 return ["success": false, "error": "Requires iOS 16.0+"]
             }
             do {
-                try AppBlockingManager.shared.startBlocking(mode: mode, sessionMode: sessionMode)
+                try AppBlockingManager.shared.startBlocking(
+                    mode: mode,
+                    sessionMode: sessionMode,
+                    expiresAt: expiresAt
+                )
                 return ["success": true]
             } catch {
                 return ["success": false, "error": error.localizedDescription]
@@ -58,6 +62,14 @@ public class FlickerAppBlockingModule: Module {
             }
             AppBlockingManager.shared.stopBlocking()
             return ["success": true]
+        }
+
+        AsyncFunction("clearExpiredBlockingIfNeeded") { () -> [String: Any] in
+            guard #available(iOS 16.0, *) else {
+                return ["success": false, "cleared": false, "error": "Requires iOS 16.0+"]
+            }
+            let cleared = AppBlockingManager.shared.clearExpiredBlockingIfNeeded()
+            return ["success": true, "cleared": cleared]
         }
 
         // MARK: - App Picker
@@ -78,13 +90,15 @@ public class FlickerAppBlockingModule: Module {
 
         AsyncFunction("getBlockingState") { () -> [String: Any] in
             guard #available(iOS 16.0, *) else {
-                return ["isBlocking": false, "mode": "none"]
+                return ["isBlocking": false, "mode": "none", "expiresAt": 0]
             }
+            _ = AppBlockingManager.shared.clearExpiredBlockingIfNeeded()
             let storage = AppGroupStorage.shared
             return [
                 "isBlocking": storage.isBlocking,
                 "mode": storage.blockingMode,
                 "sessionMode": storage.sessionMode,
+                "expiresAt": storage.blockingExpiresAt,
             ]
         }
     }

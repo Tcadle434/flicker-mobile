@@ -18,6 +18,11 @@ class FlickerDeviceActivityMonitor: DeviceActivityMonitor {
 
         let storage = AppGroupStorage.shared
         guard storage.isBlocking else { return }
+        if isBlockingExpired(storage) {
+            clearShields()
+            storage.clear()
+            return
+        }
 
         // Re-apply shields based on stored blocking mode
         applyShield(mode: storage.blockingMode)
@@ -81,6 +86,12 @@ class FlickerDeviceActivityMonitor: DeviceActivityMonitor {
         store.shield.applicationCategories = nil
         store.shield.webDomains = nil
         store.shield.webDomainCategories = nil
+    }
+
+    private func isBlockingExpired(_ storage: AppGroupStorage) -> Bool {
+        let expiresAt = storage.blockingExpiresAt
+        let now = Date().timeIntervalSince1970 * 1000
+        return expiresAt <= 0 || now >= expiresAt
     }
 }
 

@@ -14,6 +14,7 @@ final class AppGroupStorage {
         static let blockingMode = "flicker_blocking_mode"
         static let selectedApps = "flicker_selected_apps"
         static let sessionMode = "flicker_session_mode"
+        static let blockingExpiresAt = "flicker_blocking_expires_at"
     }
 
     private init() {
@@ -35,6 +36,11 @@ final class AppGroupStorage {
         set { defaults.set(newValue, forKey: Keys.sessionMode) }
     }
 
+    var blockingExpiresAt: Double {
+        get { defaults.double(forKey: Keys.blockingExpiresAt) }
+        set { defaults.set(newValue, forKey: Keys.blockingExpiresAt) }
+    }
+
     var selectedAppsData: Data? {
         get { defaults.data(forKey: Keys.selectedApps) }
         set { defaults.set(newValue, forKey: Keys.selectedApps) }
@@ -44,5 +50,6 @@ final class AppGroupStorage {
         isBlocking = false
         blockingMode = "full"
         sessionMode = "focus"
+        blockingExpiresAt = 0
     }
 }

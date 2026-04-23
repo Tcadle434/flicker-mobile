@@ -64,9 +64,9 @@ export const appBlockingBridge = {
    * Start blocking apps for a given session mode.
    * Fire-and-forget safe — never throws.
    */
-  startBlocking: async (sessionMode: SessionMode): Promise<void> => {
+  startBlocking: async (sessionMode: SessionMode, expiresAt: number): Promise<void> => {
     const blockingMode = getBlockingMode(sessionMode);
-    await NativeAppBlocking.startBlocking(blockingMode, sessionMode);
+    await NativeAppBlocking.startBlocking(blockingMode, sessionMode, expiresAt);
   },
 
   /**
@@ -75,6 +75,13 @@ export const appBlockingBridge = {
    */
   stopBlocking: async (): Promise<void> => {
     await NativeAppBlocking.stopBlocking();
+  },
+
+  /**
+   * Clear native blocking if its session expiry has already passed.
+   */
+  clearExpiredBlockingIfNeeded: async (): Promise<void> => {
+    await NativeAppBlocking.clearExpiredBlockingIfNeeded();
   },
 
   /**
