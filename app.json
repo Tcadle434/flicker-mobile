@@ -14,7 +14,7 @@
       "backgroundColor": "#0A0A0B"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "deploymentTarget": "16.0",
       "appleTeamId": "4DDM7M9LF2",
       "bundleIdentifier": "com.thomascadle.flicker",
@@ -23,12 +23,8 @@
         "UIBackgroundModes": [
           "audio"
         ],
-        "NSLocationWhenInUseUsageDescription": "Flicker uses your location to adapt music based on local weather conditions.",
         "NSUserNotificationsUsageDescription": "Get notified about your daily ambient music sessions.",
         "NSFamilyControlsUsageDescription": "Flicker blocks distracting apps during sessions to help you stay focused.",
-        "LSApplicationQueriesSchemes": [
-          "spotify"
-        ],
         "CFBundleURLTypes": [
           {
             "CFBundleURLSchemes": [

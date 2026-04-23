@@ -15,7 +15,6 @@ interface AdaptiveStoreState {
 
 const defaultInputs: AdaptiveInputs = {
   timeOfDay: getTimeOfDayInput(),
-  weather: null,
   heartRate: null,
   season: getSeason(),
 };

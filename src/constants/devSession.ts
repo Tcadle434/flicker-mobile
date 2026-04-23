@@ -1,7 +1,7 @@
 export const DEV_RELAX_SESSION_CONFIG = {
   fadeSeconds: 1,
   stillSeconds: 3,
-  returnSeconds: 1,
+  returnSeconds: 0,
 } as const;
 
 export const DEV_RELAX_SESSION_MINUTES =

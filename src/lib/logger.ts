@@ -32,7 +32,9 @@ class Logger {
    * Log an info message
    */
   info(message: string, data?: any): void {
-    console.log(`[INFO] ${message}`, data || '');
+    if (this.isDevelopment) {
+      console.log(`[INFO] ${message}`, data || '');
+    }
     this.addLog('info', message, data);
   }
 

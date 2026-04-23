@@ -5,6 +5,11 @@ import {
   Easing,
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
+import {
+  decrementPerfCounter,
+  incrementPerfCounter,
+  perfMark,
+} from '../../lib/perfDiagnostics';
 
 const DIRECTIONS: Array<readonly [number, number, Direction]> = [
   [0, 1, 'south'],
@@ -53,13 +58,38 @@ export default function useGridWander(
 
   const currentTile = useRef({ x: startTileX, y: startTileY });
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutTrackedRef = useRef(false);
 
   const clearScheduledMove = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
+      if (timeoutTrackedRef.current) {
+        timeoutTrackedRef.current = false;
+        decrementPerfCounter('activeWanderTimers');
+        perfMark('wander-timer:stop');
+      }
     }
   }, []);
+
+  const scheduleTrackedTimeout = useCallback(
+    (callback: () => void, delayMs: number) => {
+      clearScheduledMove();
+      timeoutTrackedRef.current = true;
+      incrementPerfCounter('activeWanderTimers');
+      perfMark('wander-timer:start', { delayMs });
+      timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = null;
+        if (timeoutTrackedRef.current) {
+          timeoutTrackedRef.current = false;
+          decrementPerfCounter('activeWanderTimers');
+          perfMark('wander-timer:stop');
+        }
+        callback();
+      }, delayMs);
+    },
+    [clearScheduledMove],
+  );
 
   const scheduleNext = useCallback(() => {
     if (!enabled) {
@@ -68,7 +98,7 @@ export default function useGridWander(
 
     const idleMs = idleMinMs + Math.random() * Math.max(0, idleMaxMs - idleMinMs);
 
-    timeoutRef.current = setTimeout(() => {
+    scheduleTrackedTimeout(() => {
       if (!enabled) {
         return;
       }
@@ -107,7 +137,7 @@ export default function useGridWander(
         tileX.value = withTiming(targetX, { duration, easing: Easing.linear });
         tileY.value = withTiming(targetY, { duration, easing: Easing.linear });
 
-        timeoutRef.current = setTimeout(() => {
+        scheduleTrackedTimeout(() => {
           isMoving.value = false;
           scheduleNext();
         }, duration);
@@ -127,6 +157,7 @@ export default function useGridWander(
     maxStepDistance,
     msPerTile,
     isWalkableTile,
+    scheduleTrackedTimeout,
   ]);
 
   useEffect(() => {

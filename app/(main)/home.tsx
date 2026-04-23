@@ -1,28 +1,25 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Pressable, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import Animated, { FadeIn, useSharedValue, withTiming, runOnJS, Easing } from 'react-native-reanimated';
-import OverworldScene, { AmbientEffect, getTentScreenRect } from '../../src/components/world/OverworldScene';
+import OverworldScene, { getTentScreenRect } from '../../src/components/world/OverworldScene';
 import { HudOverlay, SessionPanel, SessionCompletePopup } from '../../src/components/hud';
 import SettingsPanel from '../../src/components/hud/SettingsPanel';
 import StreakPanel from '../../src/components/hud/StreakPanel';
 import { forestMap } from '../../src/services/world/tiledMapLoader';
+import { useSceneActivity } from '../../src/hooks/useSceneActivity';
+import { useSceneQualityProfile } from '../../src/hooks/useSceneQualityProfile';
+import { useSessionStore } from '../../src/stores/sessionStore';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
-const EFFECT_OPTIONS: { label: string; value: AmbientEffect }[] = [
-  { label: 'Off', value: 'none' },
-  { label: 'Rain', value: 'rain' },
-  { label: 'Fireflies', value: 'fireflies' },
-  { label: 'Wind', value: 'wind' },
-  { label: 'Snow', value: 'snow' },
-];
-
 export default function HomeScreen() {
+  const sceneActive = useSceneActivity('HomeScreen');
+  const qualityProfile = useSceneQualityProfile(sceneActive);
+  const sessionStatus = useSessionStore((state) => state.status);
   const router = useRouter();
   const [ready, setReady] = useState(false);
-  const [ambientEffect, setAmbientEffect] = useState<AmbientEffect>('rain');
   const [sessionPanelVisible, setSessionPanelVisible] = useState(false);
   const [settingsPanelVisible, setSettingsPanelVisible] = useState(false);
   const [streakPanelVisible, setStreakPanelVisible] = useState(false);
@@ -122,10 +119,12 @@ export default function HomeScreen() {
       <View style={ready ? styles.sceneVisible : styles.sceneHidden}>
         <OverworldScene
           onReady={handleReady}
-          ambientEffect={ambientEffect}
+          ambientEffect="rain"
           zoomScale={zoomScale}
           zoomTranslateX={zoomTranslateX}
           zoomTranslateY={zoomTranslateY}
+          active={sceneActive}
+          qualityProfile={qualityProfile}
         />
       </View>
 
@@ -161,27 +160,6 @@ export default function HomeScreen() {
         />
       )}
 
-      {/* Effect switcher pills — hidden for now, always rain */}
-      {/* {ready && (
-        <View style={styles.switcherRow}>
-          {EFFECT_OPTIONS.map((opt) => {
-            const active = ambientEffect === opt.value;
-            return (
-              <TouchableOpacity
-                key={opt.value}
-                style={[styles.pill, active && styles.pillActive]}
-                onPress={() => setAmbientEffect(opt.value)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.pillText, active && styles.pillTextActive]}>
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )} */}
-
       {/* HUD overlay + Session panel */}
       {ready && !isZooming && (
         <HudOverlay
@@ -211,7 +189,9 @@ export default function HomeScreen() {
           onClose={() => setStreakPanelVisible(false)}
         />
       )}
-      {ready && <SessionCompletePopup onOpenShop={handleOpenShop} />}
+      {ready && sessionStatus === 'completed' && (
+        <SessionCompletePopup onOpenShop={handleOpenShop} />
+      )}
     </View>
   );
 }

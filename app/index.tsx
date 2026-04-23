@@ -7,10 +7,12 @@ import { useOnboardingStore } from '../src/stores/onboardingStore';
 
 export default function Index() {
   const {
+    user,
     isAuthenticated,
     hasAuthenticatedBefore,
     isLoading: authLoading,
   } = useAuthStore();
+  const userId = user?.id ?? null;
   const onboardingCompleted = useOnboardingStore((s) => s.completed);
   const paywallAccepted = useOnboardingStore((s) => s.paywallAccepted);
   const initOnboarding = useOnboardingStore((s) => s.initialize);
@@ -18,9 +20,11 @@ export default function Index() {
   const isEntitled = useSubscriptionStore((s) => s.isEntitled);
   const isSubLoading = useSubscriptionStore((s) => s.isLoading);
   const initSubscription = useSubscriptionStore((s) => s.initialize);
+  const refreshEntitlement = useSubscriptionStore((s) => s.refreshEntitlement);
 
   const [onboardingReady, setOnboardingReady] = useState(false);
   const finalizeInFlightRef = useRef(false);
+  const entitlementRecoveryUserRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,8 +46,9 @@ export default function Index() {
     if (authLoading || !onboardingReady || isSubLoading) return;
 
     if (!isAuthenticated) {
+      entitlementRecoveryUserRef.current = null;
       if (paywallAccepted) {
-        router.replace('/(auth)/signin?mode=postPaywallRequired');
+        router.replace('/(auth)/signup?mode=postPaywallRequired');
         return;
       }
 
@@ -56,6 +61,7 @@ export default function Index() {
     }
 
     if (isEntitled) {
+      entitlementRecoveryUserRef.current = userId;
       if (!onboardingCompleted && !finalizeInFlightRef.current) {
         finalizeInFlightRef.current = true;
         void finalizeOnboarding().finally(() => {
@@ -67,22 +73,28 @@ export default function Index() {
       return;
     }
 
+    if (
+      userId &&
+      paywallAccepted &&
+      !onboardingCompleted &&
+      entitlementRecoveryUserRef.current !== userId
+    ) {
+      entitlementRecoveryUserRef.current = userId;
+      void refreshEntitlement();
+      return;
+    }
+
     if (onboardingCompleted && !isEntitled) {
       router.replace('/(onboarding)/paywall');
       return;
     }
 
     if (!onboardingCompleted && paywallAccepted) {
-      if (finalizeInFlightRef.current) return;
-
-      finalizeInFlightRef.current = true;
-      void finalizeOnboarding().finally(() => {
-        finalizeInFlightRef.current = false;
-      });
+      router.replace('/(onboarding)/paywall');
       return;
     }
 
-    if (!onboardingCompleted || !isEntitled) {
+    if (!onboardingCompleted) {
       router.replace('/(onboarding)/welcome');
       return;
     }
@@ -98,6 +110,8 @@ export default function Index() {
     finalizeOnboarding,
     isEntitled,
     isSubLoading,
+    refreshEntitlement,
+    userId,
   ]);
 
   return (

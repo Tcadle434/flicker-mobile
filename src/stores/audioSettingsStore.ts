@@ -4,15 +4,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const STORAGE_KEY = '@flicker/audio_settings';
 
 interface AudioSettingsStore {
-  isMuted: boolean;
+  shellMuted: boolean;
+  sessionMuted: boolean;
   isHydrated: boolean;
   hydrate: () => Promise<void>;
-  setMuted: (muted: boolean) => void;
-  toggleMute: () => void;
+  setShellMuted: (muted: boolean) => void;
+  toggleShellMuted: () => void;
+  setSessionMuted: (muted: boolean) => void;
 }
 
 export const useAudioSettingsStore = create<AudioSettingsStore>((set, get) => ({
-  isMuted: false,
+  shellMuted: false,
+  sessionMuted: false,
   isHydrated: false,
 
   hydrate: async () => {
@@ -21,7 +24,14 @@ export const useAudioSettingsStore = create<AudioSettingsStore>((set, get) => ({
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        set({ isMuted: !!parsed.isMuted, isHydrated: true });
+        set({
+          shellMuted:
+            typeof parsed.shellMuted === 'boolean'
+              ? parsed.shellMuted
+              : !!parsed.isMuted,
+          sessionMuted: false,
+          isHydrated: true,
+        });
       } else {
         set({ isHydrated: true });
       }
@@ -30,13 +40,17 @@ export const useAudioSettingsStore = create<AudioSettingsStore>((set, get) => ({
     }
   },
 
-  setMuted: (muted) => {
-    set({ isMuted: muted });
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ isMuted: muted })).catch(() => undefined);
+  setShellMuted: (muted) => {
+    set({ shellMuted: muted });
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ shellMuted: muted })).catch(() => undefined);
   },
 
-  toggleMute: () => {
-    const next = !get().isMuted;
-    get().setMuted(next);
+  toggleShellMuted: () => {
+    const next = !get().shellMuted;
+    get().setShellMuted(next);
+  },
+
+  setSessionMuted: (muted) => {
+    set({ sessionMuted: muted });
   },
 }));

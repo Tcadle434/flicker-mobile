@@ -7,6 +7,7 @@ export default function MainLayout() {
         headerShown: false,
         contentStyle: { backgroundColor: '#0A0A0B' },
         animation: 'none',
+        freezeOnBlur: true,
       }}
     />
   );

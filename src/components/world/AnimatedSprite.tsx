@@ -31,6 +31,9 @@ interface Props {
   columns?: number;
   /** Use nearest-neighbor filtering (pixel art). Defaults to true. Set false for smooth sprites. */
   nearestFilter?: boolean;
+  active?: boolean;
+  clock?: SharedValue<number>;
+  maxFps?: number;
 }
 
 export default function AnimatedSprite({
@@ -47,13 +50,18 @@ export default function AnimatedSprite({
   flipX = false,
   columns,
   nearestFilter = true,
+  active = true,
+  clock,
+  maxFps,
 }: Props) {
   const cols = columns ?? frameCount; // default: single row
   const frameIndex = useSharedValue(0);
   const elapsed = useSharedValue(0);
-  const frameDuration = 1000 / fps;
+  const effectiveFps = maxFps ? Math.min(fps, maxFps) : fps;
+  const frameDuration = 1000 / effectiveFps;
 
-  useFrameCallback((info) => {
+  const internalFrameCallback = useFrameCallback((info) => {
+    if (clock) return;
     if (info.timeSincePreviousFrame === null) return;
     if (isAnimating && !isAnimating.value) {
       frameIndex.value = 0;
@@ -65,6 +73,23 @@ export default function AnimatedSprite({
       elapsed.value -= frameDuration;
       frameIndex.value = (frameIndex.value + 1) % frameCount;
     }
+  }, false);
+
+  React.useEffect(() => {
+    internalFrameCallback.setActive(!clock && active);
+    return () => internalFrameCallback.setActive(false);
+  }, [active, clock, internalFrameCallback]);
+
+  const animatedFrameIndex = useDerivedValue(() => {
+    if (clock) {
+      if (isAnimating && !isAnimating.value) {
+        return 0;
+      }
+
+      return Math.floor(clock.value * effectiveFps) % frameCount;
+    }
+
+    return frameIndex.value;
   });
 
   // Clip to one frame's area at the animated position
@@ -88,12 +113,12 @@ export default function AnimatedSprite({
 
   // Slide spritesheet so current frame aligns with clip window
   const imageX = useDerivedValue(() => {
-    const col = frameIndex.value % cols;
+    const col = animatedFrameIndex.value % cols;
     return x.value - col * width;
   });
 
   const imageY = useDerivedValue(() => {
-    const row = Math.floor(frameIndex.value / cols);
+    const row = Math.floor(animatedFrameIndex.value / cols);
     return y.value - row * height;
   });
 

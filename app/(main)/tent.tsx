@@ -24,6 +24,8 @@ import { useTentStore } from '../../src/stores/tentStore';
 import { getCatalogItem } from '../../src/services/tent/tentCatalog';
 import { tentMap } from '../../src/services/world/tentMapLoader';
 import type { CatalogItem, TentSurfaceStyle, TentSurfaceType } from '../../src/types/tent';
+import { useSceneActivity } from '../../src/hooks/useSceneActivity';
+import { useSceneQualityProfile } from '../../src/hooks/useSceneQualityProfile';
 
 interface SurfaceSelectionState {
   style: TentSurfaceStyle;
@@ -46,6 +48,8 @@ function getSurfaceSaveErrorMessage(errorCode?: string): string {
 }
 
 export default function TentScreen() {
+  const sceneActive = useSceneActivity('TentScreen');
+  const qualityProfile = useSceneQualityProfile(sceneActive);
   const router = useRouter();
   const params = useLocalSearchParams<{ decorate?: string; shop?: string }>();
   const [ready, setReady] = useState(false);
@@ -242,7 +246,11 @@ export default function TentScreen() {
     <View style={styles.container}>
       <StatusBar hidden />
 
-      <TentInteriorScene onReady={handleReady} />
+      <TentInteriorScene
+        onReady={handleReady}
+        active={sceneActive}
+        qualityProfile={qualityProfile}
+      />
 
       {ready && (
         <>

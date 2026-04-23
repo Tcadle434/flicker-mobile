@@ -7,7 +7,6 @@ import Animated, { FadeIn, FadeInUp, FadeOut } from 'react-native-reanimated';
 import { theme } from '../../src/constants/theme';
 import { useSessionStore } from '../../src/stores/sessionStore';
 import { usePlayerStore } from '../../src/stores/playerStore';
-import { useSpotifyStore } from '../../src/stores/spotifyStore';
 import { useAudioSettingsStore } from '../../src/stores/audioSettingsStore';
 import { audioCoordinator } from '../../src/services/audio/audioCoordinator';
 import ZenGardenScene from '../../src/components/world/ZenGardenScene';
@@ -15,6 +14,13 @@ import StandaloneSessionAudioPanel from '../../src/components/hud/StandaloneSess
 import SessionExitConfirmPopup from '../../src/components/hud/SessionExitConfirmPopup';
 import { HUD_ASSETS } from '../../src/components/hud/hudAssets';
 import type { SoundscapeMode } from '../../src/types';
+import { useSceneActivity } from '../../src/hooks/useSceneActivity';
+import { useSceneQualityProfile } from '../../src/hooks/useSceneQualityProfile';
+import {
+  decrementPerfCounter,
+  incrementPerfCounter,
+  perfMark,
+} from '../../src/lib/perfDiagnostics';
 
 type TimerMode = 'focus' | 'move';
 type TimerDisplay = 'countdown' | 'countup';
@@ -111,6 +117,8 @@ function focusBlockIndex(blocks: PomodoroBlock[], currentIndex: number): number 
 }
 
 export default function ModeSessionRun() {
+  const sceneActive = useSceneActivity('ModeSessionRun');
+  const qualityProfile = useSceneQualityProfile(sceneActive);
   const router = useRouter();
   const params = useLocalSearchParams<{
     mode?: TimerMode;
@@ -129,13 +137,9 @@ export default function ModeSessionRun() {
   const completeSession = useSessionStore((s) => s.completeSession);
   const abandonSession = useSessionStore((s) => s.abandonSession);
 
-  const layers = usePlayerStore((s) => s.layers);
-  const isMuted = useAudioSettingsStore((s) => s.isMuted);
-  const setMuted = useAudioSettingsStore((s) => s.setMuted);
-
-  const resumeSpotify = useSpotifyStore((s) => s.resumePlayback);
-  const pauseSpotify = useSpotifyStore((s) => s.pausePlayback);
-  const connectSpotify = useSpotifyStore((s) => s.connectSpotify);
+  const focusLayer = usePlayerStore((s) => s.layers.ambient);
+  const sessionMuted = useAudioSettingsStore((s) => s.sessionMuted);
+  const setSessionMuted = useAudioSettingsStore((s) => s.setSessionMuted);
 
   const mode = useMemo<TimerMode>(() => parseMode(params.mode), [params.mode]);
   const durationMinutes = useMemo(
@@ -154,16 +158,20 @@ export default function ModeSessionRun() {
   const totalFocusBlocks = useMemo(() => countFocusBlocks(pomodoroBlocks), [pomodoroBlocks]);
   const details = MODE_DETAILS[mode];
   const isMove = mode === 'move';
-  const isSpotify = params.audio === 'spotify';
-  const isSilent = params.audio === 'silence' || isSpotify;
+  const isSilent = params.audio === 'silence';
   const audioModeOverride = params.audio as string | undefined;
   const nativeAudioMode = useMemo<SoundscapeMode | null>(() => {
     if (isSilent) {
       return null;
     }
 
-    if (audioModeOverride && audioModeOverride !== 'spotify' && audioModeOverride !== 'silence') {
-      return audioModeOverride as SoundscapeMode;
+    if (
+      audioModeOverride === 'focus' ||
+      audioModeOverride === 'relax' ||
+      audioModeOverride === 'sleep' ||
+      audioModeOverride === 'energize'
+    ) {
+      return audioModeOverride;
     }
 
     return details.audioMode;
@@ -205,7 +213,6 @@ export default function ModeSessionRun() {
     return details.subtitle;
   }, [pomodoroEnabled, currentBlock, isBreak, pomodoroBlocks, blockIndex, totalFocusBlocks, details.subtitle]);
 
-  const focusLayer = layers.ambient;
   const currentFocusTrack = useMemo(
     () =>
       focusLayer.availableTracks.find((track) => track.id === focusLayer.currentLoopId) ??
@@ -213,8 +220,7 @@ export default function ModeSessionRun() {
       null,
     [focusLayer.availableTracks, focusLayer.currentLoopId],
   );
-  const showFocusAudioControls =
-    mode === 'focus' && nativeAudioMode === 'focus' && !isSpotify && !isSilent;
+  const showFocusAudioControls = mode === 'focus' && nativeAudioMode === 'focus' && !isSilent;
   const canCycleFocusTracks = showFocusAudioControls && focusLayer.availableTracks.length > 1;
 
   useEffect(() => {
@@ -224,46 +230,27 @@ export default function ModeSessionRun() {
   }, [showFocusAudioControls]);
 
   useEffect(() => {
+    setSessionMuted(false);
     setSessionMode(mode);
     setDuration(durationMinutes);
     startSession({ mode, durationMinutes, targetSeconds, phase: 'active' });
     tick(0);
 
-    if (isSpotify) {
-      void audioCoordinator
-        .startFocusSession({
-          scene: isMove ? 'moveSession' : 'focusSession',
-          preset: 'spotify',
-          continueInBackground: true,
-          modeLabel: nativeAudioMode ?? undefined,
-        })
-        .catch(() => undefined);
-      void connectSpotify()
-        .then((connected) => {
-          if (connected) {
-            return resumeSpotify();
-          }
-          return undefined;
-        })
-        .catch(() => undefined);
-    } else {
-      void audioCoordinator
-        .startFocusSession({
-          scene: isMove ? 'moveSession' : 'focusSession',
-          preset: isSilent ? 'silent' : 'focusDefault',
-          continueInBackground: true,
-          modeLabel: nativeAudioMode ?? undefined,
-        })
-        .catch(() => undefined);
-    }
+    void audioCoordinator
+      .startFocusSession({
+        scene: isMove ? 'moveSession' : 'focusSession',
+        preset: isSilent ? 'silent' : 'focusDefault',
+        modeLabel: nativeAudioMode ?? undefined,
+      })
+      .catch(() => undefined);
 
     return () => {
-      if (isSpotify) {
-        pauseSpotify().catch(() => undefined);
-      }
-      void audioCoordinator.endSession('abandoned').catch(() => undefined);
+      const currentStatus = useSessionStore.getState().status;
+      void audioCoordinator
+        .endSession(currentStatus === 'completed' ? 'completed' : 'abandoned')
+        .catch(() => undefined);
 
-      if (useSessionStore.getState().status === 'active') {
+      if (currentStatus === 'active') {
         abandonSession();
       }
     };
@@ -272,16 +259,13 @@ export default function ModeSessionRun() {
     durationMinutes,
     targetSeconds,
     isSilent,
-    isSpotify,
     nativeAudioMode,
     setSessionMode,
     setDuration,
     startSession,
     tick,
     abandonSession,
-    connectSpotify,
-    resumeSpotify,
-    pauseSpotify,
+    setSessionMuted,
   ]);
 
   useEffect(() => {
@@ -313,8 +297,14 @@ export default function ModeSessionRun() {
         completeSession();
       }
     }, 1000);
+    incrementPerfCounter('activeIntervals');
+    perfMark('interval:focus-session:start', { intervalMs: 1000 });
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      decrementPerfCounter('activeIntervals');
+      perfMark('interval:focus-session:stop');
+    };
   }, [
     sessionStatus,
     completeSession,
@@ -330,9 +320,6 @@ export default function ModeSessionRun() {
   useEffect(() => {
     if (sessionStatus !== 'completed') return;
 
-    if (isSpotify) {
-      pauseSpotify().catch(() => undefined);
-    }
     void audioCoordinator.endSession('completed').catch(() => undefined);
 
     let actualDuration = durationMinutes;
@@ -355,8 +342,6 @@ export default function ModeSessionRun() {
     elapsedSeconds,
     pomodoroEnabled,
     pomodoroBlocks,
-    isSpotify,
-    pauseSpotify,
   ]);
 
   useEffect(() => {
@@ -373,14 +358,11 @@ export default function ModeSessionRun() {
   }, [targetMet, completeSession]);
 
   const exitEarly = useCallback(() => {
-    if (isSpotify) {
-      pauseSpotify().catch(() => undefined);
-    }
     void audioCoordinator.endSession('abandoned').catch(() => undefined);
 
     abandonSession();
     router.replace('/(main)/home');
-  }, [abandonSession, router, isSpotify, pauseSpotify]);
+  }, [abandonSession, router]);
 
   const cycleFocusTrack = useCallback(
     (direction: -1 | 1) => {
@@ -405,10 +387,10 @@ export default function ModeSessionRun() {
   );
 
   const handleToggleMute = useCallback(() => {
-    const nextMuted = !isMuted;
-    setMuted(nextMuted);
-    void audioCoordinator.setMuted(nextMuted).catch(() => undefined);
-  }, [isMuted, setMuted]);
+    const nextMuted = !sessionMuted;
+    setSessionMuted(nextMuted);
+    void audioCoordinator.setSessionMuted(nextMuted).catch(() => undefined);
+  }, [sessionMuted, setSessionMuted]);
 
   if (mode === 'focus') {
     return (
@@ -418,7 +400,12 @@ export default function ModeSessionRun() {
           <StatusBar style="light" />
 
           <Animated.View entering={FadeIn.duration(500)} style={StyleSheet.absoluteFill}>
-            <ZenGardenScene variant="focus" onReady={() => {}} />
+            <ZenGardenScene
+              variant="focus"
+              onReady={() => {}}
+              active={sceneActive}
+              qualityProfile={qualityProfile}
+            />
           </Animated.View>
 
           <SafeAreaView style={styles.container}>
@@ -440,7 +427,7 @@ export default function ModeSessionRun() {
                   activeOpacity={0.75}
                 >
                   <Image
-                    source={isMuted ? HUD_ASSETS.volumeMuted : HUD_ASSETS.volumeUnmuted}
+                    source={sessionMuted ? HUD_ASSETS.volumeMuted : HUD_ASSETS.volumeUnmuted}
                     style={styles.audioIcon}
                     resizeMode="contain"
                   />
@@ -531,7 +518,7 @@ export default function ModeSessionRun() {
                 activeOpacity={0.75}
               >
                 <Image
-                  source={isMuted ? HUD_ASSETS.volumeMuted : HUD_ASSETS.volumeUnmuted}
+                  source={sessionMuted ? HUD_ASSETS.volumeMuted : HUD_ASSETS.volumeUnmuted}
                   style={styles.audioIcon}
                   resizeMode="contain"
                 />

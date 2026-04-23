@@ -22,6 +22,7 @@ import { useAudioSettingsStore } from '../../stores/audioSettingsStore';
 import { useSubscriptionStore } from '../../stores/subscriptionStore';
 import { appBlockingBridge } from '../../services/appBlocking/appBlockingBridge';
 import { NativeAppBlocking } from '../../services/appBlocking/nativeAppBlockingModule';
+import { audioCoordinator } from '../../services/audio/audioCoordinator';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -85,8 +86,8 @@ function LinkButton({ label, onPress }: { label: string; onPress: () => void }) 
 export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
-  const isMuted = useAudioSettingsStore((s) => s.isMuted);
-  const toggleMute = useAudioSettingsStore((s) => s.toggleMute);
+  const shellMuted = useAudioSettingsStore((s) => s.shellMuted);
+  const setShellMuted = useAudioSettingsStore((s) => s.setShellMuted);
   const restorePurchases = useSubscriptionStore((s) => s.restorePurchases);
 
   const handleConfirmSignOut = async () => {
@@ -155,6 +156,12 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
     );
   };
 
+  const handleToggleAppAudio = () => {
+    const nextMuted = !shellMuted;
+    setShellMuted(nextMuted);
+    void audioCoordinator.setShellMuted(nextMuted).catch(() => undefined);
+  };
+
   return (
     <BottomPanel visible={visible} onClose={onClose} panelTopFraction={0.12}>
       <Text style={styles.title}>Settings</Text>
@@ -169,7 +176,7 @@ export default function SettingsPanel({ visible, onClose }: SettingsPanelProps) 
       {/* ── Sound ── */}
       <SectionLabel>Sound</SectionLabel>
       <View style={styles.sectionCard}>
-        <ToggleRow label="Sound Effects" value={!isMuted} onToggle={toggleMute} />
+        <ToggleRow label="App Audio" value={!shellMuted} onToggle={handleToggleAppAudio} />
       </View>
 
       {/* ── Focus Settings ── */}

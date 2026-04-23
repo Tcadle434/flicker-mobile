@@ -7,6 +7,7 @@ export default function SessionLayout() {
         headerShown: false,
         animation: 'fade',
         contentStyle: { backgroundColor: '#0A0A0B' },
+        freezeOnBlur: true,
       }}
     />
   );

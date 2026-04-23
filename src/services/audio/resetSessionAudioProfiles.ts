@@ -6,12 +6,8 @@ import type {
 import {
   AUDIO_LAYERS,
   DEFAULT_MIX,
-  buildLayerConfigs,
-  getModeTrackCatalog,
-  getSelectedTracks,
   mapLayerToNative,
 } from './loopLibrary';
-import { getModeManifest } from './manifestLoader';
 import type { LayerConfig } from './nativeAudioModule';
 
 type LoopSelectionMap = Partial<Record<AudioLayer, string | null>>;
@@ -30,7 +26,6 @@ export interface ResetSessionAudioProfile {
 }
 
 const RESET_SESSION_AUDIO_MODE_ORDER: ResetSessionAudioMode[] = [
-  'custom',
   '432hz',
   'binauralBeats',
 ];
@@ -85,27 +80,6 @@ const resolveSelectedTrack = (
   return tracks.find((track) => track.id === selectedLoopId) ?? tracks[0];
 };
 
-const getCustomProfile = (): ResetSessionAudioProfile => {
-  const manifest = getModeManifest('relax');
-
-  return {
-    id: 'custom',
-    label: 'Custom',
-    activeLayers: ['ambient', 'nature', 'melody'],
-    tracksByLayer: getModeTrackCatalog('relax'),
-    defaultVolumes: {
-      ambient: manifest.defaultMix?.ambient ?? DEFAULT_MIX.ambient,
-      nature: manifest.defaultMix?.nature ?? DEFAULT_MIX.nature,
-      melody: manifest.defaultMix?.melody ?? DEFAULT_MIX.melody,
-      rhythm: manifest.defaultMix?.rhythm ?? DEFAULT_MIX.rhythm,
-      synthesis: manifest.defaultMix?.synthesis ?? DEFAULT_MIX.synthesis,
-    },
-    showFullMixer: true,
-    showStandaloneVolumeControl: false,
-    adaptiveBehavior: true,
-  };
-};
-
 const get432HzProfile = (): ResetSessionAudioProfile => ({
   id: '432hz',
   label: '432Hz',
@@ -141,10 +115,8 @@ export function getResetSessionAudioProfile(
     case '432hz':
       return get432HzProfile();
     case 'binauralBeats':
-      return getBinauralBeatsProfile();
-    case 'custom':
     default:
-      return getCustomProfile();
+      return getBinauralBeatsProfile();
   }
 }
 
@@ -158,10 +130,6 @@ export function getResetSessionSelectedTracks(
   mode: ResetSessionAudioMode,
   selectedLoopIds: LoopSelectionMap = {},
 ): Record<AudioLayer, AudioTrackOption | null> {
-  if (mode === 'custom') {
-    return getSelectedTracks('relax', selectedLoopIds);
-  }
-
   const catalog = getResetSessionTrackCatalog(mode);
 
   return Object.fromEntries(
@@ -177,10 +145,6 @@ export function buildResetSessionLayerConfigs(
   selectedLoopIds: LoopSelectionMap = {},
   volumes: VolumeMap = {},
 ): LayerConfig[] {
-  if (mode === 'custom') {
-    return buildLayerConfigs('relax', selectedLoopIds, volumes);
-  }
-
   const profile = getResetSessionAudioProfile(mode);
   const selectedTracks = getResetSessionSelectedTracks(mode, selectedLoopIds);
 

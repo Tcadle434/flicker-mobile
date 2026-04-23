@@ -5,7 +5,6 @@ import type { AdaptiveParameters, AudioLayer, SoundscapeMode } from '../types';
 export interface SoundscapeOrchestratorOptions {
   adaptiveIntervalMs?: number;
   baseBinauralFrequency?: number;
-  getLocation?: () => Promise<{ latitude: number; longitude: number } | null>;
 }
 
 export class SoundscapeOrchestrator {
@@ -17,7 +16,6 @@ export class SoundscapeOrchestrator {
     this.adaptiveIntervalMs = options.adaptiveIntervalMs ?? 30_000;
     this.adaptiveController = new AdaptiveController({
       baseBinauralFrequency: options.baseBinauralFrequency,
-      getLocation: options.getLocation,
     });
   }
 

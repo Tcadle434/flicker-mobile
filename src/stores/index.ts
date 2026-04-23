@@ -15,7 +15,6 @@ export { useSoundPadStore } from './soundPadStore';
 export { useStreakStore } from './streakStore';
 export { useCurrencyStore } from './currencyStore';
 export { useSanctuaryStore } from './sanctuaryStore';
-export { useSpotifyStore } from './spotifyStore';
 export { useTentStore } from './tentStore';
 export { useDecorateStore } from './decorateStore';
 export { useAudioSettingsStore } from './audioSettingsStore';

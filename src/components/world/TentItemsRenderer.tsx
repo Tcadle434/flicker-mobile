@@ -9,6 +9,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, FilterMode, MipmapMode, useImage } from '@shopify/react-native-skia';
 import { runOnJS, useAnimatedReaction } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { useTentStore } from '../../stores/tentStore';
 import { useDecorateStore } from '../../stores/decorateStore';
 import {
@@ -30,10 +31,13 @@ import {
 import type { TentPlacement } from '../../types/tent';
 import useGridWander from './useGridWander';
 import TentFlickerRenderer from './TentFlickerRenderer';
+import { useRenderDiagnostics } from '../../lib/perfDiagnostics';
 
 interface Props {
   scale: number;
   offsetY: number;
+  active: boolean;
+  clock: SharedValue<number>;
 }
 
 /**
@@ -77,7 +81,8 @@ function PlacedItem({
   );
 }
 
-export default function TentItemsRenderer({ scale, offsetY }: Props) {
+export default function TentItemsRenderer({ scale, offsetY, active, clock }: Props) {
+  useRenderDiagnostics('TentItemsRenderer');
   const placements = useTentStore((s) => s.placements);
   const currentRoomId = useTentStore((s) => s.currentRoomId);
   const isHydrating = useTentStore((s) => s.isHydrating);
@@ -108,7 +113,8 @@ export default function TentItemsRenderer({ scale, offsetY }: Props) {
     && !isHydrating
     && !isDecorating
     && !surfacePreviewActive
-    && !!spawnTile;
+    && !!spawnTile
+    && active;
 
   const [actorTileRow, setActorTileRow] = useState<number | null>(spawnTile?.row ?? null);
 
@@ -192,6 +198,8 @@ export default function TentItemsRenderer({ scale, offsetY }: Props) {
             offsetY={offsetY}
             tileWidth={tentMap.tileWidth}
             tileHeight={tentMap.tileHeight}
+            active={active}
+            clock={clock}
           />
         )
       ))}

@@ -7,9 +7,7 @@ class FlickerAudioCoordinator {
     private let engine = FlickerAudioEngine.shared
     private let ambientTrackName = "main_app_background_music.m4a"
     private let ambientVolume: Float = 0.3
-    private let resetSessionStartVolume: Float = 0.58
     private let resetSessionTargetVolume: Float = 0.72
-    private let resetPresetTransitionVolumeFloor: Float = 0.35
 
     private var scene: String = "backgrounded"
     private var activePreset: String?
@@ -19,13 +17,26 @@ class FlickerAudioCoordinator {
     private var sfxPlayers: [String: AVAudioPlayer] = [:]
     private var ambientAssetPath: String?
     private var uiSoundAssetPaths: [String: String] = [:]
-    private var isMuted = false
+    private var shellMuted = false
+    private var sessionMuted = false
+    private var sessionPlaybackStoppedForMute = false
     private var masterVolume: Float = 0.8
 
     private init() {}
 
+    private func isSessionScene(_ value: String) -> Bool {
+        value == "focusSession" || value == "resetSession" || value == "moveSession"
+    }
+
+    private func currentSessionTargetVolume() -> Float {
+        if scene == "resetSession" {
+            return min(masterVolume, resetSessionTargetVolume)
+        }
+
+        return masterVolume
+    }
+
     func initialize() throws {
-        try engine.initialize()
         do {
             try prepareAmbientPlayerIfNeeded()
         } catch {
@@ -41,6 +52,7 @@ class FlickerAudioCoordinator {
         activeModeLabel = nil
         scene = "backgrounded"
         ambientPlaybackPosition = 0
+        sessionPlaybackStoppedForMute = false
         engine.dispose()
     }
 
@@ -83,17 +95,25 @@ class FlickerAudioCoordinator {
     }
 
     func enterScene(_ nextScene: String) throws {
+        let previousScene = scene
         scene = nextScene
         print("[FlickerAudioCoordinator] Entering scene: \(nextScene)")
 
         switch nextScene {
         case "shell":
-            try engine.initialize()
+            clearSessionAudio()
             resumeAmbientIfAllowed()
         case "backgrounded":
             pauseAmbient()
+            if isSessionScene(previousScene) && sessionMuted {
+                clearSessionAudio(stopForMute: true)
+            }
         case "focusSession", "resetSession", "moveSession":
             pauseAmbient()
+            if !sessionMuted && sessionPlaybackStoppedForMute {
+                try engine.play()
+                sessionPlaybackStoppedForMute = false
+            }
         default:
             break
         }
@@ -105,15 +125,17 @@ class FlickerAudioCoordinator {
         let modeLabel = config["modeLabel"] as? String ?? preset
 
         try initialize()
+        try ensureSessionEngineInitialized()
         pauseAmbient()
 
         scene = nextScene
         activePreset = preset
         activeModeLabel = modeLabel
+        sessionPlaybackStoppedForMute = false
 
         clearSessionAudio()
 
-        if preset == "silent" || preset == "spotify" || layers.isEmpty {
+        if preset == "silent" || layers.isEmpty {
             print("[FlickerAudioCoordinator] Session uses external or silent audio: \(preset)")
             return
         }
@@ -121,40 +143,31 @@ class FlickerAudioCoordinator {
         try engine.loadMode(mode: modeLabel, layers: layers)
 
         if nextScene == "resetSession" {
-            engine.setMasterVolume(isMuted ? 0 : resetSessionStartVolume, fadeTime: 0)
+            engine.setMasterVolume(sessionMuted ? 0 : currentSessionTargetVolume(), fadeTime: 0)
             try engine.play()
-            engine.setMasterVolume(
-                isMuted ? 0 : min(masterVolume, resetSessionTargetVolume),
-                fadeTime: 0.8
-            )
             return
         }
 
-        engine.setMasterVolume(isMuted ? 0 : masterVolume, fadeTime: 0)
+        engine.setMasterVolume(sessionMuted ? 0 : masterVolume, fadeTime: 0)
         try engine.play()
     }
 
     func switchResetPreset(_ preset: String, layers: [[String: Any]]) throws {
         activePreset = preset
         activeModeLabel = "reset:\(preset)"
+        try ensureSessionEngineInitialized()
 
         guard !layers.isEmpty else {
             clearSessionAudio()
             return
         }
 
-        let targetVolume = isMuted ? 0 : max(masterVolume, resetSessionTargetVolume)
-        let transitionFloor = isMuted ? 0 : max(resetPresetTransitionVolumeFloor, targetVolume * 0.65)
+        let targetVolume = sessionMuted ? 0 : currentSessionTargetVolume()
 
-        engine.setMasterVolume(transitionFloor, fadeTime: 0.12)
+        sessionPlaybackStoppedForMute = false
         try engine.loadMode(mode: "reset:\(preset)", layers: layers)
         try engine.play()
-        engine.setMasterVolume(targetVolume, fadeTime: 0.18)
-    }
-
-    func applyResetCustomConfig(_ config: [String: Any], layers: [[String: Any]]) throws {
-        print("[FlickerAudioCoordinator] Applying reset custom config: \(config)")
-        try switchResetPreset("resetCustom", layers: layers)
+        engine.setMasterVolume(targetVolume, fadeTime: 0)
     }
 
     func setSessionPhase(_ phase: String) {
@@ -173,30 +186,53 @@ class FlickerAudioCoordinator {
     }
 
     func setMuted(_ muted: Bool) {
-        isMuted = muted
+        setShellMuted(muted)
+        setSessionMuted(muted)
+    }
+
+    func setShellMuted(_ muted: Bool) {
+        shellMuted = muted
         ambientPlayer?.volume = muted ? 0 : ambientVolume
 
         if muted {
-            engine.setMasterVolume(0, fadeTime: 0.1)
             pauseAmbient()
             return
         }
 
-        engine.setMasterVolume(masterVolume, fadeTime: 0.1)
         if scene == "shell" {
             resumeAmbientIfAllowed()
         }
     }
 
+    func setSessionMuted(_ muted: Bool) {
+        sessionMuted = muted
+
+        if muted {
+            engine.setMasterVolume(0, fadeTime: 0)
+            if scene == "backgrounded" {
+                clearSessionAudio(stopForMute: true)
+            }
+            return
+        }
+
+        if isSessionScene(scene) && sessionPlaybackStoppedForMute {
+            try? engine.play()
+            sessionPlaybackStoppedForMute = false
+        }
+
+        engine.setMasterVolume(currentSessionTargetVolume(), fadeTime: 0)
+    }
+
     func setMasterVolume(_ volume: Float, fadeTime: TimeInterval) {
+        _ = fadeTime
         masterVolume = max(0, min(1, volume))
-        if !isMuted {
-            engine.setMasterVolume(masterVolume, fadeTime: fadeTime)
+        if !sessionMuted {
+            engine.setMasterVolume(currentSessionTargetVolume(), fadeTime: 0)
         }
     }
 
     func playOneShot(_ name: String) throws {
-        guard !isMuted else { return }
+        guard !shellMuted else { return }
         guard scene == "shell" else { return }
 
         let filename: String
@@ -223,6 +259,16 @@ class FlickerAudioCoordinator {
         }
 
         let engineState = engine.getState()
+        let effectsState = engineState["effects"] as? [String: Any] ?? [:]
+        let reverbState = effectsState["reverb"] as? [String: Any] ?? [:]
+        let filterState = effectsState["filter"] as? [String: Any] ?? [:]
+        let compressorState = effectsState["compressor"] as? [String: Any] ?? [:]
+        let shellAudioActive = scene == "shell" && ambientState == "playing"
+        let sessionAudioActive =
+            activePreset != nil &&
+            !sessionMuted &&
+            (engineState["state"] as? String == "playing")
+
         return [
             "scene": scene,
             "activePreset": activePreset as Any,
@@ -230,14 +276,33 @@ class FlickerAudioCoordinator {
             "appAmbientPosition": ambientPlaybackPosition,
             "playbackState": engineState["state"] as? String ?? "stopped",
             "masterVolume": masterVolume,
-            "isMuted": isMuted,
+            "shellMuted": shellMuted,
+            "sessionMuted": sessionMuted,
             "activeMode": activeModeLabel as Any,
+            "activeLayerCount": engineState["activeLayerCount"] as? Int ?? 0,
+            "engineRunning": engineState["engineRunning"] as? Bool ?? false,
+            "shellAudioActive": shellAudioActive && !sessionAudioActive,
+            "sessionAudioActive": sessionAudioActive && !shellAudioActive,
+            "effectsEnabled": [
+                "reverb": reverbState["enabled"] as? Bool ?? false,
+                "filter": filterState["enabled"] as? Bool ?? false,
+                "compressor": compressorState["enabled"] as? Bool ?? false
+            ],
         ]
     }
 
     private func clearSessionAudio() {
+        clearSessionAudio(stopForMute: false)
+    }
+
+    private func clearSessionAudio(stopForMute: Bool) {
         engine.stop()
-        engine.setMasterVolume(isMuted ? 0 : masterVolume, fadeTime: 0)
+        sessionPlaybackStoppedForMute = stopForMute
+        engine.setMasterVolume(sessionMuted ? 0 : currentSessionTargetVolume(), fadeTime: 0)
+    }
+
+    private func ensureSessionEngineInitialized() throws {
+        try engine.initialize()
     }
 
     private func prepareAmbientPlayerIfNeeded() throws {
@@ -253,7 +318,7 @@ class FlickerAudioCoordinator {
         }
         let player = try AVAudioPlayer(contentsOf: url)
         player.numberOfLoops = -1
-        player.volume = isMuted ? 0 : ambientVolume
+        player.volume = shellMuted ? 0 : ambientVolume
         player.prepareToPlay()
         ambientPlayer = player
     }
@@ -280,7 +345,7 @@ class FlickerAudioCoordinator {
     }
 
     private func resumeAmbientIfAllowed() {
-        guard !isMuted else { return }
+        guard !shellMuted else { return }
 
         do {
             try prepareAmbientPlayerIfNeeded()

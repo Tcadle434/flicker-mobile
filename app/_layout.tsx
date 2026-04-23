@@ -7,7 +7,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 import 'react-native-reanimated';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
-import { useAuthStore, useStreakStore } from '../src/stores';
+import { useAuthStore, useMoodStore, useStreakStore } from '../src/stores';
 import { useSessionStore } from '../src/stores/sessionStore';
 import { useSubscriptionStore } from '../src/stores/subscriptionStore';
 import { useAudioSettingsStore } from '../src/stores/audioSettingsStore';
@@ -30,9 +30,10 @@ export default function RootLayout() {
   const hydrateSession = useSessionStore((state) => state.hydrateSession);
   const refreshEntitlement = useSubscriptionStore((state) => state.refreshEntitlement);
   const fetchStreak = useStreakStore((state) => state.fetchStreak);
+  const refreshMood = useMoodStore((state) => state.refreshMood);
   const hydrateAudioSettings = useAudioSettingsStore((state) => state.hydrate);
   const audioHydrated = useAudioSettingsStore((state) => state.isHydrated);
-  const isMuted = useAudioSettingsStore((state) => state.isMuted);
+  const shellMuted = useAudioSettingsStore((state) => state.shellMuted);
   const appStateRef = useRef(AppState.currentState);
   const segments = useSegments();
   const inSessionRoute = segments[0] === '(session)';
@@ -45,6 +46,7 @@ export default function RootLayout() {
       hydrateSession();
       hydrateAudioSettings();
       scheduleStreakReminder();
+      void refreshMood().catch(() => undefined);
 
       await initialize();
       if (isCancelled) return;
@@ -70,13 +72,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!audioHydrated) return;
-    void audioCoordinator.initialize().catch(() => undefined);
-  }, [audioHydrated]);
-
-  useEffect(() => {
-    if (!audioHydrated) return;
-    void audioCoordinator.setMuted(isMuted).catch(() => undefined);
-  }, [audioHydrated, isMuted]);
+    void audioCoordinator.setShellMuted(shellMuted).catch(() => undefined);
+  }, [audioHydrated, shellMuted]);
 
   useEffect(() => {
     if (!audioHydrated) return;
@@ -93,6 +90,7 @@ export default function RootLayout() {
     const sub = AppState.addEventListener('change', (nextState) => {
       if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
         refreshEntitlement();
+        void refreshMood().catch(() => undefined);
         if (!authLoading && isAuthenticated) {
           void fetchStreak({ force: true }).catch(() => undefined);
         }
@@ -101,7 +99,7 @@ export default function RootLayout() {
       appStateRef.current = nextState;
     });
     return () => sub.remove();
-  }, [authLoading, fetchStreak, isAuthenticated, refreshEntitlement]);
+  }, [authLoading, fetchStreak, isAuthenticated, refreshEntitlement, refreshMood]);
 
   if (!fontsLoaded) return null;
 

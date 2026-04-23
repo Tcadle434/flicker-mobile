@@ -1,7 +1,7 @@
 import { AppStateStatus, Platform } from 'react-native';
 import { Asset } from 'expo-asset';
 import NativeAudioEngine, { type LayerConfig } from './nativeAudioModule';
-import { logger } from '../../lib/logger';
+import { getPerfCounters, perfMark } from '../../lib/perfDiagnostics';
 import {
   buildModeLayerState,
   buildResetSessionLayerState,
@@ -14,22 +14,12 @@ import { useAudioSettingsStore } from '../../stores/audioSettingsStore';
 import type {
   AudioLayer,
   AudioScene,
-  ResetCustomAudioConfig,
   ResetSessionAudioMode,
   SessionAudioConfig,
   SessionAudioPreset,
   SoundscapeMode,
   UiSoundName,
 } from '../../types';
-
-const PREWARM_ASSETS = [
-  'focus_2.mp3',
-  '432Hz_1.mp3',
-  'binaural_beats_1.mp3',
-] as const;
-
-const RESET_RETURN_SECONDS = 25;
-const RESET_RETURN_FADE_OUT_SECONDS = 8;
 
 const isSessionScene = (scene: AudioScene) =>
   scene === 'focusSession' || scene === 'resetSession' || scene === 'moveSession';
@@ -40,8 +30,6 @@ const mapResetPresetToMode = (preset: SessionAudioPreset): ResetSessionAudioMode
   switch (preset) {
     case 'resetBinauralBeats':
       return 'binauralBeats';
-    case 'resetCustom':
-      return 'custom';
     case 'reset432hz':
     default:
       return '432hz';
@@ -60,12 +48,16 @@ class AudioCoordinator {
   private shellAssetsPromise: Promise<void> | null = null;
   private shellAudioSuppressions = new Set<string>();
 
-  private getIsMuted(): boolean {
-    return useAudioSettingsStore.getState().isMuted;
+  private getShellMuted(): boolean {
+    return useAudioSettingsStore.getState().shellMuted;
   }
 
-  private getEffectiveMasterVolume(volume: number): number {
-    return this.getIsMuted() ? 0 : volume;
+  private getSessionMuted(): boolean {
+    return useAudioSettingsStore.getState().sessionMuted;
+  }
+
+  private getEffectiveSessionMasterVolume(volume: number): number {
+    return this.getSessionMuted() ? 0 : volume;
   }
 
   private hasActiveSessionAudio(): boolean {
@@ -97,7 +89,8 @@ class AudioCoordinator {
       this.initializing = (async () => {
         await NativeAudioEngine.initialize();
         this.initialized = true;
-        await this.setMuted(useAudioSettingsStore.getState().isMuted);
+        await NativeAudioEngine.setShellMuted(this.getShellMuted());
+        await NativeAudioEngine.setSessionMuted(this.getSessionMuted());
       })().finally(() => {
         this.initializing = null;
       });
@@ -118,10 +111,16 @@ class AudioCoordinator {
       return;
     }
 
-    await this.ensureInitialized();
     await this.ensureShellAssetsConfigured();
+    if (isSessionScene(scene) || isSessionScene(this.currentScene)) {
+      await this.ensureInitialized();
+    }
     const nextScene = this.getEffectiveScene(scene);
     this.currentScene = nextScene;
+    perfMark('audio:scene-transition', {
+      from: this.lastForegroundScene,
+      to: nextScene,
+    });
     await NativeAudioEngine.enterScene(nextScene);
   }
 
@@ -173,7 +172,7 @@ class AudioCoordinator {
 
     const playerState = usePlayerStore.getState();
     await NativeAudioEngine.setMasterVolume(
-      this.getEffectiveMasterVolume(playerState.masterVolume),
+      this.getEffectiveSessionMasterVolume(playerState.masterVolume),
       0,
     );
 
@@ -243,32 +242,18 @@ class AudioCoordinator {
   }
 
   async initialize(): Promise<void> {
-    await this.ensureInitialized();
     await this.ensureShellAssetsConfigured();
-    await this.prewarmDefaults();
-  }
-
-  async prewarmDefaults(): Promise<void> {
-    if (Platform.OS !== 'ios') {
-      return;
-    }
-
-    await this.ensureInitialized();
-
-    try {
-      await NativeAudioEngine.prewarmAssets([...PREWARM_ASSETS]);
-    } catch (error) {
-      logger.warn('Audio prewarm failed', error);
-    }
   }
 
   async enterShell(): Promise<void> {
     this.lastForegroundScene = 'shell';
+    usePlayerStore.getState().stopAdaptiveLoop();
     await this.applyScene('shell');
   }
 
   async leaveShell(): Promise<void> {
     if (this.currentScene === 'shell' || this.lastForegroundScene === 'shell') {
+      usePlayerStore.getState().stopAdaptiveLoop();
       await this.applyScene('backgrounded');
     }
   }
@@ -297,23 +282,29 @@ class AudioCoordinator {
     const mode = (config.modeLabel as SoundscapeMode | undefined) ?? 'focus';
     const playerStore = usePlayerStore.getState();
 
+    useAudioSettingsStore.getState().setSessionMuted(false);
     playerStore.syncPlaybackState('loading');
-    playerStore.ensureAdaptiveLoop();
+    playerStore.stopAdaptiveLoop();
     this.clearPendingPhaseWork();
     this.sessionPreset = config.preset;
     this.lastForegroundScene = config.scene;
 
     if (Platform.OS !== 'ios') {
-      playerStore.prepareModeState(mode);
-      playerStore.syncPlaybackState('playing');
+      if (config.preset === 'silent') {
+        playerStore.syncPlaybackState('idle');
+      } else {
+        playerStore.prepareModeState(mode);
+        playerStore.syncPlaybackState('playing');
+      }
       this.currentScene = config.scene;
       return;
     }
 
     await this.ensureInitialized();
+    await NativeAudioEngine.setSessionMuted(false);
 
     const layers =
-      config.preset === 'silent' || config.preset === 'spotify'
+      config.preset === 'silent'
         ? []
         : this.buildFocusLayers(mode);
 
@@ -322,12 +313,9 @@ class AudioCoordinator {
       layers,
     );
     await this.applyNativeMixState();
-    if (layers.length > 0) {
-      await usePlayerStore.getState().updateAdaptiveParameters();
-    }
 
     playerStore.syncPlaybackState(
-      config.preset === 'silent' || config.preset === 'spotify' ? 'idle' : 'playing',
+      config.preset === 'silent' ? 'idle' : 'playing',
     );
     this.currentScene = config.scene;
   }
@@ -336,8 +324,9 @@ class AudioCoordinator {
     const playerStore = usePlayerStore.getState();
     const resetMode = mapResetPresetToMode(config.preset);
 
+    useAudioSettingsStore.getState().setSessionMuted(false);
     playerStore.syncPlaybackState('loading');
-    playerStore.ensureAdaptiveLoop();
+    playerStore.stopAdaptiveLoop();
     this.clearPendingPhaseWork();
     this.sessionPreset = config.preset;
     this.lastForegroundScene = config.scene;
@@ -350,6 +339,7 @@ class AudioCoordinator {
     }
 
     await this.ensureInitialized();
+    await NativeAudioEngine.setSessionMuted(false);
 
     const layers = this.buildResetLayers(resetMode);
 
@@ -361,19 +351,17 @@ class AudioCoordinator {
       layers,
     );
     await this.applyNativeMixState();
-    await usePlayerStore.getState().updateAdaptiveParameters();
     playerStore.syncPlaybackState('playing');
     this.currentScene = config.scene;
   }
 
   async switchResetPreset(
-    preset: 'reset432hz' | 'resetBinauralBeats' | 'resetCustom',
+    preset: 'reset432hz' | 'resetBinauralBeats',
   ): Promise<void> {
     const playerStore = usePlayerStore.getState();
     const resetMode = mapResetPresetToMode(preset);
 
     playerStore.syncPlaybackState('loading');
-    playerStore.ensureAdaptiveLoop();
     this.sessionPreset = preset;
 
     if (Platform.OS !== 'ios') {
@@ -387,49 +375,7 @@ class AudioCoordinator {
 
     await NativeAudioEngine.switchResetPreset(preset, layers);
     await this.applyNativeMixState();
-    await usePlayerStore.getState().updateAdaptiveParameters();
     playerStore.syncPlaybackState('playing');
-  }
-
-  async applyResetCustomConfig(config: ResetCustomAudioConfig): Promise<void> {
-    const state = usePlayerStore.getState();
-    const nextSelections = {
-      ...state.resetSessionSelections,
-      custom: {
-        ...state.resetSessionSelections.custom,
-        ...config.selections,
-      },
-    };
-    const nextVolumes = {
-      ...state.resetSessionVolumes,
-      custom: {
-        ...state.resetSessionVolumes.custom,
-        ...config.volumes,
-      },
-    };
-    const next = buildResetSessionLayerState(
-      state.layers,
-      'custom',
-      nextSelections.custom,
-      nextVolumes.custom,
-    );
-
-    usePlayerStore.setState({
-      mode: 'relax',
-      resetSessionAudioMode: 'custom',
-      resetSessionSelections: nextSelections,
-      resetSessionVolumes: nextVolumes,
-      layers: next.layers,
-    });
-
-    if (Platform.OS !== 'ios') {
-      return;
-    }
-
-    await this.ensureInitialized();
-    await NativeAudioEngine.applyResetCustomConfig(config, next.layerConfigs);
-    await this.applyNativeMixState();
-    await usePlayerStore.getState().updateAdaptiveParameters();
   }
 
   async setSessionPhase(phase: 'fade' | 'still' | 'return' | 'active' | 'complete'): Promise<void> {
@@ -447,24 +393,9 @@ class AudioCoordinator {
 
     if (phase === 'still') {
       await NativeAudioEngine.setMasterVolume(
-        this.getEffectiveMasterVolume(usePlayerStore.getState().masterVolume),
-        300,
-      );
-      return;
-    }
-
-    if (phase === 'return') {
-      await NativeAudioEngine.setMasterVolume(this.getEffectiveMasterVolume(1), 900);
-      const fadeDelayMs = Math.max(
+        this.getEffectiveSessionMasterVolume(usePlayerStore.getState().masterVolume),
         0,
-        (RESET_RETURN_SECONDS - RESET_RETURN_FADE_OUT_SECONDS) * 1000,
       );
-      const fadeMs = RESET_RETURN_FADE_OUT_SECONDS * 1000;
-
-      this.pendingFadeOut = setTimeout(() => {
-        this.pendingFadeOut = null;
-        void NativeAudioEngine.setMasterVolume(0, fadeMs).catch(() => undefined);
-      }, fadeDelayMs);
       return;
     }
 
@@ -477,6 +408,7 @@ class AudioCoordinator {
     this.clearPendingPhaseWork();
     this.sessionPreset = null;
     usePlayerStore.getState().syncPlaybackState('idle');
+    usePlayerStore.getState().stopAdaptiveLoop();
 
     if (Platform.OS === 'ios') {
       await this.ensureInitialized();
@@ -487,14 +419,20 @@ class AudioCoordinator {
     await this.applyScene(this.appState === 'active' ? 'shell' : 'backgrounded');
   }
 
-  async setMuted(muted: boolean): Promise<void> {
+  async setShellMuted(muted: boolean): Promise<void> {
     if (Platform.OS !== 'ios') {
       return;
     }
 
-    await this.ensureInitialized();
-    await NativeAudioEngine.setMuted(muted);
+    await NativeAudioEngine.setShellMuted(muted);
+  }
 
+  async setSessionMuted(muted: boolean): Promise<void> {
+    if (Platform.OS !== 'ios') {
+      return;
+    }
+
+    await NativeAudioEngine.setSessionMuted(muted);
     if (this.hasActiveSessionAudio()) {
       await this.applyNativeMixState();
     }
@@ -507,8 +445,7 @@ class AudioCoordinator {
       return;
     }
 
-    await this.ensureInitialized();
-    await NativeAudioEngine.setMasterVolume(this.getEffectiveMasterVolume(volume), 100);
+    await NativeAudioEngine.setMasterVolume(this.getEffectiveSessionMasterVolume(volume), 0);
   }
 
   async playUiSound(name: UiSoundName): Promise<void> {
@@ -524,11 +461,10 @@ class AudioCoordinator {
       return;
     }
 
-    if (useAudioSettingsStore.getState().isMuted) {
+    if (this.getShellMuted()) {
       return;
     }
 
-    await this.ensureInitialized();
     await NativeAudioEngine.playOneShot(name);
   }
 
@@ -542,6 +478,7 @@ class AudioCoordinator {
     }
 
     if (state === 'inactive' || state === 'background') {
+      usePlayerStore.getState().stopAdaptiveLoop();
       if (this.currentScene !== 'backgrounded') {
         this.lastForegroundScene = isSessionScene(this.currentScene) ? this.currentScene : this.lastForegroundScene;
       }
@@ -571,7 +508,18 @@ class AudioCoordinator {
     }
 
     await this.ensureInitialized();
-    return NativeAudioEngine.getDebugState();
+    const nativeState = await NativeAudioEngine.getDebugState();
+    const playerState = usePlayerStore.getState();
+
+    return {
+      ...nativeState,
+      adaptiveLoopRunning: playerState.adaptiveLoopRunning,
+      shellAudioActive: nativeState.shellAudioActive ?? nativeState.scene === 'shell',
+      sessionAudioActive:
+        nativeState.sessionAudioActive ??
+        (isSessionScene(nativeState.scene) && nativeState.playbackState === 'playing'),
+      perfCounters: getPerfCounters(),
+    };
   }
 }
 

@@ -1,16 +1,11 @@
 import type { AdaptiveInputs, AdaptiveParameters } from '../types';
 import { getTimeOfDayInput } from '../services/adaptive/TimeAdapter';
 import { getSeason } from '../services/adaptive/SeasonAdapter';
-import { getWeatherInput } from '../services/adaptive/WeatherAdapter';
 import { getHeartRateInput } from '../services/adaptive/HeartRateAdapter';
 import { mapAdaptiveParameters } from '../services/audio/parameterMapper';
-import { getCurrentLocation } from '../services/sensors/location';
-
-export type LocationProvider = () => Promise<{ latitude: number; longitude: number } | null>;
 
 export interface AdaptiveControllerOptions {
   hemisphere?: 'north' | 'south';
-  getLocation?: LocationProvider;
   baseBinauralFrequency?: number;
 }
 
@@ -21,32 +16,18 @@ export interface AdaptiveUpdate {
 
 export class AdaptiveController {
   private readonly hemisphere: 'north' | 'south';
-  private readonly getLocation?: LocationProvider;
   private readonly baseBinauralFrequency: number;
   private intervalId: ReturnType<typeof setInterval> | null = null;
   private isRunning = false;
 
   constructor(options: AdaptiveControllerOptions = {}) {
     this.hemisphere = options.hemisphere ?? 'north';
-    this.getLocation = options.getLocation ?? getCurrentLocation;
     this.baseBinauralFrequency = options.baseBinauralFrequency ?? 10;
   }
 
   async collectInputs(): Promise<AdaptiveInputs> {
     const timeOfDay = getTimeOfDayInput();
     const season = getSeason(new Date(), this.hemisphere);
-
-    let weather: AdaptiveInputs['weather'] = null;
-    if (this.getLocation) {
-      try {
-        const location = await this.getLocation();
-        if (location) {
-          weather = await getWeatherInput(location.latitude, location.longitude);
-        }
-      } catch (error) {
-        console.warn('[AdaptiveController] Weather fetch failed', error);
-      }
-    }
 
     let heartRate: AdaptiveInputs['heartRate'] = null;
     try {
@@ -57,7 +38,6 @@ export class AdaptiveController {
 
     return {
       timeOfDay,
-      weather,
       heartRate,
       season,
     };

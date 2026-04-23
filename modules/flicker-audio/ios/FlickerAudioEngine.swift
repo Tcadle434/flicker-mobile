@@ -53,7 +53,7 @@ class FlickerAudioEngine {
     private var currentModeName: String?
     private var currentActiveLayerTypes: Set<LayerType> = []
 
-    // Effects (Phase 4)
+    // Effects (Phase 4 compatibility only; disabled for the live single-track path)
     private var effectsChain: EffectsChain?
 
     // MARK: - Initialization
@@ -105,8 +105,7 @@ class FlickerAudioEngine {
         // Setup 5 layers (Phase 2)
         setupLayers()
 
-        // Setup effects chain (Phase 4)
-        setupEffectsChain()
+        effectsChain = nil
 
         // Set initial volume
         mainMixer?.outputVolume = masterVolume
@@ -265,6 +264,7 @@ class FlickerAudioEngine {
             legacyPlayerNode?.stop()
         }
 
+        engine?.stop()
         state = .stopped
         print("[FlickerAudioEngine] Stopped playback")
     }
@@ -386,34 +386,12 @@ class FlickerAudioEngine {
     // MARK: - Volume Control
 
     func setMasterVolume(_ volume: Float, fadeTime: TimeInterval) {
+        _ = fadeTime
         guard let mainMixer = mainMixer else { return }
 
         let clampedVolume = max(0.0, min(1.0, volume))
         masterVolume = clampedVolume
-
-        if fadeTime > 0 {
-            // Smooth fade using timer
-            let steps = 20
-            let interval = fadeTime / Double(steps)
-            let currentVolume = mainMixer.outputVolume
-            let delta = (clampedVolume - currentVolume) / Float(steps)
-
-            var currentStep = 0
-            let timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { timer in
-                guard currentStep < steps else {
-                    mainMixer.outputVolume = clampedVolume
-                    timer.invalidate()
-                    return
-                }
-
-                mainMixer.outputVolume += delta
-                currentStep += 1
-            }
-
-            RunLoop.main.add(timer, forMode: .common)
-        } else {
-            mainMixer.outputVolume = clampedVolume
-        }
+        mainMixer.outputVolume = clampedVolume
 
         print("[FlickerAudioEngine] Master volume set to \(clampedVolume)")
     }
@@ -704,7 +682,12 @@ class FlickerAudioEngine {
             "masterVolume": masterVolume,
             "isInitialized": isInitialized,
             "multiLayerMode": useMultiLayerMode,
-            "layers": layerStates
+            "layers": layerStates,
+            "activeLayerCount": currentActiveLayerTypes.count,
+            "activeLayers": currentActiveLayerTypes.map { $0.rawValue }.sorted(),
+            "currentMode": currentModeName as Any,
+            "engineRunning": isRunning,
+            "effects": effectsChain?.getState() ?? [:]
         ]
     }
 

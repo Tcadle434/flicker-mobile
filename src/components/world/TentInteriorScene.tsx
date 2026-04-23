@@ -23,14 +23,24 @@ import {
   TENT_SURFACE_TILE_COUNTS,
   TENT_SURFACE_TILE_SIZE,
 } from '../../services/world/tentSurfaceTemplate';
+import { useSceneClock } from '../../hooks/useSceneClock';
+import { useRenderDiagnostics } from '../../lib/perfDiagnostics';
+import type { SceneQualityProfile } from '../../types';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 interface Props {
   onReady?: () => void;
+  active?: boolean;
+  qualityProfile?: SceneQualityProfile;
 }
 
-export default function TentInteriorScene({ onReady }: Props) {
+export default function TentInteriorScene({
+  onReady,
+  active = true,
+  qualityProfile = 'full',
+}: Props) {
+  useRenderDiagnostics('TentInteriorScene');
   const currentRoomId = useTentStore((s) => s.currentRoomId);
   const roomStyleSelections = useTentStore((s) => s.roomStyleSelections);
   const previewRoomId = useDecorateStore((s) => s.previewRoomId);
@@ -62,6 +72,13 @@ export default function TentInteriorScene({ onReady }: Props) {
 
   const floorSheet = useImage(getSurfaceSheet(resolvedRoomStyleSelection.floorStyleId) as any);
   const wallSheet = useImage(getSurfaceSheet(resolvedRoomStyleSelection.wallStyleId) as any);
+  const animationActive = active && qualityProfile !== 'paused';
+  const sceneMaxFps = qualityProfile === 'reduced' ? 24 : 30;
+  const sceneClock = useSceneClock({
+    active: animationActive,
+    label: 'tent-interior',
+    maxFps: sceneMaxFps,
+  });
 
   const { width: mapW, height: mapH, tileWidth, tilesets, layers } = tentMap;
 
@@ -150,7 +167,12 @@ export default function TentInteriorScene({ onReady }: Props) {
       {renderSurfaceLayer('wall')}
 
       {/* Placed items (sorted by render plane, layer, and sprite foot depth) */}
-      <TentItemsRenderer scale={scale} offsetY={offsetY} />
+      <TentItemsRenderer
+        scale={scale}
+        offsetY={offsetY}
+        active={animationActive}
+        clock={sceneClock}
+      />
 
       {/* Ghost item being placed/moved */}
       <GhostItemRenderer scale={scale} offsetY={offsetY} />

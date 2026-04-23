@@ -12,11 +12,11 @@ import TilemapRenderer from './TilemapRenderer';
 import SpriteRenderer from './SpriteRenderer';
 import AnimatedSprite from './AnimatedSprite';
 import RainOverlay from './RainOverlay';
-import FirefliesOverlay from './FirefliesOverlay';
-import WindOverlay from './WindOverlay';
-import SnowOverlay from './SnowOverlay';
 import useFlickerWander, { type Direction } from './useFlickerWander';
 import { forestMap } from '../../services/world/tiledMapLoader';
+import { useSceneClock } from '../../hooks/useSceneClock';
+import { useRenderDiagnostics } from '../../lib/perfDiagnostics';
+import type { SceneQualityProfile } from '../../types';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -42,7 +42,7 @@ const CAMPFIRE_TILE_X = 20;
 const CAMPFIRE_TILE_Y = 48;
 const CAMPFIRE_DISPLAY_TILES = 4;
 
-export type AmbientEffect = 'none' | 'rain' | 'fireflies' | 'wind' | 'snow';
+export type AmbientEffect = 'none' | 'rain';
 
 // Export tent screen rect calculation for tap target positioning
 export function getTentScreenRect(scale: number, offsetY: number, tileWidth: number) {
@@ -61,6 +61,8 @@ interface Props {
   zoomScale?: { value: number };
   zoomTranslateX?: { value: number };
   zoomTranslateY?: { value: number };
+  active?: boolean;
+  qualityProfile?: SceneQualityProfile;
 }
 
 export default function OverworldScene({
@@ -69,7 +71,10 @@ export default function OverworldScene({
   zoomScale,
   zoomTranslateX,
   zoomTranslateY,
+  active = true,
+  qualityProfile = 'full',
 }: Props) {
+  useRenderDiagnostics('OverworldScene');
   const tileset = useImage(require('../../../assets/tiled/flicker-forest.png'));
   const tentImage = useImage(require('../../../assets/sprites/flicker-tent-exterior.png'));
   const flickerSouth = useImage(require('../../../assets/sprites/flicker-calm-walk-south.png'));
@@ -86,6 +91,14 @@ export default function OverworldScene({
     return { scale: s, offsetY: oY, mapPixelH: mph };
   }, [mapWidth, mapHeight, tileWidth]);
 
+  const animationActive = active && qualityProfile !== 'paused';
+  const sceneMaxFps = qualityProfile === 'reduced' ? 24 : 30;
+  const sceneClock = useSceneClock({
+    active: animationActive,
+    label: 'overworld',
+    maxFps: sceneMaxFps,
+  });
+
   // Flicker display size (constant)
   const flickerSize = FLICKER_DISPLAY_TILES * tileWidth * scale;
 
@@ -93,6 +106,7 @@ export default function OverworldScene({
   const { tileX, tileY, isMoving, facing } = useFlickerWander(
     FLICKER_START_TILE_X,
     FLICKER_START_TILE_Y,
+    animationActive,
   );
   const [currentFacing, setCurrentFacing] = useState<Direction>('south');
 
@@ -195,6 +209,8 @@ export default function OverworldScene({
         y={campfireY}
         width={campfireSize}
         height={campfireSize}
+        active={animationActive}
+        clock={sceneClock}
       />
       <AnimatedSprite
         image={activeFlickerImage}
@@ -208,11 +224,18 @@ export default function OverworldScene({
         height={flickerSize}
         isAnimating={isMoving}
         flipX={flickerFlipX}
+        active={animationActive}
+        clock={sceneClock}
       />
-      {ambientEffect === 'rain' && <RainOverlay mapOffsetY={offsetY} mapHeight={mapPixelH} />}
-      {ambientEffect === 'fireflies' && <FirefliesOverlay mapOffsetY={offsetY} mapHeight={mapPixelH} />}
-      {ambientEffect === 'wind' && <WindOverlay mapOffsetY={offsetY} mapHeight={mapPixelH} />}
-      {ambientEffect === 'snow' && <SnowOverlay mapOffsetY={offsetY} mapHeight={mapPixelH} />}
+      {ambientEffect === 'rain' && (
+        <RainOverlay
+          mapOffsetY={offsetY}
+          mapHeight={mapPixelH}
+          active={animationActive && qualityProfile === 'full'}
+          clock={sceneClock}
+          qualityProfile={qualityProfile}
+        />
+      )}
 
       {/* Top vignette: covers the full black bar + bleeds into map */}
       <Rect x={0} y={0} width={SCREEN_W} height={offsetY + 80}>

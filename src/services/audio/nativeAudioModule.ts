@@ -9,7 +9,6 @@ import { NativeEventEmitter, Platform } from 'react-native';
 import { requireNativeModule } from 'expo-modules-core';
 import type {
   AudioScene,
-  ResetCustomAudioConfig,
   SessionAudioConfig,
   UiSoundName,
 } from '../../types';
@@ -36,8 +35,19 @@ export interface AudioDebugState {
   appAmbientPosition: number;
   playbackState: 'stopped' | 'playing' | 'paused';
   masterVolume: number;
-  isMuted: boolean;
+  shellMuted: boolean;
+  sessionMuted: boolean;
   activeMode: string | null;
+  activeLayerCount: number;
+  engineRunning: boolean;
+  shellAudioActive: boolean;
+  sessionAudioActive: boolean;
+  adaptiveLoopRunning: boolean;
+  effectsEnabled: {
+    reverb: boolean;
+    filter: boolean;
+    compressor: boolean;
+  };
 }
 
 export interface PlaybackStateEvent {
@@ -52,6 +62,11 @@ export interface ErrorEvent {
 export interface LoopTransitionEvent {
   layer: string;
   loopId: string;
+}
+
+export interface PerformanceState {
+  thermalState: 'unknown' | 'nominal' | 'fair' | 'serious' | 'critical';
+  lowPowerModeEnabled: boolean;
 }
 
 type EventEmitterCompatibleModule = {
@@ -166,13 +181,6 @@ export const NativeAudioEngine = {
     return callNative<{ success: boolean }>('switchResetPreset', [preset, layers]);
   },
 
-  applyResetCustomConfig: async (
-    config: ResetCustomAudioConfig,
-    layers: LayerConfig[],
-  ): Promise<{ success: boolean }> => {
-    return callNative<{ success: boolean }>('applyResetCustomConfig', [config, layers]);
-  },
-
   setSessionPhase: async (phase: string): Promise<{ success: boolean }> => {
     return callNative<{ success: boolean }>('setSessionPhase', [phase]);
   },
@@ -203,6 +211,14 @@ export const NativeAudioEngine = {
 
   setMuted: async (muted: boolean): Promise<{ success: boolean }> => {
     return callNative<{ success: boolean }>('setMuted', [muted]);
+  },
+
+  setShellMuted: async (muted: boolean): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('setShellMuted', [muted]);
+  },
+
+  setSessionMuted: async (muted: boolean): Promise<{ success: boolean }> => {
+    return callNative<{ success: boolean }>('setSessionMuted', [muted]);
   },
 
   setLayerVolume: async (
@@ -258,8 +274,30 @@ export const NativeAudioEngine = {
         appAmbientPosition: 0,
         playbackState: 'stopped',
         masterVolume: 0,
-        isMuted: false,
+        shellMuted: false,
+        sessionMuted: false,
         activeMode: null,
+        activeLayerCount: 0,
+        engineRunning: false,
+        shellAudioActive: false,
+        sessionAudioActive: false,
+        adaptiveLoopRunning: false,
+        effectsEnabled: {
+          reverb: false,
+          filter: false,
+          compressor: false,
+        },
+      };
+    }
+  },
+
+  getPerformanceState: async (): Promise<PerformanceState> => {
+    try {
+      return await callNative<PerformanceState>('getPerformanceState');
+    } catch {
+      return {
+        thermalState: 'unknown',
+        lowPowerModeEnabled: false,
       };
     }
   },

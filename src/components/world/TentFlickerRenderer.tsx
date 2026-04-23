@@ -24,6 +24,8 @@ interface Props {
   offsetY: number;
   tileWidth: number;
   tileHeight: number;
+  active: boolean;
+  clock: SharedValue<number>;
 }
 
 export default function TentFlickerRenderer({
@@ -35,6 +37,8 @@ export default function TentFlickerRenderer({
   offsetY,
   tileWidth,
   tileHeight,
+  active,
+  clock,
 }: Props) {
   const flickerSouth = useImage(require('../../../assets/sprites/flicker-calm-walk-south.png'));
   const flickerEast = useImage(require('../../../assets/sprites/flicker-calm-walk-east.png'));
@@ -87,6 +91,8 @@ export default function TentFlickerRenderer({
       height={flickerSize}
       isAnimating={isMoving}
       flipX={flickerFlipX}
+      active={active}
+      clock={clock}
     />
   );
 }

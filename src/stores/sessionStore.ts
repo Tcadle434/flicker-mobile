@@ -7,7 +7,7 @@ export type SessionMode = 'reset' | 'focus' | 'move';
 export type SessionStatus = 'idle' | 'active' | 'paused' | 'interrupted' | 'completed' | 'abandoned';
 
 const FADE_IN_DURATION = 15;
-const RETURN_DURATION = 25;
+const RETURN_DURATION = 0;
 const STORAGE_KEY = '@flicker:active_session';
 
 interface PersistedSession {

@@ -10,7 +10,7 @@ export type SoundscapeMode = 'focus' | 'relax' | 'sleep' | 'energize';
 
 export type AudioLayer = 'ambient' | 'nature' | 'melody' | 'rhythm' | 'synthesis';
 
-export type ResetSessionAudioMode = 'custom' | '432hz' | 'binauralBeats';
+export type ResetSessionAudioMode = '432hz' | 'binauralBeats';
 
 export type AudioScene =
   | 'shell'
@@ -23,20 +23,12 @@ export type SessionAudioPreset =
   | 'focusDefault'
   | 'reset432hz'
   | 'resetBinauralBeats'
-  | 'resetCustom'
-  | 'silent'
-  | 'spotify';
+  | 'silent';
 
 export interface SessionAudioConfig {
   scene: 'focusSession' | 'resetSession' | 'moveSession';
   preset: SessionAudioPreset;
-  continueInBackground: boolean;
   modeLabel?: string;
-}
-
-export interface ResetCustomAudioConfig {
-  selections: Partial<Record<AudioLayer, string | null>>;
-  volumes: Partial<Record<AudioLayer, number>>;
 }
 
 export type UiSoundName = 'buttonPress' | 'shopOpen' | 'dialogueContinue';
@@ -73,7 +65,6 @@ export interface LoopMetadata {
     energy: number; // -1 to 1
     density: number; // -1 to 1
     timeOfDay: TimeOfDay[];
-    weather: WeatherCondition[];
     season: Season[];
   };
   defaultVolume: number;
@@ -103,8 +94,6 @@ export interface ModeManifest {
 
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night' | 'late-night';
 
-export type WeatherCondition = 'clear' | 'cloudy' | 'rain' | 'storm' | 'snow' | 'fog';
-
 export type Season = 'spring' | 'summer' | 'fall' | 'winter';
 
 export interface AdaptiveInputs {
@@ -113,12 +102,6 @@ export interface AdaptiveInputs {
     hour: number;
     phase: number; // 0-1, circadian rhythm phase
   };
-  weather: {
-    condition: WeatherCondition;
-    temperature: number;
-    humidity: number;
-    cloudCover: number;
-  } | null;
   heartRate: {
     bpm: number;
     variability: number;
@@ -164,6 +147,7 @@ export interface PlayerState {
   layers: Record<AudioLayer, AudioLayerState>;
   masterVolume: number;
   adaptiveEnabled: boolean;
+  adaptiveLoopRunning: boolean;
   adaptiveInputs: AdaptiveInputs;
   adaptiveParameters: AdaptiveParameters;
   resetSessionAudioMode: ResetSessionAudioMode;
@@ -212,6 +196,8 @@ export interface SceneConfig {
   enablePostProcessing: boolean;
 }
 
+export type SceneQualityProfile = 'full' | 'reduced' | 'paused';
+
 export interface AudioVisualizerData {
   frequencies: Float32Array;
   waveform: Float32Array;
@@ -254,7 +240,6 @@ export interface AppSettings {
   adaptiveIntensity: number; // 0-1
   adaptiveInputsEnabled: {
     timeOfDay: boolean;
-    weather: boolean;
     heartRate: boolean;
     season: boolean;
   };

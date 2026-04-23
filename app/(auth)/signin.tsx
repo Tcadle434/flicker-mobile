@@ -137,14 +137,10 @@ export default function SignIn() {
 					<View style={styles.v2Frame}>
 						<View style={styles.v2Mid}>
 							<View style={styles.v2Content}>
-								<Text style={styles.v2Title}>
-									{authMode === "postPaywallRequired"
-										? "Create your account"
-										: "Welcome back"}
-								</Text>
+								<Text style={styles.v2Title}>Welcome back</Text>
 								<Text style={styles.v2Subtitle}>
 									{authMode === "postPaywallRequired"
-										? "Sign in or create an account to start your trial."
+										? "Sign in to continue into Flicker."
 										: "Let the noise fade."}
 								</Text>
 
@@ -180,9 +176,7 @@ export default function SignIn() {
 										onPress={() => router.push("/(auth)/forgot-password")}
 										activeOpacity={0.7}
 									>
-										<Text style={styles.v2ForgotText}>
-											Forgot Password?
-										</Text>
+										<Text style={styles.v2ForgotText}>Forgot Password?</Text>
 									</TouchableOpacity>
 
 									<TouchableOpacity
@@ -199,9 +193,7 @@ export default function SignIn() {
 											{isLoading || isSubmitting ? (
 												<ActivityIndicator color="#3B2A1A" />
 											) : (
-												<Text style={styles.v2PrimaryBtnText}>
-													Sign In
-												</Text>
+												<Text style={styles.v2PrimaryBtnText}>Sign In</Text>
 											)}
 										</View>
 									</TouchableOpacity>
@@ -238,9 +230,7 @@ export default function SignIn() {
 
 								{allowSignup && (
 									<View style={styles.switchRow}>
-										<Text style={styles.v2SwitchText}>
-											Need an account?{" "}
-										</Text>
+										<Text style={styles.v2SwitchText}>Need an account? </Text>
 										<TouchableOpacity
 											onPress={() =>
 												router.push("/(auth)/signup?mode=postPaywallRequired")

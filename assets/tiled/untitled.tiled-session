@@ -3,8 +3,9 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "",
+    "activeFile": "flicker-forest-tilemap.json",
     "expandedProjectPaths": [
+        "."
     ],
     "fileStates": {
         "": {
@@ -29,6 +30,17 @@
         },
         "flicker-forest-tilemap.tmj#flicker-forest": {
             "scaleInEditor": 1
+        },
+        "focus_nook.json": {
+            "scale": 0.3088,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 331.9300518134715,
+                "y": 526.2305699481865
+            }
+        },
+        "focus_nook.json#focus_nook": {
+            "scaleInDock": 0.229
         },
         "tent-interior-main-tilemap.json": {
             "scale": 2.2511,
@@ -103,9 +115,16 @@
     "map.tileWidth": 16,
     "map.width": 48,
     "openFiles": [
+        "flicker-forest-tilemap.json",
+        "tent-interior-phase-1-tilemap.json",
+        "zen-garden-tilemap.json",
+        "focus_nook.json"
     ],
     "project": "untitled.tiled-project",
     "recentFiles": [
+        "focus_nook.json",
+        "zen-garden-tilemap.json",
+        "tent-interior-phase-1-tilemap.json",
         "flicker-forest-tilemap.json",
         "tent-internal-main-tilemap.json",
         "tent-interior-main-tilemap.json"

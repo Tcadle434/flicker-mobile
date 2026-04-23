@@ -18,7 +18,6 @@ import { useAudioSettingsStore } from '../../src/stores/audioSettingsStore';
 import { SessionFlowController } from '../../src/controllers/SessionFlowController';
 import { audioCoordinator } from '../../src/services/audio/audioCoordinator';
 import ZenGardenScene from '../../src/components/world/ZenGardenScene';
-import SessionMixer from '../../src/components/hud/SessionMixer';
 import StandaloneSessionAudioPanel from '../../src/components/hud/StandaloneSessionAudioPanel';
 import SessionExitConfirmPopup from '../../src/components/hud/SessionExitConfirmPopup';
 import { HUD_ASSETS } from '../../src/components/hud/hudAssets';
@@ -32,11 +31,17 @@ import {
   DEV_RELAX_SESSION_CONFIG,
   DEV_RELAX_SESSION_MINUTES,
 } from '../../src/constants/devSession';
+import { useSceneActivity } from '../../src/hooks/useSceneActivity';
+import { useSceneQualityProfile } from '../../src/hooks/useSceneQualityProfile';
+import {
+  decrementPerfCounter,
+  incrementPerfCounter,
+  perfMark,
+} from '../../src/lib/perfDiagnostics';
 
 const RESET_SESSION_AUDIO_MODES: ResetSessionAudioMode[] = [
   '432hz',
   'binauralBeats',
-  'custom',
 ];
 
 function formatTime(totalSeconds: number) {
@@ -46,6 +51,8 @@ function formatTime(totalSeconds: number) {
 }
 
 export default function ResetSession() {
+  const sceneActive = useSceneActivity('ResetSession');
+  const qualityProfile = useSceneQualityProfile(sceneActive);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
@@ -53,13 +60,12 @@ export default function ResetSession() {
     devSession?: string;
   }>();
   const resetSessionAudioMode = usePlayerStore((s) => s.resetSessionAudioMode);
-  const isMuted = useAudioSettingsStore((s) => s.isMuted);
-  const setMuted = useAudioSettingsStore((s) => s.setMuted);
+  const sessionMuted = useAudioSettingsStore((s) => s.sessionMuted);
+  const setSessionMuted = useAudioSettingsStore((s) => s.setSessionMuted);
   const phase = useSessionStore((s) => s.phase);
   const sessionId = useSessionStore((s) => s.sessionId);
   const setSessionMode = useSessionStore((s) => s.setMode);
   const abandonSession = useSessionStore((s) => s.abandonSession);
-  const [mixerVisible, setMixerVisible] = useState(false);
   const [standalonePanelVisible, setStandalonePanelVisible] = useState(false);
   const [exitConfirmVisible, setExitConfirmVisible] = useState(false);
 
@@ -97,11 +103,11 @@ export default function ResetSession() {
 
     (async () => {
       try {
+        setSessionMuted(false);
         setSessionMode('reset');
         await audioCoordinator.startResetSession({
           scene: 'resetSession',
           preset: 'reset432hz',
-          continueInBackground: true,
         });
       } catch {
         // ignore, session still renders
@@ -114,9 +120,13 @@ export default function ResetSession() {
         setStillRemaining(controllerRef.current.getStillRemaining());
       }
     }, 500);
+    incrementPerfCounter('activeIntervals');
+    perfMark('interval:reset-display:start', { intervalMs: 500 });
 
     return () => {
       clearInterval(displayInterval);
+      decrementPerfCounter('activeIntervals');
+      perfMark('interval:reset-display:stop');
       controller.dispose(
         useSessionStore.getState().status === 'completed' ? 'completed' : 'abandoned',
       );
@@ -124,15 +134,10 @@ export default function ResetSession() {
         abandonSession();
       }
     };
-  }, [durationMinutes, abandonSession, isDevSession, setSessionMode]);
+  }, [durationMinutes, abandonSession, isDevSession, setSessionMode, setSessionMuted]);
 
   useEffect(() => {
-    if (resetSessionAudioMode === 'custom') {
-      setStandalonePanelVisible(false);
-      return;
-    }
-
-    setMixerVisible(false);
+    setStandalonePanelVisible(false);
   }, [resetSessionAudioMode]);
 
   useEffect(() => {
@@ -193,30 +198,23 @@ export default function ResetSession() {
     }
 
     const preset =
-      mode === 'custom'
-        ? 'resetCustom'
-        : mode === 'binauralBeats'
-          ? 'resetBinauralBeats'
-          : 'reset432hz';
+      mode === 'binauralBeats'
+        ? 'resetBinauralBeats'
+        : 'reset432hz';
 
     void audioCoordinator.switchResetPreset(preset);
   };
 
   const handleAudioControlPress = () => {
-    if (currentAudioProfile.showFullMixer) {
-      setMixerVisible(true);
-      return;
-    }
-
     if (currentAudioProfile.showStandaloneVolumeControl) {
       setStandalonePanelVisible(true);
     }
   };
 
   const handleToggleMute = () => {
-    const nextMuted = !isMuted;
-    setMuted(nextMuted);
-    void audioCoordinator.setMuted(nextMuted).catch(() => undefined);
+    const nextMuted = !sessionMuted;
+    setSessionMuted(nextMuted);
+    void audioCoordinator.setSessionMuted(nextMuted).catch(() => undefined);
   };
 
   return (
@@ -226,7 +224,11 @@ export default function ResetSession() {
         <StatusBar style="light" />
 
         <Animated.View style={[StyleSheet.absoluteFill, visualStyle]}>
-          <ZenGardenScene onReady={() => {}} />
+          <ZenGardenScene
+            onReady={() => {}}
+            active={sceneActive}
+            qualityProfile={qualityProfile}
+          />
         </Animated.View>
 
         <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
@@ -251,7 +253,7 @@ export default function ResetSession() {
                   activeOpacity={0.7}
                 >
                   <Image
-                    source={isMuted ? HUD_ASSETS.volumeMuted : HUD_ASSETS.volumeUnmuted}
+                    source={sessionMuted ? HUD_ASSETS.volumeMuted : HUD_ASSETS.volumeUnmuted}
                     style={styles.audioIcon}
                     resizeMode="contain"
                   />
@@ -362,11 +364,7 @@ export default function ResetSession() {
           )}
         </SafeAreaView>
 
-        {mixerVisible && resetSessionAudioMode === 'custom' && (
-          <SessionMixer onClose={() => setMixerVisible(false)} />
-        )}
-
-        {standalonePanelVisible && resetSessionAudioMode !== 'custom' && (
+        {standalonePanelVisible && (
           <StandaloneSessionAudioPanel onClose={() => setStandalonePanelVisible(false)} visible />
         )}
 

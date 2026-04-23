@@ -1,10 +1,15 @@
 import { useSessionStore } from '../stores/sessionStore';
 import { audioCoordinator } from '../services/audio/audioCoordinator';
 import { logger } from '../lib/logger';
+import {
+  decrementPerfCounter,
+  incrementPerfCounter,
+  perfMark,
+} from '../lib/perfDiagnostics';
 import type { SessionPhase } from '../stores/sessionStore';
 
 const FADE_DURATION = 5;
-const RETURN_DURATION = 25;
+const RETURN_DURATION = 0;
 
 interface SessionFlowTimingOverrides {
   fadeSeconds?: number;
@@ -53,6 +58,8 @@ export class SessionFlowController {
 
     // Start accurate tick timer
     this.tickTimer = setInterval(() => this.tick(), 250);
+    incrementPerfCounter('activeIntervals');
+    perfMark('interval:session-flow:start', { intervalMs: 250 });
   }
 
   private tick(): void {
@@ -75,8 +82,9 @@ export class SessionFlowController {
 
   private computePhase(elapsed: number): SessionPhase {
     if (elapsed < this.fadeDuration) return 'fade';
-    if (elapsed < this.fadeDuration + this.stillDuration) return 'still';
-    if (elapsed < this.totalSeconds) return 'return';
+    const stillEnd = this.fadeDuration + this.stillDuration;
+    if (elapsed < stillEnd) return 'still';
+    if (this.returnDuration > 0 && elapsed < this.totalSeconds) return 'return';
     return 'complete';
   }
 
@@ -90,14 +98,8 @@ export class SessionFlowController {
           break;
 
         case 'return':
-          await audioCoordinator.setSessionPhase('return');
-          // Voice prompt at 5s into return
-          if (this.returnDuration >= 5) {
-            setTimeout(() => {
-              if (!this.disposed) {
-                logger.info('Voice prompt placeholder: return phase 5s mark');
-              }
-            }, 5000);
+          if (this.returnDuration > 0) {
+            await audioCoordinator.setSessionPhase('return');
           }
           break;
       }
@@ -133,6 +135,8 @@ export class SessionFlowController {
     if (this.tickTimer) {
       clearInterval(this.tickTimer);
       this.tickTimer = null;
+      decrementPerfCounter('activeIntervals');
+      perfMark('interval:session-flow:stop');
     }
     void audioCoordinator.endSession(reason).catch(() => undefined);
   }

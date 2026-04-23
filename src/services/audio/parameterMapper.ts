@@ -10,15 +10,6 @@ const timeOfDayEnergy: Record<AdaptiveInputs['timeOfDay']['value'], number> = {
   'late-night': -0.6,
 };
 
-const weatherDensity = {
-  clear: 0.5,
-  cloudy: 0.0,
-  rain: -0.4,
-  storm: -0.7,
-  snow: -0.2,
-  fog: -0.3,
-};
-
 const seasonBrightness = {
   spring: 0.6,
   summer: 0.8,
@@ -31,7 +22,6 @@ export function mapAdaptiveParameters(
   baseBinauralFrequency: number = 10
 ): AdaptiveParameters {
   const energyBase = timeOfDayEnergy[inputs.timeOfDay.value];
-  const densityBase = inputs.weather ? weatherDensity[inputs.weather.condition] : 0.0;
   const brightnessBase = seasonBrightness[inputs.season];
 
   const heartRateDelta = inputs.heartRate
@@ -39,7 +29,7 @@ export function mapAdaptiveParameters(
     : 0;
 
   const energy = clamp(energyBase + heartRateDelta, -1, 1);
-  const density = clamp(densityBase, -1, 1);
+  const density = 0;
   const brightness = clamp(brightnessBase + energy * 0.1, 0, 1);
   const tempo = clamp(1 + heartRateDelta * 0.4, 0.8, 1.2);
 

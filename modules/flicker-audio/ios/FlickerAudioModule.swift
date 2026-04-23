@@ -99,21 +99,6 @@ public class FlickerAudioModule: Module {
             }
         }
 
-        AsyncFunction("applyResetCustomConfig") { (config: [String: Any], layers: [[String: Any]], promise: Promise) in
-            do {
-                try FlickerAudioCoordinator.shared.applyResetCustomConfig(config, layers: layers)
-                promise.resolve(["success": true])
-            } catch {
-                let errorMessage = "Failed to apply reset custom config: \(error.localizedDescription)"
-                print("[FlickerAudioModule] \(errorMessage)")
-                self.sendEvent("error", [
-                    "message": errorMessage,
-                    "code": "RESET_CUSTOM_ERROR"
-                ])
-                promise.reject("RESET_CUSTOM_ERROR", errorMessage)
-            }
-        }
-
         AsyncFunction("setSessionPhase") { (phase: String, promise: Promise) in
             FlickerAudioCoordinator.shared.setSessionPhase(phase)
             promise.resolve(["success": true])
@@ -165,6 +150,16 @@ public class FlickerAudioModule: Module {
 
         AsyncFunction("setMuted") { (muted: Bool, promise: Promise) in
             FlickerAudioCoordinator.shared.setMuted(muted)
+            promise.resolve(["success": true])
+        }
+
+        AsyncFunction("setShellMuted") { (muted: Bool, promise: Promise) in
+            FlickerAudioCoordinator.shared.setShellMuted(muted)
+            promise.resolve(["success": true])
+        }
+
+        AsyncFunction("setSessionMuted") { (muted: Bool, promise: Promise) in
+            FlickerAudioCoordinator.shared.setSessionMuted(muted)
             promise.resolve(["success": true])
         }
 
@@ -236,6 +231,29 @@ public class FlickerAudioModule: Module {
 
         AsyncFunction("getDebugState") { (promise: Promise) in
             promise.resolve(FlickerAudioCoordinator.shared.getDebugState())
+        }
+
+        AsyncFunction("getPerformanceState") { (promise: Promise) in
+            let processInfo = ProcessInfo.processInfo
+            let thermalState: String
+
+            switch processInfo.thermalState {
+            case .nominal:
+                thermalState = "nominal"
+            case .fair:
+                thermalState = "fair"
+            case .serious:
+                thermalState = "serious"
+            case .critical:
+                thermalState = "critical"
+            @unknown default:
+                thermalState = "unknown"
+            }
+
+            promise.resolve([
+                "thermalState": thermalState,
+                "lowPowerModeEnabled": processInfo.isLowPowerModeEnabled
+            ])
         }
 
         // MARK: - Test Tone Generation (Phase 1)

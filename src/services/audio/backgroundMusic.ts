@@ -6,8 +6,7 @@
 import { audioCoordinator } from './audioCoordinator';
 
 export async function startBackgroundMusic(muted: boolean): Promise<void> {
-  await audioCoordinator.initialize();
-  await audioCoordinator.setMuted(muted);
+  await audioCoordinator.setShellMuted(muted);
   await audioCoordinator.enterShell();
 }
 
@@ -20,9 +19,9 @@ export function resumeBackgroundMusic(): void {
 }
 
 export function muteBackgroundMusic(): void {
-  void audioCoordinator.setMuted(true);
+  void audioCoordinator.setShellMuted(true);
 }
 
 export function unmuteBackgroundMusic(): void {
-  void audioCoordinator.setMuted(false);
+  void audioCoordinator.setShellMuted(false);
 }

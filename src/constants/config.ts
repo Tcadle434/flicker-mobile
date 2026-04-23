@@ -21,7 +21,6 @@ export const config = {
   // Adaptive system configuration
   adaptive: {
     updateInterval: 30000, // 30 seconds
-    weatherUpdateInterval: 900000, // 15 minutes
     heartRatePollInterval: 10000, // 10 seconds
     timeOfDayUpdateInterval: 300000, // 5 minutes
   },
@@ -67,23 +66,10 @@ export const config = {
     },
   },
 
-  // Spotify Connect
-  spotify: {
-    clientId: process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID || '',
-    redirectUrl: process.env.EXPO_PUBLIC_SPOTIFY_REDIRECT_URL || 'flicker://spotify-callback',
-    scopes: [
-      'user-read-playback-state',
-      'user-modify-playback-state',
-      'user-read-currently-playing',
-      'streaming',
-    ],
-  },
-
   // API endpoints (will be set via environment variables)
   api: {
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || '',
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
-    weatherApiUrl: 'https://api.open-meteo.com/v1/forecast',
   },
 
   // Analytics events

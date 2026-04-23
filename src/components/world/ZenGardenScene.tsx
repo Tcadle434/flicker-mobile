@@ -4,8 +4,11 @@ import { Canvas, Fill, Rect, LinearGradient, vec, useImage } from "@shopify/reac
 import { useSharedValue } from "react-native-reanimated";
 import TilemapRenderer from "./TilemapRenderer";
 import AnimatedSprite from "./AnimatedSprite";
+import { useSceneClock } from "../../hooks/useSceneClock";
+import { useRenderDiagnostics } from "../../lib/perfDiagnostics";
 import zenGardenMapJson from "../../../assets/tiled/zen-garden-tilemap.json";
 import focusNookMapJson from "../../../assets/tiled/focus_nook.json";
+import type { SceneQualityProfile } from "../../types";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -42,6 +45,8 @@ interface SceneVariantConfig {
 interface Props {
 	onReady?: () => void;
 	variant?: SceneVariant;
+	active?: boolean;
+	qualityProfile?: SceneQualityProfile;
 }
 
 const normalizeSceneMap = (mapJson: {
@@ -106,10 +111,23 @@ const SCENE_VARIANTS: Record<SceneVariant, SceneVariantConfig> = {
 	},
 };
 
-export default function ZenGardenScene({ onReady, variant = "relax" }: Props) {
+export default function ZenGardenScene({
+	onReady,
+	variant = "relax",
+	active = true,
+	qualityProfile = "full",
+}: Props) {
+	useRenderDiagnostics("ZenGardenScene");
 	const sceneConfig = SCENE_VARIANTS[variant];
 	const tileset = useImage(sceneConfig.tilesetSource);
 	const spriteSheet = useImage(sceneConfig.spriteSource);
+	const animationActive = active && qualityProfile !== "paused";
+	const sceneMaxFps = qualityProfile === "reduced" ? 24 : 30;
+	const sceneClock = useSceneClock({
+		active: animationActive,
+		label: `zen-garden:${variant}`,
+		maxFps: sceneMaxFps,
+	});
 
 	const {
 		width: mapWidth,
@@ -187,6 +205,8 @@ export default function ZenGardenScene({ onReady, variant = "relax" }: Props) {
 				width={flickerWidth}
 				height={flickerHeight}
 				nearestFilter={false}
+				active={animationActive}
+				clock={sceneClock}
 			/>
 
 			<Rect x={0} y={0} width={SCREEN_W} height={offsetY + 80}>
